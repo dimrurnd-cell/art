@@ -7,10 +7,17 @@
                    data-endpoint="/api/artcatalog/lead/"
                    data-policy="/ru/privacy/"
                    data-demo="">
-   data-base     — путь к статике виджета (там лежит artists.json)
-   data-endpoint — URL приёма заявок (Django-приложение artcatalog)
-   data-policy   — ссылка на политику обработки персональных данных
-   data-demo     — "1" = не отправлять на сервер (локальный просмотр)
+   data-base        — путь к статике виджета (там лежит artists.json);
+                      может быть абсолютным URL (CDN)
+   data-endpoint    — URL приёма заявок (Django-приложение artcatalog)
+   data-policy      — ссылка на политику обработки персональных данных
+   data-demo        — "1" = не отправлять на сервер (локальный просмотр)
+   data-tilda-popup — режим Tilda: имя попапа с формой Tilda, например
+                      "popup:artbuy". Кнопка «Хочу купить» подставляет
+                      художника/работу в скрытые поля формы (input
+                      name="artist" / name="work") и открывает попап;
+                      собственная форма виджета и data-endpoint при этом
+                      не используются — заявку отправляет Tilda.
    ============================================================ */
 (function () {
   'use strict';
@@ -79,6 +86,10 @@
     this.endpoint = root.getAttribute('data-endpoint') || '/api/artcatalog/lead/';
     this.policy = root.getAttribute('data-policy') || '#';
     this.demo = root.getAttribute('data-demo') === '1';
+    this.tildaPopup = (root.getAttribute('data-tilda-popup') || '').replace(/^#/, '');
+    var base = this.base;
+    // пути в artists.json могут быть относительными (к data-base) или абсолютными
+    this.url = function (p) { return /^(https?:)?\/\//.test(p) ? p : base + p; };
     this.artists = [];
     this.index = 0;          // позиция карусели
     this.artistIdx = -1;     // открытый художник
@@ -144,9 +155,9 @@
       var card = el('div', 'artc-card');
       card.innerHTML =
         '<button type="button" class="artc-card__inner" data-artist="' + i + '">' +
-          '<span class="artc-card__cover">' + pictureHTML(self.base + a.works[0].thumb, 'Работа: ' + (a.works[0].title || a.name), i >= 3) + '</span>' +
+          '<span class="artc-card__cover">' + pictureHTML(self.url(a.works[0].thumb), 'Работа: ' + (a.works[0].title || a.name), i >= 3) + '</span>' +
           '<span class="artc-card__meta">' +
-            '<span class="artc-card__ava">' + pictureHTML(self.base + a.avatar, a.name, i >= 3) + '</span>' +
+            '<span class="artc-card__ava">' + pictureHTML(self.url(a.avatar), a.name, i >= 3) + '</span>' +
             '<span><span class="artc-card__name">' + esc(a.name) + '</span>' +
             '<span class="artc-card__city">' + esc(a.city) + '</span></span>' +
           '</span>' +
@@ -302,7 +313,7 @@
     var worksHTML = a.works.map(function (w, wi) {
       return '<button type="button" class="artc-work" data-work="' + wi + '" ' +
         'aria-label="Открыть работу' + (w.title ? ': ' + esc(w.title) : '') + '">' +
-        pictureHTML(self.base + w.medium, (w.title || 'Работа') + ' — ' + a.name, true) +
+        pictureHTML(self.url(w.medium), (w.title || 'Работа') + ' — ' + a.name, true) +
         (w.title ? '<span class="artc-work__title">' + esc(w.title) + '</span>' : '') +
         '</button>';
     }).join('');
@@ -312,7 +323,7 @@
         '<button type="button" class="artc-modal__close" aria-label="Закрыть">&#10005;</button>' +
         '<div class="artc-artist">' +
           '<div class="artc-artist__head">' +
-            '<div class="artc-artist__ava">' + pictureHTML(this.base + a.avatar, a.name, false) + '</div>' +
+            '<div class="artc-artist__ava">' + pictureHTML(this.url(a.avatar), a.name, false) + '</div>' +
             '<div><h3 class="artc-artist__name">' + esc(a.name) + '</h3>' +
             '<span class="artc-artist__city">' + esc(a.city) + '</span></div>' +
           '</div>' +
@@ -373,8 +384,8 @@
         '<button type="button" class="artc-modal__close" aria-label="Закрыть">&#10005;</button>' +
         '<button type="button" class="artc-arrow artc-arrow--prev" aria-label="Предыдущая работа">' + ARROW_L + '</button>' +
         '<picture>' +
-          '<source srcset="' + esc(this.base + w.full) + '" type="image/webp">' +
-          '<img class="artc-lightbox__img" src="' + esc(this.base + w.full.replace(/\.webp$/, '.jpg')) + '" ' +
+          '<source srcset="' + esc(this.url(w.full)) + '" type="image/webp">' +
+          '<img class="artc-lightbox__img" src="' + esc(this.url(w.full).replace(/\.webp$/, '.jpg')) + '" ' +
             'alt="' + esc((w.title || 'Работа') + ' — ' + a.name) + '">' +
         '</picture>' +
         '<button type="button" class="artc-arrow artc-arrow--next" aria-label="Следующая работа">' + ARROW_R + '</button>' +
@@ -405,6 +416,13 @@
 
   Widget.prototype.openForm = function (artist, work) {
     var self = this;
+
+    // режим Tilda: заявку принимает попап-форма Tilda, а не наша модалка
+    if (this.tildaPopup) {
+      this.openTildaPopup(artist, work);
+      return;
+    }
+
     var what = work && work.title ? 'работу «' + esc(work.title) + '» художника' : 'работу художника';
 
     this.formModal.classList.remove('is-sent');
@@ -460,6 +478,31 @@
 
     this.openModal(fm);
     phone.focus();
+  };
+
+  /* Tilda: подставить контекст в скрытые поля всех форм на странице
+     (попап-форма Tilda присутствует в DOM ещё до открытия) и открыть попап */
+  Widget.prototype.openTildaPopup = function (artist, work) {
+    var fill = function (name, value) {
+      var inputs = document.querySelectorAll(
+        'form input[name="' + name + '"], .t-form input[name="' + name + '"]'
+      );
+      for (var i = 0; i < inputs.length; i++) inputs[i].value = value;
+    };
+    fill('artist', artist.name);
+    fill('work', work ? (work.title || 'без названия') : '');
+
+    // Tilda открывает попапы по клику на ссылку #popup:имя (обработчик делегированный)
+    var a = document.createElement('a');
+    a.href = '#' + this.tildaPopup;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.parentNode.removeChild(a);
+    // запасной путь, если делегированный обработчик не сработал
+    if (window.location.hash !== '#' + this.tildaPopup) {
+      window.location.hash = this.tildaPopup;
+    }
   };
 
   Widget.prototype.maskPhone = function (v) {

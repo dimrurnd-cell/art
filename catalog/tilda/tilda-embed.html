@@ -1,0 +1,19 @@
+<!-- ============================================================
+     Онлайн-каталог художников «Арт-Ростов» — версия для Tilda
+     Вставьте этот код целиком в блок T123 (Другое → HTML-код).
+
+     Статика раздаётся из GitHub-репозитория через CDN jsDelivr —
+     на Tilda ничего загружать не нужно.
+
+     Перед публикацией:
+     1) создайте попап-форму Tilda с именем popup:artbuy
+        (см. tilda/README.md) — она принимает заявки «Хочу купить»
+        и отправляет их на ads@donexpocentre.ru;
+     2) при необходимости замените @main на конкретный коммит,
+        чтобы зафиксировать версию (см. README).
+     ============================================================ -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/dimrurnd-cell/art@main/catalog/static/artcatalog/catalog.css">
+<div id="artrostov-catalog"
+     data-base="https://cdn.jsdelivr.net/gh/dimrurnd-cell/art@main/catalog/static/artcatalog/"
+     data-tilda-popup="popup:artbuy"></div>
+<script src="https://cdn.jsdelivr.net/gh/dimrurnd-cell/art@main/catalog/static/artcatalog/catalog.js" defer></script>
