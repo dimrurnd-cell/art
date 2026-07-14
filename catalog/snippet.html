@@ -1,0 +1,16 @@
+<!-- ============================================================
+     Онлайн-каталог художников «Арт-Ростов»
+     Этот фрагмент целиком вставляется в Snippet (django-cms)
+     на странице https://арт-ростов.рф/ru/
+
+     Перед вставкой проверьте:
+     1) статика виджета выложена в /static/artcatalog/
+     2) приложение artcatalog подключено (эндпоинт /api/artcatalog/lead/)
+     3) в data-policy указана реальная ссылка на политику ПДн
+     ============================================================ -->
+<link rel="stylesheet" href="/static/artcatalog/catalog.css">
+<div id="artrostov-catalog"
+     data-base="/static/artcatalog/"
+     data-endpoint="/api/artcatalog/lead/"
+     data-policy="/ru/privacy/"></div>
+<script src="/static/artcatalog/catalog.js" defer></script>
