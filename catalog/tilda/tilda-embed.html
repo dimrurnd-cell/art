@@ -3,17 +3,18 @@
      Вставьте этот код целиком в блок T123 (Другое → HTML-код).
 
      Статика раздаётся из GitHub-репозитория через CDN jsDelivr —
-     на Tilda ничего загружать не нужно.
+     на Tilda ничего загружать не нужно. Версия закреплена хешем
+     коммита: работает сразу, кешируется CDN навсегда.
 
      Перед публикацией:
      1) создайте попап-форму Tilda с именем popup:artbuy
         (см. tilda/README.md) — она принимает заявки «Хочу купить»
         и отправляет их на ads@donexpocentre.ru;
-     2) при необходимости замените @main на конкретный коммит,
-        чтобы зафиксировать версию (см. README).
+     2) после обновления каталога (новые художники/фото) замените
+        хеш коммита во всех трёх ссылках на новый (см. README).
      ============================================================ -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/dimrurnd-cell/art@main/catalog/static/artcatalog/catalog.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/dimrurnd-cell/art@7c48c5d65c7725c66bb060a2a576f778992e9cc0/catalog/static/artcatalog/catalog.css">
 <div id="artrostov-catalog"
-     data-base="https://cdn.jsdelivr.net/gh/dimrurnd-cell/art@main/catalog/static/artcatalog/"
+     data-base="https://cdn.jsdelivr.net/gh/dimrurnd-cell/art@7c48c5d65c7725c66bb060a2a576f778992e9cc0/catalog/static/artcatalog/"
      data-tilda-popup="popup:artbuy"></div>
-<script src="https://cdn.jsdelivr.net/gh/dimrurnd-cell/art@main/catalog/static/artcatalog/catalog.js" defer></script>
+<script src="https://cdn.jsdelivr.net/gh/dimrurnd-cell/art@7c48c5d65c7725c66bb060a2a576f778992e9cc0/catalog/static/artcatalog/catalog.js" defer></script>
