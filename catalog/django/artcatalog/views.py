@@ -1,5 +1,8 @@
+# -*- coding: utf-8 -*-
 """
 Приём заявок «Хочу купить» из виджета онлайн-каталога Арт-Ростов.
+
+Совместимо с Django 1.8+ (включая старые django CMS-проекты) и Python 2.7/3.x.
 
 GET  /api/artcatalog/lead/  — выставляет csrftoken-cookie (виджет вызывает
                               его при открытии формы).
@@ -12,6 +15,8 @@ POST /api/artcatalog/lead/  — принимает JSON-заявку, шлёт �
     ARTCATALOG_RATE_LIMIT      = 5          # заявок с одного IP…
     ARTCATALOG_RATE_WINDOW     = 3600       # …за столько секунд
 """
+from __future__ import unicode_literals
+
 import json
 import logging
 import re
@@ -20,9 +25,9 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.mail import send_mail
 from django.http import JsonResponse
+from django.middleware.csrf import get_token
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
-from django.middleware.csrf import get_token
 
 logger = logging.getLogger("artcatalog.leads")
 
@@ -39,6 +44,22 @@ def _client_ip(request):
     if xff:
         return xff.split(",")[0].strip()
     return request.META.get("REMOTE_ADDR", "unknown")
+
+
+def _rate_exceeded(ip):
+    """True, если с этого IP уже отправлено RATE_LIMIT заявок за окно.
+
+    Только штатные cache.add/incr — работает на Django 1.8
+    (cache.get_or_set появился в 1.9).
+    """
+    key = "artcatalog:lead:%s" % ip
+    cache.add(key, 0, RATE_WINDOW)
+    try:
+        count = cache.incr(key)
+    except ValueError:
+        cache.set(key, 1, RATE_WINDOW)
+        count = 1
+    return count > RATE_LIMIT
 
 
 @require_http_methods(["GET", "POST"])
@@ -70,29 +91,28 @@ def lead(request):
     if not artist:
         return JsonResponse({"error": "Не указан художник."}, status=400)
 
-    # rate limit по IP
     ip = _client_ip(request)
-    key = f"artcatalog:lead:{ip}"
-    count = cache.get_or_set(key, 0, RATE_WINDOW)
-    if count >= RATE_LIMIT:
+    if _rate_exceeded(ip):
         return JsonResponse({"error": "Слишком много заявок. Попробуйте позже."}, status=429)
-    try:
-        cache.incr(key)
-    except ValueError:
-        cache.set(key, 1, RATE_WINDOW)
 
-    now = timezone.localtime().strftime("%d.%m.%Y %H:%M")
-    subject = f"Заявка на покупку — {artist} — Арт-Ростов"
-    body = (
-        "Новая заявка из онлайн-каталога «Арт-Ростов»\n"
-        f"\nХудожник: {artist}"
-        + (f"\nРабота: {work}" if work else "")
-        + f"\nТелефон: {phone}"
-        f"\nEmail: {email}"
-        f"\nДата и время: {now}"
-        f"\nСтраница: {page}"
-        f"\nIP: {ip}\n"
-    )
+    now = timezone.localtime(timezone.now()).strftime("%d.%m.%Y %H:%M")
+    subject = "Заявка на покупку — %s — Арт-Ростов" % artist
+    body_lines = [
+        "Новая заявка из онлайн-каталога «Арт-Ростов»",
+        "",
+        "Художник: %s" % artist,
+    ]
+    if work:
+        body_lines.append("Работа: %s" % work)
+    body_lines += [
+        "Телефон: %s" % phone,
+        "Email: %s" % email,
+        "Дата и время: %s" % now,
+        "Страница: %s" % page,
+        "IP: %s" % ip,
+        "",
+    ]
+    body = "\n".join(body_lines)
 
     # резервная копия заявки в лог — на случай проблем с почтой
     logger.info("lead artist=%r work=%r phone=%r email=%r ip=%s page=%r",

@@ -53,10 +53,27 @@ cd catalog && python3 -m http.server 8000
    ARTCATALOG_RATE_LIMIT = 5        # заявок с одного IP…
    ARTCATALOG_RATE_WINDOW = 3600    # …в час
    ```
-3. В корневом `urls.py`:
+3. В корневом `urls.py` — строго **вне** `i18n_patterns` (иначе адрес станет
+   `/ru/api/...`, а виджет обращается к `/api/...`):
+
+   Django 2.0+:
    ```python
-   path("api/artcatalog/", include("artcatalog.urls")),
+   from django.urls import path, include
+   urlpatterns = [
+       path("api/artcatalog/", include("artcatalog.urls")),
+       # ... остальные url
+   ]
    ```
+
+   Django 1.8–1.11 (старые django CMS-проекты):
+   ```python
+   from django.conf.urls import include, url
+   urlpatterns = [
+       url(r"^api/artcatalog/", include("artcatalog.urls")),
+       # ... остальные url
+   ]
+   ```
+   Функции `path()` в Django 1.8 нет — использование её в urls.py уронит весь сайт.
 4. Убедиться, что на сайте настроена почта (`EMAIL_HOST`, `DEFAULT_FROM_EMAIL` и т. д.) —
    приложение использует стандартный `django.core.mail.send_mail`.
 5. (Рекомендуется) добавить файловый лог заявок — резервная копия на случай сбоя почты:
