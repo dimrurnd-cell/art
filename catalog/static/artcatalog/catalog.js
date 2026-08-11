@@ -173,7 +173,7 @@
       '<header class="artc-head">' +
         '<div class="artc-head__logo">' + pictureHTML(this.base + 'img/logo.webp', 'АРТ Ростов', false) + '</div>' +
         '<h2 class="artc-head__title">Каталог художников</h2>' +
-        '<span class="artc-head__sub">Все грани искусства!</span>' +
+        '<span class="artc-head__sub">Все грани искусства</span>' +
       '</header>' +
       '<div class="artc-views" role="tablist" aria-label="Способ просмотра">' +
         '<button type="button" class="artc-views__btn is-active" data-view="hall" role="tab" aria-selected="true">' +
@@ -312,6 +312,48 @@
   var WALL_TURN = 62;   // разворот полотна относительно стены, градусы
   var VIEW_DIST = 620;  // с какого расстояния камера смотрит на комнату
 
+  /* Арт-объекты зала: рисованные силуэты, стоящие на полу у стен.
+     Их немного — они задают масштаб и «обжитость», не отвлекая от работ. */
+  var OBJECTS = [
+    // ваза с цветами на низкой тумбе
+    { w: 150, h: 250, svg:
+      '<svg viewBox="0 0 150 250" xmlns="http://www.w3.org/2000/svg">' +
+      '<g fill="none" stroke="#2E5B4C" stroke-width="3" stroke-linecap="round">' +
+      '<path d="M75 118V64M75 96C62 90 55 78 56 66M75 92c12-6 19-17 18-30"/></g>' +
+      '<g fill="#E4736F"><circle cx="75" cy="52" r="13"/><circle cx="53" cy="60" r="10"/>' +
+      '<circle cx="96" cy="56" r="11"/></g>' +
+      '<g fill="#F0B450"><circle cx="75" cy="52" r="5"/><circle cx="53" cy="60" r="4"/>' +
+      '<circle cx="96" cy="56" r="4"/></g>' +
+      '<path d="M58 118h34l7 46c1 12-7 22-24 22s-25-10-24-22z" fill="#3E7D95"/>' +
+      '<path d="M58 118h34l-2 12H60z" fill="#34677B"/>' +
+      '<rect x="44" y="186" width="62" height="10" rx="3" fill="#8B7448"/>' +
+      '<rect x="50" y="196" width="50" height="46" fill="#A88F5E"/>' +
+      '<rect x="44" y="240" width="62" height="8" rx="2" fill="#6E5A36"/></svg>' },
+    // античный бюст на колонне — отсылка к фирменному стилю выставки
+    { w: 132, h: 300, svg:
+      '<svg viewBox="0 0 132 300" xmlns="http://www.w3.org/2000/svg">' +
+      '<path d="M66 24c17 0 27 13 27 30 0 14-5 22-5 30 0 6 4 9 9 12 9 5 15 12 17 22H18' +
+      'c2-10 8-17 17-22 5-3 9-6 9-12 0-8-5-16-5-30 0-17 10-30 27-30z" fill="#EFE9DC"/>' +
+      '<path d="M66 24c17 0 27 13 27 30 0 14-5 22-5 30 0 6 4 9 9 12 9 5 15 12 17 22H66z"' +
+      ' fill="#DED5C2"/>' +
+      '<rect x="26" y="118" width="80" height="10" rx="3" fill="#CFC5B0"/>' +
+      '<rect x="36" y="128" width="60" height="128" fill="#E3DAC7"/>' +
+      '<path d="M36 128h12v128H36zM60 128h12v128H60zM84 128h12v128H84z" fill="#D2C7B0"/>' +
+      '<rect x="26" y="256" width="80" height="12" rx="3" fill="#CFC5B0"/>' +
+      '<rect x="20" y="268" width="92" height="24" rx="4" fill="#BFB49B"/></svg>' },
+    // напольная ваза-амфора
+    { w: 120, h: 230, svg:
+      '<svg viewBox="0 0 120 230" xmlns="http://www.w3.org/2000/svg">' +
+      '<g fill="none" stroke="#2E5B4C" stroke-width="3" stroke-linecap="round">' +
+      '<path d="M60 92V40M60 70C48 64 42 52 44 40M60 66c12-6 18-18 16-30"/></g>' +
+      '<g fill="#F0B450"><circle cx="60" cy="28" r="11"/><circle cx="42" cy="36" r="8"/>' +
+      '<circle cx="78" cy="32" r="9"/></g>' +
+      '<path d="M48 92h24c14 10 22 26 22 46 0 34-15 62-34 62s-34-28-34-62c0-20 8-36 22-46z"' +
+      ' fill="#E4736F"/>' +
+      '<path d="M60 92h12c14 10 22 26 22 46 0 34-15 62-34 62z" fill="#D55A56"/>' +
+      '<rect x="44" y="86" width="32" height="9" rx="3" fill="#C9504C"/></svg>' }
+  ];
+
   Widget.prototype.buildHall = function (rebuild) {
     var host = this.wrap.querySelector('.artc-view--hall');
     if (!host) return;
@@ -327,6 +369,14 @@
             '<div class="artc-wall artc-wall--l"></div><div class="artc-wall artc-wall--r"></div>' +
             '<div class="artc-end">' + pictureHTML(this.base + 'img/logo.webp', 'АРТ Ростов', false) +
               '<span>Все грани искусства</span></div>' +
+            '<button type="button" class="artc-pad artc-pad--fwd" aria-label="Пройти вперёд">' +
+              '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+              'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+              '<path d="M12 19V5M5 12l7-7 7 7"/></svg></span></button>' +
+            '<button type="button" class="artc-pad artc-pad--back" aria-label="Вернуться назад">' +
+              '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+              'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+              '<path d="M12 5v14M19 12l-7 7-7-7"/></svg></span></button>' +
           '</div></div>' +
         '</div>' +
         '<div class="artc-dust" aria-hidden="true"></div>' +
@@ -336,11 +386,7 @@
           ? 'Проведите пальцем, чтобы пройти по залу'
           : 'Идите по залу: перетаскивайте, крутите колесо или жмите <b>W</b>/<b>S</b>') + '</span></p>' +
         '<div class="artc-hud">' +
-          '<div class="artc-hud__row">' +
-            '<button type="button" class="artc-walk artc-walk--back" aria-label="Шаг назад">' + ARROW_DOWN + '</button>' +
-            '<span class="artc-progress"><i></i></span>' +
-            '<button type="button" class="artc-walk artc-walk--fwd" aria-label="Шаг вперёд">' + ARROW_UP + '</button>' +
-          '</div>' +
+          '<div class="artc-hud__row"><span class="artc-progress"><i></i></span></div>' +
           '<div class="artc-rooms"></div>' +
         '</div>' +
       '</div>';
@@ -357,13 +403,23 @@
     var HH = px('--hh', 330);
     var ARTH = px('--art-h', 268);
     var GAP = Math.round(STEP * 1.35);
+    var SEG_HINT = Math.round(STEP * 4.6);
     var viewDist = window.innerWidth < 700 ? Math.round(VIEW_DIST * 0.62) : VIEW_DIST;
     var START = Math.round(STEP * 1.1);
+
+    // ритм пилястр вдоль обеих стен (шаг совпадает с шагом полотен)
+    var pil = '';
+    for (var pi = 0; pi * STEP * 2 < SEG_HINT; pi++) {
+      pil += '<i class="artc-pilaster" style="left:' + (pi * STEP * 2 - 21) + 'px"></i>';
+    }
+    host.querySelector('.artc-wall--l').innerHTML = pil;
+    host.querySelector('.artc-wall--r').innerHTML = pil;
 
     var world = host.querySelector('.artc-world');
     var self = this;
     var arts = [];
     var rooms = [];
+    var decor = [];
     var z = -START;
 
     this.artists.forEach(function (a, ai) {
@@ -378,7 +434,11 @@
         // ширина полотна — по реальным пропорциям работы
         var ratio = (w.w && w.h) ? w.w / w.h : 1;
         var aw = Math.round(Math.min(ARTH * 1.55, Math.max(ARTH * 0.62, ARTH * ratio)));
-        var x = (HW - 62) * (left ? -1 : 1);
+        // полотно развёрнуто внутрь зала, поэтому его дальний угол уходит
+        // к стене на aw/2 * cos(угол) — отступаем ровно на эту глубину плюс запас,
+        // иначе широкие работы врезаются в стену
+        var sink = Math.round(aw / 2 * Math.cos(WALL_TURN * Math.PI / 180));
+        var x = (HW - sink - 26) * (left ? -1 : 1);
         var turn = left ? WALL_TURN : -WALL_TURN;
 
         var b = el('button', 'artc-art');
@@ -423,10 +483,40 @@
 
       rooms.push({ name: a.name, z: -roomStart - viewDist });
       z = roomStart - (slots - 1) * STEP - GAP;
+
+      // между залами — по одному арт-объекту у стены, стороны чередуются
+      if (ai < self.artists.length - 1) {
+        var obj = OBJECTS[ai % OBJECTS.length];
+        var side = ai % 2 === 0 ? 1 : -1;
+        var ox = (HW - 132) * side;
+        var oz = z + Math.round(GAP * 0.5);
+        var scale = HH / 315 * 1.3;                  // объекты в масштабе зала
+        var oh = Math.round(obj.h * scale);
+        var ow = Math.round(obj.w * scale);
+
+        var o = el('div', 'artc-object', obj.svg);
+        o.style.setProperty('--ow', ow + 'px');
+        o.style.setProperty('--ox', ox + 'px');
+        o.style.setProperty('--oy', (HH - oh / 2) + 'px');
+        o.style.setProperty('--oz', oz + 'px');
+        o.style.transform = 'translate(-50%, -50%) translate3d(' + ox + 'px, ' +
+          (HH - oh / 2) + 'px, ' + oz + 'px)';
+        o.setAttribute('data-z', oz);
+        world.appendChild(o);
+        decor.push(o);
+
+        var sh = el('div', 'artc-object-shadow');
+        sh.style.setProperty('--sw', Math.round(ow * 1.15) + 'px');
+        sh.style.transform = 'translate(-50%, -50%) translate3d(' + ox + 'px, ' +
+          (HH - 2) + 'px, ' + oz + 'px) rotateX(90deg)';
+        sh.setAttribute('data-z', oz);
+        world.appendChild(sh);
+        decor.push(sh);
+      }
     });
 
     var len = Math.abs(z) + START;
-    var SEG = Math.round(STEP * 4.2);   // длина «движущегося» куска зала (кратно шагу — стык незаметен)
+    var SEG = SEG_HINT;   // длина «движущегося» куска зала (кратно шагу — стык незаметен)
     stage.style.setProperty('--len', len + 'px');
     stage.style.setProperty('--seg', SEG + 'px');
 
@@ -434,7 +524,7 @@
     if (!prefersReducedMotion()) {
       var dust = host.querySelector('.artc-dust');
       var html = '';
-      for (var i = 0; i < 18; i++) {
+      for (var i = 0; i < 10; i++) {
         html += '<i style="left:' + (Math.random() * 100).toFixed(1) + '%;top:' +
           (30 + Math.random() * 70).toFixed(1) + '%;animation-duration:' +
           (9 + Math.random() * 11).toFixed(1) + 's;animation-delay:-' +
@@ -457,14 +547,16 @@
     this.hall = {
       host: host, stage: stage, world: world,
       camera: host.querySelector('.artc-camera'),
-      arts: arts, rooms: rooms, roomBtns: roomsBox.children,
+      arts: arts, decor: decor, rooms: rooms, roomBtns: roomsBox.children,
+      padF: host.querySelector('.artc-pad--fwd'), padB: host.querySelector('.artc-pad--back'),
       step: STEP, len: len, seg: SEG, hw: HW, hh: HH,
       floor: host.querySelector('.artc-floor'), ceil: host.querySelector('.artc-ceil'),
       wallL: host.querySelector('.artc-wall--l'), wallR: host.querySelector('.artc-wall--r'),
       segZ: null,
       maxZ: Math.max(0, len - Math.round(STEP * 0.9)),
       camZ: 0, targetZ: 0, bob: 0, yaw: 0, pitch: 0,
-      progress: 0, moving: false, t0: Date.now()
+      progress: 0, moving: false, t0: Date.now(),
+      probeN: 0, probeT: 0, lite: false
     };
 
     // «влёт» в зал при первом открытии
@@ -484,8 +576,8 @@
     var h = this.hall, self = this;
     var stage = h.stage;
 
-    stage.querySelector('.artc-walk--fwd').addEventListener('click', function () { self.walkBy(h.step); });
-    stage.querySelector('.artc-walk--back').addEventListener('click', function () { self.walkBy(-h.step); });
+    h.padF.addEventListener('click', function (e) { e.stopPropagation(); self.walkBy(h.step); });
+    h.padB.addEventListener('click', function (e) { e.stopPropagation(); self.walkBy(-h.step); });
 
     stage.addEventListener('wheel', function (e) {
       if (Math.abs(e.deltaY) < 2) return;
@@ -518,7 +610,7 @@
     // перетаскивание / свайп: тянем «на себя» — идём вперёд
     var drag = null;
     stage.addEventListener('pointerdown', function (e) {
-      if (e.target.closest('.artc-hud, .artc-rooms')) return;
+      if (e.target.closest('.artc-hud, .artc-rooms, .artc-pad')) return;
       drag = {
         x: e.clientX, y: e.clientY, z: h.targetZ, moved: 0, id: e.pointerId,
         art: e.target.closest('.artc-art')
@@ -606,6 +698,21 @@
 
       // шаг сглаживания не зависит от частоты кадров
       var now = (window.performance && performance.now) ? performance.now() : Date.now();
+
+      // первые полторы секунды считаем кадры: на слабых устройствах
+      // переводим зал в облегчённый режим, чтобы ходьба оставалась плавной
+      if (!hall.lite && hall.probeN < 1e6) {
+        if (!hall.probeT) hall.probeT = now;
+        hall.probeN++;
+        if (now - hall.probeT > 1500) {
+          var fps = hall.probeN / (now - hall.probeT) * 1000;
+          hall.probeN = 1e6;
+          if (fps < 34) {
+            hall.lite = true;
+            hall.stage.classList.add('is-lite');
+          }
+        }
+      }
       var dt = Math.min(4, Math.max(0.2, (now - (hall.last || now)) / 16.67));
       hall.last = now;
 
@@ -623,8 +730,13 @@
       hall.bob += speed * 0.12 * dt;
       var bobY = prefersReducedMotion() ? 0 : Math.sin(hall.bob) * 5.5 * speed;
 
-      hall.world.style.transform = 'translate3d(0,' + bobY.toFixed(2) + 'px,' + hall.camZ.toFixed(2) + 'px)';
+      // когда камера стоит, сцену не трогаем совсем: лишняя запись
+      // в transform заставляет браузер пересобирать весь зал каждый кадр
+      var frameKey = bobY.toFixed(1) + '|' + hall.camZ.toFixed(1);
+      if (frameKey === hall.frameKey) return;
+      hall.frameKey = frameKey;
 
+      hall.world.style.transform = 'translate3d(0,' + bobY.toFixed(2) + 'px,' + hall.camZ.toFixed(2) + 'px)';
       self.hallUpdate();
       return;
     };
@@ -683,10 +795,23 @@
       }
     }
 
-    var fwd = h.stage.querySelector('.artc-walk--fwd');
-    var back = h.stage.querySelector('.artc-walk--back');
-    if (fwd) fwd.disabled = h.targetZ >= h.maxZ - 1;
-    if (back) back.disabled = h.targetZ <= -199;
+    // указатели лежат на полу и едут вместе с камерой
+    var base3d = 'translate(-50%, -50%) translate3d(0px, ' + (h.hh - 3) + 'px, ';
+    h.padF.style.transform = base3d + (-h.camZ - 700) + 'px) rotateX(90deg)';
+    h.padB.style.transform = base3d + (-h.camZ - 320) + 'px) rotateX(90deg)';
+    h.padF.classList.toggle('is-off', h.targetZ >= h.maxZ - 1);
+    h.padB.classList.toggle('is-off', h.targetZ <= -199);
+
+    // арт-объекты рисуем только рядом с камерой
+    for (var d = 0; d < h.decor.length; d++) {
+      var o = h.decor[d];
+      var odz = +o.getAttribute('data-z') + h.camZ;
+      var oNear = odz > -3400 && odz < 700;
+      if (oNear !== o.shown) {
+        o.shown = oNear;
+        o.style.visibility = oNear ? '' : 'hidden';
+      }
+    }
   };
 
   /* ---------------- модальные окна: каркас ---------------- */

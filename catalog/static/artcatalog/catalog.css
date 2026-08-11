@@ -102,13 +102,12 @@
   letter-spacing: .5px;
 }
 .artc-head__sub {
-  display: inline-block;
-  background: var(--artc-teal);
-  color: #fff;
-  padding: 7px 18px;
-  border-radius: 12px;
-  font-size: 15px;
-  letter-spacing: .4px;
+  display: block;
+  color: var(--artc-ink);
+  font-size: 17px;
+  letter-spacing: 3.5px;
+  text-transform: uppercase;
+  margin-top: 2px;
 }
 
 /* ----------------------- карусель ------------------------ */
