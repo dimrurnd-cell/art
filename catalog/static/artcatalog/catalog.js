@@ -434,7 +434,11 @@
           ? 'Проведите пальцем, чтобы пройти по залу'
           : 'Идите по залу: перетаскивайте, крутите колесо или жмите <b>W</b>/<b>S</b>') + '</span></p>' +
         '<div class="artc-hud">' +
-          '<div class="artc-hud__row"><span class="artc-progress"><i></i></span></div>' +
+          '<div class="artc-hud__row">' +
+            '<button type="button" class="artc-walk artc-walk--back" aria-label="Шаг назад">' + ARROW_DOWN + '</button>' +
+            '<span class="artc-progress"><i></i></span>' +
+            '<button type="button" class="artc-walk artc-walk--fwd" aria-label="Шаг вперёд">' + ARROW_UP + '</button>' +
+          '</div>' +
           '<div class="artc-rooms"></div>' +
         '</div>' +
       '</div>';
@@ -634,6 +638,15 @@
     };
     bindHit(h.hitF, 1, 'hl-fwd');
     bindHit(h.hitB, -1, 'hl-back');
+
+    var walkF = stage.querySelector('.artc-walk--fwd');
+    var walkB = stage.querySelector('.artc-walk--back');
+    walkF.addEventListener('click', function (e) { e.stopPropagation(); self.walkBy(h.step); });
+    walkB.addEventListener('click', function (e) { e.stopPropagation(); self.walkBy(-h.step); });
+    walkF.addEventListener('pointerenter', function () { stage.classList.add('hl-fwd'); });
+    walkF.addEventListener('pointerleave', function () { stage.classList.remove('hl-fwd'); });
+    walkB.addEventListener('pointerenter', function () { stage.classList.add('hl-back'); });
+    walkB.addEventListener('pointerleave', function () { stage.classList.remove('hl-back'); });
 
     h.fsBtn.addEventListener('click', function (e) { e.stopPropagation(); self.toggleFullscreen(); });
 
@@ -855,8 +868,8 @@
 
     // указатели лежат на полу и едут вместе с камерой
     var base3d = 'translate(-50%, -50%) translate3d(0px, ' + (h.hh - 3) + 'px, ';
-    h.padF.style.transform = base3d + (-h.camZ - 700) + 'px) rotateX(90deg)';
-    h.padB.style.transform = base3d + (-h.camZ - 320) + 'px) rotateX(90deg)';
+    h.padF.style.transform = base3d + (-h.camZ - 760) + 'px) rotateX(90deg)';
+    h.padB.style.transform = base3d + (-h.camZ - 395) + 'px) rotateX(90deg)';
     h.padF.classList.toggle('is-off', h.targetZ >= h.maxZ - 1);
     h.padB.classList.toggle('is-off', h.targetZ <= -199);
     h.hitF.classList.toggle('is-off', h.targetZ >= h.maxZ - 1);
@@ -884,23 +897,38 @@
     var st = h.stage.getBoundingClientRect();
     if (!st.width || !st.height) return;
 
-    var put = function (hit, pad, padY, minH) {
-      var r = pad.getBoundingClientRect();
-      if (!r.width) return false;
-      var cx = r.left + r.width / 2 - st.left;
-      var cy = r.top + r.height / 2 - st.top;
-      var w = Math.max(r.width * 1.4, st.width * 0.54);
-      var hgt = Math.max(r.height * 2.6, minH);
-      hit.style.left = Math.round(cx - w / 2) + 'px';
-      hit.style.top = Math.round(cy - hgt / 2 + padY) + 'px';
-      hit.style.width = Math.round(w) + 'px';
-      hit.style.height = Math.round(hgt) + 'px';
-      return true;
-    };
+    // нижняя граница зон: кнопки панели должны оставаться доступными
+    var hudTop = st.height;
+    var hudRow = h.stage.querySelector('.artc-hud__row');
+    if (hudRow) {
+      var hr = hudRow.getBoundingClientRect();
+      if (hr.height) hudTop = hr.top - st.top - 8;
+    }
 
-    var okF = put(h.hitF, h.padF, -6, Math.max(72, st.height * 0.15));
-    var okB = put(h.hitB, h.padB, 4, Math.max(84, st.height * 0.18));
-    h.hitsPlaced = okF && okB;
+    var rF = h.padF.getBoundingClientRect();
+    var rB = h.padB.getBoundingClientRect();
+    if (!rF.width || !rB.width) return;
+
+    var cyF = rF.top + rF.height / 2 - st.top;   // дальняя стрелка — «вперёд»
+    var cyB = rB.top + rB.height / 2 - st.top;   // ближняя стрелка — «назад»
+    var w = Math.max(rB.width * 1.5, st.width * 0.56);
+    var left = Math.round(st.width / 2 - w / 2);
+
+    // Зоны обязаны идти встык, без наложения: пересекаясь, верхняя
+    // перехватывала бы нажатия у нижней — по «назад» было не попасть.
+    var split = Math.round((cyF + cyB) / 2);
+    var topF = Math.max(0, Math.round(cyF - Math.max(60, st.height * 0.11)));
+    var bottomB = Math.round(Math.min(hudTop, cyB + Math.max(56, st.height * 0.1)));
+
+    var put = function (hit, top, bottom) {
+      hit.style.left = left + 'px';
+      hit.style.width = Math.round(w) + 'px';
+      hit.style.top = Math.round(top) + 'px';
+      hit.style.height = Math.max(44, Math.round(bottom - top)) + 'px';
+    };
+    put(h.hitF, topF, split - 3);
+    put(h.hitB, split + 3, bottomB);
+    h.hitsPlaced = true;
   };
 
   Widget.prototype.toggleFullscreen = function () {
