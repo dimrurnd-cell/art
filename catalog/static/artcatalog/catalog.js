@@ -650,13 +650,17 @@
 
     h.fsBtn.addEventListener('click', function (e) { e.stopPropagation(); self.toggleFullscreen(); });
 
+    // события изнутри открытой карточки/лайтбокса/формы сцена не трогает
+    var fromModal = function (e) { return !!(e.target.closest && e.target.closest('.artc-modal')); };
+
     stage.addEventListener('wheel', function (e) {
-      if (Math.abs(e.deltaY) < 2) return;
+      if (fromModal(e) || Math.abs(e.deltaY) < 2) return;
       e.preventDefault();
       self.walkBy(e.deltaY * 1.6);
     }, { passive: false });
 
     stage.addEventListener('keydown', function (e) {
+      if (fromModal(e)) return;
       var k = e.key;
       if (k === 'ArrowUp' || k === 'ArrowRight') { self.walkBy(h.step); e.preventDefault(); }
       if (k === 'ArrowDown' || k === 'ArrowLeft') { self.walkBy(-h.step); e.preventDefault(); }
@@ -681,7 +685,7 @@
     // перетаскивание / свайп: тянем «на себя» — идём вперёд
     var drag = null;
     stage.addEventListener('pointerdown', function (e) {
-      if (e.target.closest('.artc-hud, .artc-rooms, .artc-pad, .artc-hit, .artc-fs')) return;
+      if (fromModal(e) || e.target.closest('.artc-hud, .artc-rooms, .artc-pad, .artc-hit, .artc-fs')) return;
       drag = {
         x: e.clientX, y: e.clientY, z: h.targetZ, moved: 0, id: e.pointerId,
         art: e.target.closest('.artc-art')
@@ -693,7 +697,7 @@
     });
     stage.addEventListener('pointermove', function (e) {
       if (!drag) {
-        self.hallParallax(e);
+        if (!fromModal(e)) self.hallParallax(e);
         return;
       }
       var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
@@ -719,6 +723,7 @@
 
     // клавиатура: Enter/Space на полотне (у таких click.detail === 0)
     stage.addEventListener('click', function (e) {
+      if (fromModal(e)) return;
       var art = e.target.closest('.artc-art');
       if (art && e.detail === 0) self.openArt(art);
     });
