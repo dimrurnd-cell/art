@@ -670,3 +670,88 @@
 .artc-stage.is-lite .artc-art__frame::after { display: none; }
 .artc-stage.is-lite .artc-object { filter: none; }
 .artc-stage.is-lite .artc-pad--fwd span { animation: none; opacity: .85; }
+
+/* ============================================================
+   Полноэкранный режим и удобные зоны нажатия для шага
+   ============================================================ */
+
+/* большие прозрачные зоны поверх сцены: попасть по «наклейке» на полу
+   курсором почти невозможно — она сплющена перспективой, поэтому
+   нажатие ловит зона, а сама стрелка остаётся только рисунком */
+.artc-pad { pointer-events: none; }
+.artc-hit {
+  position: absolute;
+  z-index: 3;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity .3s ease;
+}
+.artc-hit::after {
+  content: attr(data-label);
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font-size: 13px;
+  color: #FBF3E0;
+  background: rgba(18, 13, 5, .72);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  padding: 7px 15px;
+  border-radius: 999px;
+  opacity: 0;
+  transition: opacity .25s ease;
+  pointer-events: none;
+}
+.artc-hit:hover::after,
+.artc-hit:focus-visible::after { opacity: 1; }
+.artc-hit:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: -3px; border-radius: 14px; }
+.artc-hit.is-off { opacity: 0; pointer-events: none; }
+/* подсветка нарисованной стрелки, когда курсор в её зоне */
+.artc-stage.hl-fwd .artc-pad--fwd span,
+.artc-stage.hl-back .artc-pad--back span {
+  transform: scale(1.12);
+  color: #fff;
+  background: radial-gradient(60% 60% at 50% 50%, var(--artc-coral), rgba(228, 115, 111, .7) 62%, rgba(228, 115, 111, 0) 88%);
+}
+
+/* --- кнопка «во весь экран» --- */
+.artc-fs {
+  position: absolute;
+  top: 14px; right: 14px;
+  z-index: 5;
+  width: 44px; height: 44px;
+  border-radius: 50%; border: none;
+  cursor: pointer;
+  background: rgba(18, 13, 5, .55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #FBF3E0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .25s ease, transform .25s ease;
+}
+.artc-fs svg { width: 20px; height: 20px; }
+.artc-fs:hover { background: var(--artc-coral); transform: scale(1.08); }
+.artc-fs:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+.artc-fs .artc-fs__exit { display: none; }
+.artc-stage.is-fs .artc-fs .artc-fs__exit { display: block; }
+.artc-stage.is-fs .artc-fs .artc-fs__enter { display: none; }
+
+/* сцена, растянутая на весь экран */
+.artc-stage:fullscreen,
+.artc-stage:-webkit-full-screen {
+  width: 100vw; height: 100vh;
+  max-width: none;
+  border-radius: 0;
+}
+.artc-stage:fullscreen .artc-hud,
+.artc-stage:-webkit-full-screen .artc-hud { padding-bottom: 22px; }
+
+@media (max-width: 600px) {
+  .artc-fs { width: 38px; height: 38px; top: 10px; right: 10px; }
+  .artc-fs svg { width: 17px; height: 17px; }
+  .artc-hit::after { font-size: 12px; padding: 6px 12px; }
+}

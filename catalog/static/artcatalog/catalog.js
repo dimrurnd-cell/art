@@ -67,6 +67,14 @@
   var ICON_GRID = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>';
   var ICON_WALK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13" cy="4" r="2"/><path d="M9 21l2-5 3-2-1-5-3 1-2 3"/><path d="M14 14l2 3 1 4"/></svg>';
 
+  var ICON_FS =
+    '<svg class="artc-fs__enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg>' +
+    '<svg class="artc-fs__exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M3 8h3a2 2 0 002-2V3M21 8h-3a2 2 0 01-2-2V3M3 16h3a2 2 0 012 2v3M21 16h-3a2 2 0 00-2 2v3"/></svg>';
+
   var BLANK = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="4" height="3"%3E%3C/svg%3E';
 
   // короткое имя для кнопок навигации: фамилия либо два первых слова
@@ -246,6 +254,10 @@
       resizeT = setTimeout(function () { self.buildHall(true); }, 260);
     });
 
+    ['fullscreenchange', 'webkitfullscreenchange'].forEach(function (ev) {
+      document.addEventListener(ev, function () { self.onFsChange(); });
+    });
+
     this.buildModals();
     this.goTo(0, true);
     this.buildHall();
@@ -379,6 +391,9 @@
               '<path d="M12 5v14M19 12l-7 7-7-7"/></svg></span></button>' +
           '</div></div>' +
         '</div>' +
+        '<button type="button" class="artc-hit artc-hit--back" data-label="Назад"></button>' +
+        '<button type="button" class="artc-hit artc-hit--fwd" data-label="Вперёд"></button>' +
+        '<button type="button" class="artc-fs" aria-label="Открыть на весь экран">' + ICON_FS + '</button>' +
         '<div class="artc-dust" aria-hidden="true"></div>' +
         '<div class="artc-vignette" aria-hidden="true"></div>' +
         '<div class="artc-curtain" aria-hidden="true"></div>' +
@@ -549,13 +564,15 @@
       camera: host.querySelector('.artc-camera'),
       arts: arts, decor: decor, rooms: rooms, roomBtns: roomsBox.children,
       padF: host.querySelector('.artc-pad--fwd'), padB: host.querySelector('.artc-pad--back'),
+      hitF: host.querySelector('.artc-hit--fwd'), hitB: host.querySelector('.artc-hit--back'),
+      fsBtn: host.querySelector('.artc-fs'),
       step: STEP, len: len, seg: SEG, hw: HW, hh: HH,
       floor: host.querySelector('.artc-floor'), ceil: host.querySelector('.artc-ceil'),
       wallL: host.querySelector('.artc-wall--l'), wallR: host.querySelector('.artc-wall--r'),
       segZ: null,
       maxZ: Math.max(0, len - Math.round(STEP * 0.9)),
       camZ: 0, targetZ: 0, bob: 0, yaw: 0, pitch: 0,
-      progress: 0, moving: false, t0: Date.now(),
+      progress: 0, moving: false, hitsPlaced: false, t0: Date.now(),
       probeN: 0, probeT: 0, lite: false
     };
 
@@ -576,8 +593,16 @@
     var h = this.hall, self = this;
     var stage = h.stage;
 
-    h.padF.addEventListener('click', function (e) { e.stopPropagation(); self.walkBy(h.step); });
-    h.padB.addEventListener('click', function (e) { e.stopPropagation(); self.walkBy(-h.step); });
+    // шаг делается нажатием по широкой зоне, а стрелка на полу — её рисунок
+    var bindHit = function (hit, dir, cls) {
+      hit.addEventListener('click', function (e) { e.stopPropagation(); self.walkBy(h.step * dir); });
+      hit.addEventListener('pointerenter', function () { stage.classList.add(cls); });
+      hit.addEventListener('pointerleave', function () { stage.classList.remove(cls); });
+    };
+    bindHit(h.hitF, 1, 'hl-fwd');
+    bindHit(h.hitB, -1, 'hl-back');
+
+    h.fsBtn.addEventListener('click', function (e) { e.stopPropagation(); self.toggleFullscreen(); });
 
     stage.addEventListener('wheel', function (e) {
       if (Math.abs(e.deltaY) < 2) return;
@@ -610,7 +635,7 @@
     // перетаскивание / свайп: тянем «на себя» — идём вперёд
     var drag = null;
     stage.addEventListener('pointerdown', function (e) {
-      if (e.target.closest('.artc-hud, .artc-rooms, .artc-pad')) return;
+      if (e.target.closest('.artc-hud, .artc-rooms, .artc-pad, .artc-hit, .artc-fs')) return;
       drag = {
         x: e.clientX, y: e.clientY, z: h.targetZ, moved: 0, id: e.pointerId,
         art: e.target.closest('.artc-art')
@@ -801,6 +826,9 @@
     h.padB.style.transform = base3d + (-h.camZ - 320) + 'px) rotateX(90deg)';
     h.padF.classList.toggle('is-off', h.targetZ >= h.maxZ - 1);
     h.padB.classList.toggle('is-off', h.targetZ <= -199);
+    h.hitF.classList.toggle('is-off', h.targetZ >= h.maxZ - 1);
+    h.hitB.classList.toggle('is-off', h.targetZ <= -199);
+    if (!h.hitsPlaced) this.placeHits();
 
     // арт-объекты рисуем только рядом с камерой
     for (var d = 0; d < h.decor.length; d++) {
@@ -812,6 +840,111 @@
         o.style.visibility = oNear ? '' : 'hidden';
       }
     }
+  };
+
+  /* Зоны нажатия ставим по фактическому положению нарисованных стрелок:
+     они всегда на одном расстоянии от камеры, поэтому на экране не смещаются
+     и пересчитывать их нужно только при изменении размеров сцены. */
+  Widget.prototype.placeHits = function () {
+    var h = this.hall;
+    if (!h) return;
+    var st = h.stage.getBoundingClientRect();
+    if (!st.width || !st.height) return;
+
+    var put = function (hit, pad, padY, minH) {
+      var r = pad.getBoundingClientRect();
+      if (!r.width) return false;
+      var cx = r.left + r.width / 2 - st.left;
+      var cy = r.top + r.height / 2 - st.top;
+      var w = Math.max(r.width * 1.4, st.width * 0.54);
+      var hgt = Math.max(r.height * 2.6, minH);
+      hit.style.left = Math.round(cx - w / 2) + 'px';
+      hit.style.top = Math.round(cy - hgt / 2 + padY) + 'px';
+      hit.style.width = Math.round(w) + 'px';
+      hit.style.height = Math.round(hgt) + 'px';
+      return true;
+    };
+
+    var okF = put(h.hitF, h.padF, -6, Math.max(72, st.height * 0.15));
+    var okB = put(h.hitB, h.padB, 4, Math.max(84, st.height * 0.18));
+    h.hitsPlaced = okF && okB;
+  };
+
+  Widget.prototype.toggleFullscreen = function () {
+    var stage = this.hall && this.hall.stage;
+    if (!stage) return;
+    var self = this;
+    var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+
+    if (fsEl) {                                   // выходим из настоящего полноэкранного
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      // событие fullscreenchange приходит не во всех браузерах — сверяемся сами
+      setTimeout(function () { self.onFsChange(); }, 400);
+      return;
+    }
+    if (this.fsFake) {                            // выходим из запасного режима
+      this.fsFallback(false);
+      return;
+    }
+
+    var req = stage.requestFullscreen || stage.webkitRequestFullscreen;
+    var fallback = function () { if (!self.fsFake) self.fsFallback(true); };
+    if (!req) { fallback(); return; }             // iOS Safari: Fullscreen API нет
+    try {
+      var pr = req.call(stage);
+      if (pr && pr.catch) pr.catch(fallback);     // запрет политикой страницы
+    } catch (e) { fallback(); }
+    // некоторые браузеры «принимают» запрос, но экран не разворачивают —
+    // проверяем результат и в этом случае разворачиваем зал сами
+    setTimeout(function () {
+      var real = document.fullscreenElement || document.webkitFullscreenElement;
+      if (!real && !self.fsFake) fallback();
+    }, 450);
+  };
+
+  /* Запасной «во весь экран» для браузеров без Fullscreen API (iPhone) */
+  Widget.prototype.fsFallback = function (on) {
+    var stage = this.hall.stage;
+    this.fsFake = on;
+    stage.style.position = on ? 'fixed' : '';
+    stage.style.inset = on ? '0' : '';
+    stage.style.zIndex = on ? '99980' : '';
+    stage.style.height = on ? '100%' : '';
+    stage.style.maxWidth = on ? 'none' : '';
+    stage.style.borderRadius = on ? '0' : '';
+    document.body.style.overflow = on ? 'hidden' : '';
+    this.onFsChange();
+  };
+
+  /* Смена полноэкранного режима: пересобираем геометрию под новый размер
+     и переносим модальные окна внутрь развёрнутого элемента — иначе
+     в полноэкранном режиме они просто не видны. */
+  Widget.prototype.onFsChange = function () {
+    var self = this;
+    var stage = this.hall && this.hall.stage;
+    if (!stage) return;
+    var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+    var on = !!fsEl || !!this.fsFake;
+    stage.classList.toggle('is-fs', on);
+    stage.setAttribute('aria-label', on
+      ? 'Виртуальный зал во весь экран'
+      : 'Виртуальный зал выставки: перемещение стрелками, полотна открываются нажатием');
+    this.fsBtnLabel(on);
+
+    var host = fsEl || document.body;
+    [this.artistModal, this.lightbox, this.formModal].forEach(function (m) {
+      if (m && m.parentNode !== host) host.appendChild(m);
+    });
+
+    // зал не пересобираем: размеры зала заданы в единицах сцены и от размера
+    // окна не зависят, а пересоздание разметки выбросило бы нас из полного экрана
+    this.hall.hitsPlaced = false;
+    setTimeout(function () { self.placeHits(); }, 80);
+  };
+
+  Widget.prototype.fsBtnLabel = function (on) {
+    var b = this.hall && this.hall.fsBtn;
+    if (b) b.setAttribute('aria-label', on ? 'Выйти из полноэкранного режима' : 'Открыть на весь экран');
   };
 
   /* ---------------- модальные окна: каркас ---------------- */
@@ -845,6 +978,10 @@
     });
 
     document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !document.querySelector('.artc-modal.is-open') && self.fsFake) {
+        self.fsFallback(false);
+        return;
+      }
       if (e.key === 'Escape') {
         if (self.formModal.classList.contains('is-open')) self.closeModal(self.formModal);
         else if (self.lightbox.classList.contains('is-open')) self.closeModal(self.lightbox);
@@ -1069,6 +1206,18 @@
   /* Tilda: подставить контекст в скрытые поля всех форм на странице
      (попап-форма Tilda присутствует в DOM ещё до открытия) и открыть попап */
   Widget.prototype.openTildaPopup = function (artist, work) {
+    var self = this;
+
+    // Попап Tilda живёт в общем DOM страницы, а в полноэкранном режиме
+    // браузер показывает только развёрнутый элемент — форма осталась бы
+    // невидимой. Поэтому сначала сворачиваем зал, затем открываем форму.
+    var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+    if (fsEl || this.fsFake) {
+      this.toggleFullscreen();
+      setTimeout(function () { self.openTildaPopup(artist, work); }, 320);
+      return;
+    }
+
     var fill = function (name, value) {
       var inputs = document.querySelectorAll(
         'form input[name="' + name + '"], .t-form input[name="' + name + '"]'
