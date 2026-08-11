@@ -17,25 +17,33 @@
           "title": "Ирис",
           "thumb": "img/volvich/work1-400.webp",
           "medium": "img/volvich/work1-800.webp",
-          "full": "img/volvich/work1-1600.webp"
+          "full": "img/volvich/work1-1600.webp",
+          "w": 637,
+          "h": 800
         },
         {
           "title": "Парк",
           "thumb": "img/volvich/work2-400.webp",
           "medium": "img/volvich/work2-800.webp",
-          "full": "img/volvich/work2-1600.webp"
+          "full": "img/volvich/work2-1600.webp",
+          "w": 800,
+          "h": 697
         },
         {
           "title": "Подсолнухи",
           "thumb": "img/volvich/work3-400.webp",
           "medium": "img/volvich/work3-800.webp",
-          "full": "img/volvich/work3-1600.webp"
+          "full": "img/volvich/work3-1600.webp",
+          "w": 561,
+          "h": 800
         },
         {
           "title": "Сирень",
           "thumb": "img/volvich/work4-400.webp",
           "medium": "img/volvich/work4-800.webp",
-          "full": "img/volvich/work4-1600.webp"
+          "full": "img/volvich/work4-1600.webp",
+          "w": 800,
+          "h": 676
         }
       ],
       "order": 1
@@ -57,25 +65,33 @@
           "title": "",
           "thumb": "img/dzhakhaeva/work1-400.webp",
           "medium": "img/dzhakhaeva/work1-800.webp",
-          "full": "img/dzhakhaeva/work1-1600.webp"
+          "full": "img/dzhakhaeva/work1-1600.webp",
+          "w": 800,
+          "h": 689
         },
         {
           "title": "",
           "thumb": "img/dzhakhaeva/work2-400.webp",
           "medium": "img/dzhakhaeva/work2-800.webp",
-          "full": "img/dzhakhaeva/work2-1600.webp"
+          "full": "img/dzhakhaeva/work2-1600.webp",
+          "w": 800,
+          "h": 600
         },
         {
           "title": "",
           "thumb": "img/dzhakhaeva/work3-400.webp",
           "medium": "img/dzhakhaeva/work3-800.webp",
-          "full": "img/dzhakhaeva/work3-1600.webp"
+          "full": "img/dzhakhaeva/work3-1600.webp",
+          "w": 800,
+          "h": 600
         },
         {
           "title": "",
           "thumb": "img/dzhakhaeva/work4-400.webp",
           "medium": "img/dzhakhaeva/work4-800.webp",
-          "full": "img/dzhakhaeva/work4-1600.webp"
+          "full": "img/dzhakhaeva/work4-1600.webp",
+          "w": 600,
+          "h": 800
         }
       ],
       "order": 2
@@ -101,25 +117,33 @@
           "title": "",
           "thumb": "img/zhegulova/work1-400.webp",
           "medium": "img/zhegulova/work1-800.webp",
-          "full": "img/zhegulova/work1-1600.webp"
+          "full": "img/zhegulova/work1-1600.webp",
+          "w": 637,
+          "h": 800
         },
         {
           "title": "Портрет гейши",
           "thumb": "img/zhegulova/work2-400.webp",
           "medium": "img/zhegulova/work2-800.webp",
-          "full": "img/zhegulova/work2-1600.webp"
+          "full": "img/zhegulova/work2-1600.webp",
+          "w": 526,
+          "h": 800
         },
         {
           "title": "На Соборном",
           "thumb": "img/zhegulova/work3-400.webp",
           "medium": "img/zhegulova/work3-800.webp",
-          "full": "img/zhegulova/work3-1600.webp"
+          "full": "img/zhegulova/work3-1600.webp",
+          "w": 534,
+          "h": 800
         },
         {
           "title": "Физалис",
           "thumb": "img/zhegulova/work4-400.webp",
           "medium": "img/zhegulova/work4-800.webp",
-          "full": "img/zhegulova/work4-1600.webp"
+          "full": "img/zhegulova/work4-1600.webp",
+          "w": 711,
+          "h": 800
         }
       ],
       "order": 3
@@ -136,25 +160,33 @@
           "title": "",
           "thumb": "img/larev/work1-400.webp",
           "medium": "img/larev/work1-800.webp",
-          "full": "img/larev/work1-1600.webp"
+          "full": "img/larev/work1-1600.webp",
+          "w": 666,
+          "h": 800
         },
         {
           "title": "",
           "thumb": "img/larev/work2-400.webp",
           "medium": "img/larev/work2-800.webp",
-          "full": "img/larev/work2-1600.webp"
+          "full": "img/larev/work2-1600.webp",
+          "w": 800,
+          "h": 800
         },
         {
           "title": "",
           "thumb": "img/larev/work3-400.webp",
           "medium": "img/larev/work3-800.webp",
-          "full": "img/larev/work3-1600.webp"
+          "full": "img/larev/work3-1600.webp",
+          "w": 800,
+          "h": 737
         },
         {
           "title": "",
           "thumb": "img/larev/work4-400.webp",
           "medium": "img/larev/work4-800.webp",
-          "full": "img/larev/work4-1600.webp"
+          "full": "img/larev/work4-1600.webp",
+          "w": 532,
+          "h": 800
         }
       ],
       "order": 4
@@ -176,25 +208,33 @@
           "title": "",
           "thumb": "img/masterskaya/work1-400.webp",
           "medium": "img/masterskaya/work1-800.webp",
-          "full": "img/masterskaya/work1-1600.webp"
+          "full": "img/masterskaya/work1-1600.webp",
+          "w": 649,
+          "h": 800
         },
         {
           "title": "",
           "thumb": "img/masterskaya/work2-400.webp",
           "medium": "img/masterskaya/work2-800.webp",
-          "full": "img/masterskaya/work2-1600.webp"
+          "full": "img/masterskaya/work2-1600.webp",
+          "w": 800,
+          "h": 757
         },
         {
           "title": "",
           "thumb": "img/masterskaya/work3-400.webp",
           "medium": "img/masterskaya/work3-800.webp",
-          "full": "img/masterskaya/work3-1600.webp"
+          "full": "img/masterskaya/work3-1600.webp",
+          "w": 569,
+          "h": 800
         },
         {
           "title": "",
           "thumb": "img/masterskaya/work4-400.webp",
           "medium": "img/masterskaya/work4-800.webp",
-          "full": "img/masterskaya/work4-1600.webp"
+          "full": "img/masterskaya/work4-1600.webp",
+          "w": 600,
+          "h": 800
         }
       ],
       "order": 5
