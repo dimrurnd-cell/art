@@ -117,8 +117,26 @@
     this.init();
   }
 
+  /* Стили обычно подключены в <head> (на Tilda — отдельным блоком).
+     Если их там нет, подключаем сами: виджет должен работать
+     и когда вставлен только код блока с контейнером. */
+  Widget.prototype.ensureStyles = function () {
+    var self = this;
+    var links = document.querySelectorAll('link[rel="stylesheet"]');
+    ['catalog.css', 'hall.css'].forEach(function (file) {
+      for (var i = 0; i < links.length; i++) {
+        if ((links[i].getAttribute('href') || '').indexOf(file) !== -1) return;
+      }
+      var l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = self.base + file;
+      (document.head || document.documentElement).appendChild(l);
+    });
+  };
+
   Widget.prototype.init = function () {
     var self = this;
+    this.ensureStyles();
     fetch(this.base + 'artists.json', { credentials: 'same-origin' })
       .then(function (r) {
         if (!r.ok) throw new Error('artists.json: HTTP ' + r.status);
