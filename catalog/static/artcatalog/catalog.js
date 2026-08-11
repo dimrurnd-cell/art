@@ -251,7 +251,7 @@
     window.addEventListener('resize', function () {
       self.goTo(self.index, true);
       clearTimeout(resizeT);
-      resizeT = setTimeout(function () { self.buildHall(true); }, 260);
+      resizeT = setTimeout(function () { self.refreshHall(); }, 260);
     });
 
     ['fullscreenchange', 'webkitfullscreenchange'].forEach(function (ev) {
@@ -261,6 +261,39 @@
     this.buildModals();
     this.goTo(0, true);
     this.buildHall();
+  };
+
+  /* Перестраиваем зал только если сменился breakpoint (изменились размеры
+     сцены в CSS). В полноэкранном режиме размеры те же, а пересоздание
+     разметки выбросило бы страницу из полного экрана. */
+  Widget.prototype.refreshHall = function () {
+    var h = this.hall;
+    if (!h || !h.stage || !document.body.contains(h.stage)) return;
+
+    // в полноэкранном режиме не пересобираем зал ни при каких условиях:
+    // разворот часто меняет ширину окна (а с ней и breakpoint), и замена
+    // разметки тут же выбросила бы страницу из полного экрана
+    if ((document.fullscreenElement || document.webkitFullscreenElement) || this.fsFake) {
+      h.hitsPlaced = false;
+      this.placeHits();
+      return;
+    }
+
+    var cs = getComputedStyle(h.stage);
+    var num = function (name, fallback) {
+      var v = parseFloat(cs.getPropertyValue(name));
+      return isNaN(v) ? fallback : v;
+    };
+    var same = num('--step', h.step) === h.step &&
+               num('--hw', h.hw) === h.hw &&
+               num('--hh', h.hh) === h.hh &&
+               num('--art-h', h.artH) === h.artH;
+    if (same) {
+      h.hitsPlaced = false;
+      this.placeHits();
+      return;
+    }
+    this.buildHall(true);
   };
 
   Widget.prototype.switchView = function (view) {
@@ -273,7 +306,7 @@
     }
     wrap.querySelector('.artc-view--hall').classList.toggle('is-active', view === 'hall');
     wrap.querySelector('.artc-view--grid').classList.toggle('is-active', view !== 'hall');
-    if (view === 'hall') this.buildHall(true);
+    if (view === 'hall') this.refreshHall();
     else this.goTo(this.index, true);
   };
 
@@ -566,7 +599,7 @@
       padF: host.querySelector('.artc-pad--fwd'), padB: host.querySelector('.artc-pad--back'),
       hitF: host.querySelector('.artc-hit--fwd'), hitB: host.querySelector('.artc-hit--back'),
       fsBtn: host.querySelector('.artc-fs'),
-      step: STEP, len: len, seg: SEG, hw: HW, hh: HH,
+      step: STEP, len: len, seg: SEG, hw: HW, hh: HH, artH: ARTH,
       floor: host.querySelector('.artc-floor'), ceil: host.querySelector('.artc-ceil'),
       wallL: host.querySelector('.artc-wall--l'), wallR: host.querySelector('.artc-wall--r'),
       segZ: null,
@@ -938,8 +971,21 @@
 
     // зал не пересобираем: размеры зала заданы в единицах сцены и от размера
     // окна не зависят, а пересоздание разметки выбросило бы нас из полного экрана
-    this.hall.hitsPlaced = false;
-    setTimeout(function () { self.placeHits(); }, 80);
+    // Зал построен под размеры того breakpoint, в котором его собирали.
+    // На время показа фиксируем их инлайн: разворот может изменить ширину
+    // окна, и иначе ритм пола и пилястр разъехался бы с полотнами.
+    var h = this.hall;
+    ['--step', '--hw', '--hh', '--art-h'].forEach(function (name, i) {
+      var val = [h.step, h.hw, h.hh, h.artH][i];
+      if (on) stage.style.setProperty(name, val + 'px');
+      else stage.style.removeProperty(name);
+    });
+
+    h.hitsPlaced = false;
+    setTimeout(function () {
+      self.placeHits();
+      if (!on) self.refreshHall();   // размеры окна за время показа могли смениться
+    }, 80);
   };
 
   Widget.prototype.fsBtnLabel = function (on) {
