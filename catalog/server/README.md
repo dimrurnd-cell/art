@@ -92,10 +92,11 @@ ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 `artists.json` будет отклонён, вместо зала посетитель увидит сообщение об
 ошибке, а фирменный шрифт не применится. Это проверено — не опционально.
 
-1. **Разрешающий заголовок CORS** для папки `/static/artcatalog/`:
-   готовый фрагмент конфигурации — `nginx-artcatalog.conf` (для Apache
-   те же заголовки задаются в `.htaccess` директивой
-   `Header set Access-Control-Allow-Origin "*"`).
+1. **Разрешающий заголовок CORS** для папки `/static/artcatalog/` —
+   как именно его добавить, расписано ниже в разделе «Как внести правку
+   в nginx». Готовый фрагмент — `nginx-artcatalog.conf`. Для Apache те же
+   заголовки задаются в `.htaccess`:
+   `Header set Access-Control-Allow-Origin "*"`.
 2. **HTTPS**. Страница Tilda работает по https; файлы, запрошенные по http,
    браузер заблокирует как «небезопасное содержимое».
 3. **Типы файлов** — `.webp` и `.woff2` должны отдаваться как `image/webp`
@@ -106,6 +107,65 @@ ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 Если статику раздаёт не nginx, а сам Django (`DEBUG = True` или
 `whitenoise`), заголовки добавляются на его стороне; лучше вынести раздачу
 на nginx — он отдаёт файлы быстрее и не занимает процессы приложения.
+
+## Как внести правку в nginx
+
+### 1. Найти файл конфигурации нужного сайта
+
+```bash
+ls /etc/nginx/sites-enabled/            # обычно тут ссылки на конфиги сайтов
+grep -rl "donexpo" /etc/nginx/          # какой файл упоминает наш проект
+sudo nginx -T | grep -n "server_name"   # какие домены обслуживаются
+```
+
+Чаще всего это `/etc/nginx/sites-enabled/donexpo` или
+`/etc/nginx/conf.d/donexpo.conf`.
+
+### 2. Посмотреть, есть ли уже правило для статики
+
+```bash
+sudo nginx -T | grep -n -A 5 "location /static"
+```
+
+- **Если `location /static/` уже есть** — проще всего дописать в него
+  две строки, новый блок не нужен:
+  ```nginx
+  add_header Access-Control-Allow-Origin "*" always;
+  add_header Cross-Origin-Resource-Policy "cross-origin" always;
+  ```
+- **Если правила нет** — вставить целиком блок `location /static/artcatalog/`
+  из `nginx-artcatalog.conf`.
+
+### 3. Отредактировать файл
+
+Правку делает пользователь с правами root. Два способа:
+
+**Через терминал** (в WinSCP это `Ctrl+T`, либо обычный SSH):
+```bash
+sudo cp /etc/nginx/sites-enabled/donexpo /root/donexpo.backup   # копия на всякий случай
+sudo nano /etc/nginx/sites-enabled/donexpo
+```
+Вставить блок **внутрь** `server { … }`, рядом с другими `location`,
+перед закрывающей фигурной скобкой. Сохранить: `Ctrl+O`, `Enter`, выйти `Ctrl+X`.
+
+**Через WinSCP**: перейти в `/etc/nginx/sites-enabled/`, выделить файл, `F4`.
+Если сохранение не проходит с ошибкой прав — значит вы подключены не под
+root; тогда правьте через терминал с `sudo`.
+
+### 4. Проверить и применить
+
+```bash
+sudo nginx -t          # «syntax is ok» и «test is successful»
+sudo systemctl reload nginx
+```
+
+`nginx -t` проверяет конфигурацию, не трогая работающий сайт: если он
+ругается, ничего не сломалось — исправьте отступ или скобку и повторите.
+`reload` применяет изменения без разрыва соединений.
+
+Если прав `sudo` нет — передайте администратору сервера файл
+`nginx-artcatalog.conf` и путь `/home/develop/donexpo/static/artcatalog/`,
+этого достаточно.
 
 ## Проверка после заливки
 
