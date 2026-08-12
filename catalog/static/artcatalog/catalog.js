@@ -24,6 +24,11 @@
 
   var ROOT_ID = 'artrostov-catalog';
 
+  /* Версия берётся из адреса самого скрипта (хеш коммита в CDN-ссылке) —
+     помогает убедиться, какая сборка сейчас отдаётся страницей. */
+  var SRC = (document.currentScript && document.currentScript.src) || '';
+  var VERSION = ((SRC.match(/art@([0-9a-f]{7,40})/) || [])[1] || 'local').slice(0, 7);
+
   function ready(fn) {
     if (document.readyState !== 'loading') fn();
     else document.addEventListener('DOMContentLoaded', fn);
@@ -144,6 +149,8 @@
 
   Widget.prototype.init = function () {
     var self = this;
+    this.root.setAttribute('data-artcatalog-version', VERSION);
+    if (window.console && console.info) console.info('[artcatalog] версия ' + VERSION);
     this.ensureStyles();
     fetch(this.base + 'artists.json', { credentials: 'same-origin' })
       .then(function (r) {
