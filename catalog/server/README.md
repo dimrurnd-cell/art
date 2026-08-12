@@ -26,9 +26,63 @@
     └── masterskaya/ …
 ```
 
-Всего около 150 файлов, ~16 МБ. В WinSCP включите бинарный режим передачи
-(Options → Preferences → Transfer → Binary) — иначе шрифт и изображения
-могут побиться. Права: файлы 644, папки 755.
+Всего 137 файлов, ~16 МБ (133 из них бинарные). Права: файлы 644, папки 755.
+
+### Бинарный режим в WinSCP
+
+По SFTP режим по умолчанию — `Automatic`, и изображения со шрифтом обычно
+передаются корректно; побиться могут текстовые файлы из-за конвертации
+переводов строк. Перестраховаться стоит:
+
+- **один раз для всех передач**: Options → Preferences… → Transfer →
+  выделить пресет **Default** → Edit… → **Transfer mode: Binary** → OK;
+- **для конкретной загрузки**: при перетаскивании папки в окне Upload
+  развернуть **Transfer settings** → **Binary** → отметить
+  «Use same settings next time». Если окно не появляется, включите его:
+  Preferences → Environment → Interface → «Show transfer options dialog».
+
+### Быстрее: одним архивом
+
+137 файлов по SFTP заливаются долго, часть может не докачаться. Надёжнее
+загрузить архив и распаковать его на сервере (терминал в WinSCP — Ctrl+T):
+
+```bash
+cd /home/develop/donexpo/static
+unzip -o artcatalog.zip && rm artcatalog.zip
+```
+
+Либо забрать прямо из репозитория, без ручной упаковки:
+
+```bash
+cd /home/develop/donexpo/static
+curl -L -o repo.zip https://github.com/dimrurnd-cell/art/archive/refs/heads/claude/repository-overview-h8lcj2.zip
+unzip -q repo.zip
+mv art-claude-repository-overview-h8lcj2/catalog/static/artcatalog ./artcatalog
+rm -rf repo.zip art-claude-repository-overview-h8lcj2
+```
+
+### Проверка целостности после загрузки
+
+```bash
+cd /home/develop/donexpo/static/artcatalog
+find . -type f | wc -l    # 137
+du -sh .                  # ~16M
+ls -l catalog.js fonts/parangon.woff2 img/logo.webp
+```
+
+Размеры должны совпасть байт в байт:
+
+| Файл | Байт |
+|---|---|
+| `catalog.js` | 70 666 |
+| `catalog.css` | 17 163 |
+| `hall.css` | 28 984 |
+| `artists.json` | 13 282 |
+| `fonts/parangon.woff2` | 20 328 |
+| `img/logo.webp` | 31 726 |
+
+Признак испорченного шрифта — заголовки каталога рисуются обычным шрифтом
+вместо фирменного каллиграфического; испорченные изображения не открываются.
 
 ## Что настроить на сервере (обязательно)
 
