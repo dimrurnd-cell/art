@@ -136,10 +136,18 @@
   Widget.prototype.ensureStyles = function () {
     var self = this;
     var links = document.querySelectorAll('link[rel="stylesheet"]');
-    ['catalog.css', 'hall.css'].forEach(function (file) {
+    var linked = function (file) {
       for (var i = 0; i < links.length; i++) {
-        if ((links[i].getAttribute('href') || '').indexOf(file) !== -1) return;
+        if ((links[i].getAttribute('href') || '').indexOf(file) !== -1) return true;
       }
+      return false;
+    };
+
+    // сборка «всё в одном» уже содержит и стили зала, и шрифт
+    if (linked('catalog-standalone.css')) return;
+
+    ['catalog.css', 'hall.css'].forEach(function (file) {
+      if (linked(file)) return;
       var l = document.createElement('link');
       l.rel = 'stylesheet';
       l.href = self.base + file;
@@ -152,6 +160,18 @@
     this.root.setAttribute('data-artcatalog-version', VERSION);
     if (window.console && console.info) console.info('[artcatalog] версия ' + VERSION);
     this.ensureStyles();
+
+    // Если данные уже подключены отдельным <script> (artists.js), берём их
+    // оттуда: так каталог работает и на сервере без CORS-заголовков —
+    // обычный скрипт браузер грузит с любого домена без разрешения.
+    if (window.ARTCATALOG_DATA) {
+      this.artists = (window.ARTCATALOG_DATA.artists || []).slice().sort(function (a, b) {
+        return (a.order || 0) - (b.order || 0);
+      });
+      this.render();
+      return;
+    }
+
     fetch(this.base + 'artists.json', { credentials: 'same-origin' })
       .then(function (r) {
         if (!r.ok) throw new Error('artists.json: HTTP ' + r.status);

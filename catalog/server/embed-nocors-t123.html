@@ -1,0 +1,19 @@
+<!-- ============================================================
+     БЛОК 2 из 2 — в блок T123 («Другое → HTML-код») на странице
+
+     Вариант для сервера БЕЗ настройки заголовков. Отличие от обычного:
+     данные художников подключаются строкой artists.js — обычный скрипт
+     браузер берёт с любого домена без разрешения сервера, тогда как
+     запрос за artists.json он бы заблокировал.
+
+     Порядок строк важен: artists.js идёт перед catalog.js.
+     Замените donexpocentre.ru на свой адрес (тот же, что в HEAD-блоке).
+
+     Обновление: перезалить файлы и пересобрать сборку командой
+     python3 tools/build-standalone.py (см. README.md).
+     ============================================================ -->
+<div id="artrostov-catalog"
+     data-base="https://donexpocentre.ru/static/artcatalog/"
+     data-tilda-popup="popup:artbuy"></div>
+<script src="https://donexpocentre.ru/static/artcatalog/artists.js"></script>
+<script src="https://donexpocentre.ru/static/artcatalog/catalog.js" defer></script>
