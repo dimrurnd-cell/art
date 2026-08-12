@@ -1,0 +1,16 @@
+<!-- ============================================================
+     БЛОК 1 из 2 — в <HEAD> страницы Tilda
+     (Настройки страницы → Дополнительно → «HTML-код внутрь HEAD»)
+
+     Вариант со статикой на собственном сервере.
+     Замените donexpocentre.ru на адрес, по которому открывается
+     папка /home/develop/donexpo/static — проверить просто:
+     откройте в браузере .../static/artcatalog/artists.json,
+     должен показаться список художников.
+
+     Адрес обязательно по HTTPS: страница Tilda работает по https,
+     и файлы, запрошенные по http, браузер заблокирует.
+     ============================================================ -->
+<link rel="preconnect" href="https://donexpocentre.ru" crossorigin>
+<link rel="stylesheet" href="https://donexpocentre.ru/static/artcatalog/catalog.css">
+<link rel="stylesheet" href="https://donexpocentre.ru/static/artcatalog/hall.css">
