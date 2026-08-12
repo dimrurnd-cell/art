@@ -1,4 +1,7 @@
-# Размещение каталога на собственном сервере
+# Размещение каталога на сервере donexpocentre.ru
+
+Адрес раздачи: `https://donexpocentre.ru/static/artcatalog/`
+Файлы на сервере: `/home/develop/donexpo/static/artcatalog/`
 
 Вариант вместо CDN jsDelivr: файлы лежат у вас, страница на Tilda берёт их
 с вашего домена. Так надёжнее — нет зависимости от внешнего сервиса
@@ -197,11 +200,11 @@ sudo systemctl reload nginx
 
 ## Проверка после заливки
 
-1. Откройте в браузере `https://ваш-домен/static/artcatalog/artists.json` —
+1. Откройте в браузере `https://donexpocentre.ru/static/artcatalog/artists.json` —
    должен показаться список художников.
 2. Проверьте заголовок:
    ```bash
-   curl -I https://ваш-домен/static/artcatalog/artists.json | grep -i access-control
+   curl -I https://donexpocentre.ru/static/artcatalog/artists.json | grep -i access-control
    ```
    Ожидается строка `access-control-allow-origin: *`.
 3. Вставьте блоки `embed-head.html` и `embed-t123.html` (заменив домен) и
@@ -241,6 +244,6 @@ Ctrl+Shift+R или временно уменьшите `expires` в конфи�
 работает и не требует сервера. Раз сервер есть, при желании заявки можно
 принимать своим приложением: готовое лежит в `../django/artcatalog/`,
 тогда в блоке T123 вместо `data-tilda-popup` указывается
-`data-endpoint="https://ваш-домен/api/artcatalog/lead/"`. В этом случае
+`data-endpoint="https://donexpocentre.ru/api/artcatalog/lead/"`. В этом случае
 эндпоинту тоже нужны CORS-заголовки, причём с явным доменом страницы и
 `Access-Control-Allow-Headers: Content-Type`.
