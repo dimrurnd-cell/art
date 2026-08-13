@@ -119,6 +119,7 @@
     this.policy = root.getAttribute('data-policy') || '#';
     this.demo = root.getAttribute('data-demo') === '1';
     this.tildaPopup = (root.getAttribute('data-tilda-popup') || '').replace(/^#/, '');
+    this.ticketUrl = root.getAttribute('data-ticket-url') || '#';
     var base = this.base;
     // пути в artists.json могут быть относительными (к data-base) или абсолютными
     this.url = function (p) { return /^(https?:)?\/\//.test(p) ? p : base + p; };
@@ -439,8 +440,15 @@
           '<div class="artc-camera"><div class="artc-world">' +
             '<div class="artc-floor"></div><div class="artc-ceil"></div>' +
             '<div class="artc-wall artc-wall--l"></div><div class="artc-wall artc-wall--r"></div>' +
-            '<div class="artc-end">' + pictureHTML(this.base + 'img/logo.webp', 'АРТ Ростов', false) +
-              '<span>Все грани искусства</span></div>' +
+            '<div class="artc-end"><div class="artc-end__inner">' +
+              pictureHTML(this.base + 'img/logo.webp', 'АРТ Ростов', false) +
+              '<span class="artc-end__slogan">Все грани искусства</span>' +
+              '<p class="artc-end__invite">Приходите увидеть вживую на выставке<br>' +
+                'с 16 по 25 апреля 2027</p>' +
+              '<a class="artc-end__ticket" href="' + esc(this.ticketUrl) + '"' +
+                (this.ticketUrl === '#' ? ' aria-disabled="true"' : ' target="_blank" rel="noopener"') +
+                '>Купить билет</a>' +
+            '</div></div>' +
             '<button type="button" class="artc-pad artc-pad--fwd" aria-label="Пройти вперёд">' +
               '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
               'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -482,7 +490,7 @@
     var HH = px('--hh', 330);
     var ARTH = px('--art-h', 268);
     var GAP = Math.round(STEP * 1.35);
-    var SEG_HINT = Math.round(STEP * 4.6);
+    var SEG_HINT = Math.round(STEP * 5.6);
     var viewDist = window.innerWidth < 700 ? Math.round(VIEW_DIST * 0.62) : VIEW_DIST;
     var START = Math.round(STEP * 1.1);
 
@@ -634,7 +642,7 @@
       floor: host.querySelector('.artc-floor'), ceil: host.querySelector('.artc-ceil'),
       wallL: host.querySelector('.artc-wall--l'), wallR: host.querySelector('.artc-wall--r'),
       segZ: null,
-      maxZ: Math.max(0, len - Math.round(STEP * 0.9)),
+      maxZ: Math.max(0, len - Math.round(STEP * 0.62)),
       camZ: 0, targetZ: 0, bob: 0, yaw: 0, pitch: 0,
       progress: 0, moving: false, hitsPlaced: false, t0: Date.now(),
       probeN: 0, probeT: 0, lite: false
@@ -712,7 +720,7 @@
     // перетаскивание / свайп: тянем «на себя» — идём вперёд
     var drag = null;
     stage.addEventListener('pointerdown', function (e) {
-      if (fromModal(e) || e.target.closest('.artc-hud, .artc-rooms, .artc-pad, .artc-hit, .artc-fs')) return;
+      if (fromModal(e) || e.target.closest('.artc-hud, .artc-rooms, .artc-pad, .artc-hit, .artc-fs, .artc-end__ticket')) return;
       drag = {
         x: e.clientX, y: e.clientY, z: h.targetZ, moved: 0, id: e.pointerId,
         art: e.target.closest('.artc-art')
@@ -766,8 +774,12 @@
     var h = this.hall;
     if (!h || prefersReducedMotion() || window.innerWidth < 720) return;
     var r = h.stage.getBoundingClientRect();
-    h.yaw = ((e.clientX - r.left) / r.width - 0.5) * -7;
-    h.pitch = ((e.clientY - r.top) / r.height - 0.5) * 3.2;
+    // разворот вправо/влево заметно шире: полотно на боковой стене
+    // можно рассмотреть, просто сместив курсор к краю сцены
+    var fx = (e.clientX - r.left) / r.width - 0.5;
+    var fy = (e.clientY - r.top) / r.height - 0.5;
+    h.yaw = -Math.sign(fx) * Math.pow(Math.abs(fx) * 2, 1.3) * 25;
+    h.pitch = fy * 5;
     h.camera.style.transform = 'rotateY(' + h.yaw.toFixed(2) + 'deg) rotateX(' + h.pitch.toFixed(2) + 'deg)';
   };
 
@@ -872,7 +884,7 @@
     for (var i = 0; i < h.arts.length; i++) {
       var art = h.arts[i];
       var dz = +art.getAttribute('data-z') + h.camZ;
-      var near = dz > -3000 && dz < 900;
+      var near = dz > -4200 && dz < 900;
       if (near !== art.shown) {
         art.shown = near;
         art.style.visibility = near ? '' : 'hidden';
@@ -912,7 +924,7 @@
     for (var d = 0; d < h.decor.length; d++) {
       var o = h.decor[d];
       var odz = +o.getAttribute('data-z') + h.camZ;
-      var oNear = odz > -3400 && odz < 700;
+      var oNear = odz > -4600 && odz < 700;
       if (oNear !== o.shown) {
         o.shown = oNear;
         o.style.visibility = oNear ? '' : 'hidden';

@@ -519,13 +519,13 @@
 
 .artc-scene {
   position: absolute; inset: 0;
-  perspective: 1000px;
+  perspective: 1150px;
   perspective-origin: 50% 47%;
 }
 .artc-camera {
   position: absolute; inset: 0;
   transform-style: preserve-3d;
-  transition: transform .5s cubic-bezier(.22, .61, .36, 1);
+  transition: transform .45s cubic-bezier(.22, .61, .36, 1);
 }
 .artc-world {
   position: absolute; inset: 0;
@@ -549,30 +549,37 @@
 }
 .artc-floor {
   background:
-    /* пятна света под картинами — ритм совпадает с шагом полотен */
-    repeating-linear-gradient(to bottom,
-      rgba(255, 244, 214, .20) 0,
-      rgba(255, 244, 214, .02) 190px,
-      rgba(255, 244, 214, 0) var(--step),
-      rgba(255, 244, 214, 0) var(--step)),
+    /* мягкий свет по центру прохода вместо полосатого ритма */
+    linear-gradient(to right,
+      rgba(20, 12, 4, .16) 0 14%,
+      rgba(255, 244, 214, .10) 40%,
+      rgba(255, 244, 214, .10) 60%,
+      rgba(20, 12, 4, .16) 86% 100%),
     repeating-linear-gradient(to right,
-      rgba(255, 236, 196, .04) 0 86px,
-      rgba(40, 28, 12, .06) 86px 88px),
+      rgba(255, 236, 196, .03) 0 120px,
+      rgba(40, 28, 12, .05) 120px 122px),
     linear-gradient(to bottom, #4C3F2C 0%, #7A6647 46%, #8E7A56 100%);
 }
 .artc-ceil {
   background:
-    repeating-linear-gradient(to bottom,
-      rgba(255, 251, 236, .96) 0 30px,
-      rgba(255, 246, 224, 0) 30px var(--step)),
-    #63594A;
+    /* ровная световая полоса по центру вместо ряда «зебр» */
+    linear-gradient(to right,
+      #5A5142 0 34%,
+      rgba(255, 251, 236, .92) 34% 38%,
+      #63594A 38% 62%,
+      rgba(255, 251, 236, .92) 62% 66%,
+      #5A5142 66%);
 }
 
 .artc-wall {
   width: var(--seg, 2880px);
   height: calc(var(--hh) * 2);
-  background: linear-gradient(to bottom,
-    #C9B98F 0%, #EFE3C3 20%, #E9DCBC 76%, #B7A578 100%);
+  /* верхний слой — фактура штукатурки: мелкое зерно и лёгкие разводы.
+     Рисуется вместе с плоскостью, отдельного слоя не создаёт. */
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.40 0 0 0 0 0.33 0 0 0 0 0.18 0 0 0 0.30 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23w)'/%3E%3C/svg%3E") 0 0 / 200px 200px repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='b'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.28 0 0 0 0 0.14 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='700' height='700' filter='url(%23b)'/%3E%3C/svg%3E") 0 0 / 700px 700px repeat,
+    linear-gradient(to bottom, #C9B98F 0%, #EFE3C3 20%, #E9DCBC 76%, #B7A578 100%);
 }
 .artc-wall::after {
   /* плинтус */
@@ -597,14 +604,47 @@
   gap: 14px;
   text-align: center;
 }
-.artc-end img { width: 54%; filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .35)); }
-.artc-end span {
-  font-family: var(--artc-font-body);
-  font-size: 19px; letter-spacing: 3px;
-  color: #4A3E28;
-  background: rgba(255, 250, 232, .5);
-  padding: 8px 22px; border-radius: 10px;
+/* содержимое дальней стены — единым блоком строго по центру */
+.artc-end__inner {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px;
+  width: 74%;
+  text-align: center;
 }
+.artc-end img { width: 88%; filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .3)); }
+.artc-end__slogan {
+  font-family: var(--artc-font-body);
+  font-size: 20px; letter-spacing: 5px;
+  text-transform: uppercase;
+  color: #4A3E28;
+}
+.artc-end__invite {
+  margin: 2px 0 0;
+  font-family: var(--artc-font-body);
+  font-size: 22px; line-height: 1.35;
+  color: #3A3020;
+}
+.artc-end__ticket {
+  pointer-events: auto;
+  display: inline-block;
+  margin-top: 6px;
+  padding: 15px 40px;
+  border-radius: 999px;
+  background: var(--artc-coral);
+  color: #fff;
+  font-size: 21px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 10px 26px rgba(120, 50, 40, .4);
+  transition: background .25s ease, transform .25s ease, box-shadow .25s ease;
+}
+.artc-end__ticket:hover {
+  background: var(--artc-coral-dark);
+  transform: translateY(-3px);
+  box-shadow: 0 16px 34px rgba(120, 50, 40, .5);
+}
+.artc-end__ticket[aria-disabled="true"] { opacity: .85; cursor: default; }
 
 /* --- имя художника на стене --- */
 .artc-sign {
@@ -757,7 +797,7 @@
   pointer-events: none;
   z-index: 2;
   background:
-    radial-gradient(22% 28% at 50% 47%, rgba(24, 17, 6, .5), rgba(24, 17, 6, .24) 58%, rgba(24, 17, 6, 0) 100%),
+    radial-gradient(20% 26% at 50% 47%, rgba(28, 20, 8, .34), rgba(28, 20, 8, .15) 60%, rgba(28, 20, 8, 0) 100%),
     radial-gradient(130% 96% at 50% 50%, rgba(0, 0, 0, 0) 42%, rgba(15, 11, 5, .62) 100%),
     linear-gradient(to bottom, rgba(20, 15, 6, .3), rgba(20, 15, 6, 0) 22%);
 }
@@ -1122,6 +1162,7 @@
 .artc-stage.is-lite .artc-art__frame { box-shadow: 0 14px 24px rgba(0, 0, 0, .45); }
 .artc-stage.is-lite .artc-art__frame::after { display: none; }
 .artc-stage.is-lite .artc-object { filter: none; }
+.artc-stage.is-lite .artc-wall { background-image: none; }
 .artc-stage.is-lite .artc-pad--fwd span { animation: none; opacity: .85; }
 
 /* ============================================================
