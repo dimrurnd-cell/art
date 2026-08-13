@@ -79,12 +79,6 @@
       '<rect x="6" y="5" width="4.4" height="14" rx="1.2"/>' +
       '<rect x="13.6" y="5" width="4.4" height="14" rx="1.2"/></svg>';
 
-  var ICON_GYRO =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
-    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-    '<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/>' +
-    '<path d="M3.3 9h17.4M3.3 15h17.4"/></svg>';
-
   var ICON_FS =
     '<svg class="artc-fs__enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -105,16 +99,6 @@
 
   function prefersReducedMotion() {
     return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  }
-
-  /* Осмотр зала поворотом телефона предлагаем только там, где он вообще
-     возможен: нужен датчик ориентации и сенсорный экран (на ноутбуке
-     с акселерометром такая кнопка была бы бессмысленной). */
-  function gyroAvailable() {
-    if (!('DeviceOrientationEvent' in window)) return false;
-    return ('ontouchstart' in window) ||
-      navigator.maxTouchPoints > 0 ||
-      !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
   }
 
   /* ---------------- фокус-ловушка для модальных окон ---------------- */
@@ -453,50 +437,10 @@
       '<rect x="44" y="86" width="32" height="9" rx="3" fill="#C9504C"/></svg>' }
   ];
 
-  /* «Живой зал»: силуэты посетителей. Одним цветом и полупрозрачные —
-     это фон, а не персонажи: они задают масштаб и показывают, что зал
-     не пустой, но внимание на себя не тянут. */
-  var PEOPLE = [
-    // посетитель, заложивший руки за спину
-    { w: 100, h: 300, svg:
-      '<svg viewBox="0 0 100 300" xmlns="http://www.w3.org/2000/svg" fill="currentColor">' +
-      '<circle cx="50" cy="34" r="20"/>' +
-      '<path d="M50 56c19 0 32 13 34 32l6 58H10l6-58c2-19 15-32 34-32z"/>' +
-      '<path d="M14 146h72l-4 30H18z"/>' +
-      '<path d="M22 176h22l2 58 3 50c0 8-4 12-11 12s-11-4-11-12l-3-50z"/>' +
-      '<path d="M56 176h22l-2 58-3 50c0 8-4 12-11 12s-11-4-11-12l3-50z"/>' +
-      '<path d="M16 92c-6 20-8 40-6 58l10-2c-2-18 0-36 6-54z"/>' +
-      '<path d="M84 92c6 20 8 40 6 58l-10-2c2-18 0-36-6-54z"/></svg>' },
-    // посетительница с сумкой через плечо
-    { w: 96, h: 292, svg:
-      '<svg viewBox="0 0 96 292" xmlns="http://www.w3.org/2000/svg" fill="currentColor">' +
-      '<circle cx="48" cy="32" r="19"/>' +
-      '<path d="M31 22c0-11 7-19 17-19s17 8 17 19c0 14-3 24-6 32h-8c3-9 5-18 4-27-6 4-16 5-24 2z"/>' +
-      '<path d="M48 54c18 0 30 12 32 30l6 56H10l6-56c2-18 14-30 32-30z"/>' +
-      '<path d="M14 140h68l-6 34H20z"/>' +
-      '<path d="M22 174h20l1 54 3 46c0 8-4 12-10 12s-10-4-10-12l-2-46z"/>' +
-      '<path d="M54 174h20l-2 54-3 46c0 8-4 12-10 12s-10-4-10-12l2-46z"/>' +
-      '<path d="M18 88c-5 18-7 36-5 52l9-2c-2-16 0-32 5-48z"/>' +
-      '<path d="M78 88c5 18 7 36 5 52l-9-2c2-16 0-32-5-48z"/>' +
-      '<path d="M62 60l-30 62 7 4 30-62z"/>' +
-      '<rect x="60" y="118" width="30" height="26" rx="5"/></svg>' },
-    // посетитель, указывающий спутнику на работу
-    { w: 128, h: 296, svg:
-      '<svg viewBox="0 0 128 296" xmlns="http://www.w3.org/2000/svg" fill="currentColor">' +
-      '<circle cx="52" cy="34" r="20"/>' +
-      '<path d="M52 56c18 0 31 13 33 31l6 57H13l6-57c2-18 15-31 33-31z"/>' +
-      '<path d="M17 144h70l-5 32H22z"/>' +
-      '<path d="M24 176h21l2 56 3 48c0 8-4 12-10 12s-11-4-11-12l-3-48z"/>' +
-      '<path d="M57 176h21l-2 56-3 48c0 8-4 12-10 12s-11-4-11-12l3-48z"/>' +
-      '<path d="M18 90c-6 19-8 38-6 55l10-2c-2-17 0-34 6-51z"/>' +
-      '<path d="M84 88c12 6 26 14 40 22l-6 10c-14-8-27-14-38-18z"/></svg>' }
-  ];
-
   Widget.prototype.buildHall = function (rebuild) {
     var host = this.wrap.querySelector('.artc-view--hall');
     if (!host) return;
     if (this.hall && this.hall.offKey) this.hall.offKey();
-    this.stopGyro();
     this.stopTour();
     var keep = rebuild && this.hall ? this.hall.progress : 0;
 
@@ -545,10 +489,6 @@
           '<div class="artc-tools">' +
             '<button type="button" class="artc-tour">' + ICON_TOUR +
               '<span class="artc-tour__label">Провести по залу</span></button>' +
-            (gyroAvailable()
-              ? '<button type="button" class="artc-gyro">' + ICON_GYRO +
-                  '<span class="artc-gyro__label">Осмотреться</span></button>'
-              : '') +
           '</div>' +
         '</div>' +
       '</div>';
@@ -633,20 +573,19 @@
         world.appendChild(b);
         arts.push(b);
 
-        // Отражение работы в полированном полу. Плоскость лежит на полу
-        // (rotateX(90deg) уводит её «низ» в глубину зала) и повторяет разворот
-        // полотна, поэтому отражение идёт от стены внутрь зала, как в зеркале.
-        var rd = Math.round(ARTH * 0.62);            // насколько отражение уходит от стены
-        var rad = turn * Math.PI / 180;
+        // Отражение работы в полу. Плоскость лежит на полу и вытянута вдоль
+        // прохода — к зрителю, а не поперёк: настоящий блик на полированном
+        // камне точно так же тянется от предмета в сторону смотрящего.
+        var rd = Math.round(ARTH * 2);               // длина блика вдоль прохода
         var refl = el('div', 'artc-refl');
         refl.style.setProperty('--rw', aw + 'px');
         refl.style.setProperty('--rh', rd + 'px');
         refl.style.transform = 'translate(-50%, -50%) translate3d(' +
-          Math.round(x + Math.sin(rad) * rd / 2) + 'px, ' + (HH - 6) + 'px, ' +
-          Math.round(artZ + Math.cos(rad) * rd / 2) + 'px) rotateY(' + turn + 'deg) rotateX(90deg)';
+          Math.round(x * 0.94) + 'px, ' + (HH - 6) + 'px, ' +
+          Math.round(artZ + rd / 2) + 'px) rotateX(90deg)';
         refl.innerHTML = '<img src="' + BLANK + '" alt="">';
         refl.setAttribute('data-z', artZ);
-        refl.nearDist = 1700;                        // вблизи заметно, издалека не нужно
+        refl.nearDist = 2200;                        // вблизи заметно, издалека не нужно
         world.appendChild(refl);
         b.refl = refl;
         decor.push(refl);
@@ -697,31 +636,17 @@
         world.appendChild(sh);
         decor.push(sh);
 
-        // отблеск объекта в полу — тот же силуэт, отражённый и приглушённый
+        // отблеск объекта — так же, вытянутым бликом вдоль прохода
+        var ord = Math.round(oh * 1.6);
         var orf = el('div', 'artc-refl artc-refl--obj', obj.svg);
         orf.style.setProperty('--rw', ow + 'px');
-        orf.style.setProperty('--rh', Math.round(oh * 0.6) + 'px');
+        orf.style.setProperty('--rh', ord + 'px');
         orf.style.transform = 'translate(-50%, -50%) translate3d(' + ox + 'px, ' +
-          (HH - 6) + 'px, ' + (oz + Math.round(oh * 0.3)) + 'px) rotateX(90deg)';
+          (HH - 6) + 'px, ' + (oz + ord / 2) + 'px) rotateX(90deg)';
         orf.setAttribute('data-z', oz);
-        orf.nearDist = 1700;
+        orf.nearDist = 2200;
         world.appendChild(orf);
         decor.push(orf);
-      }
-
-      // Посетители — в проходах между залами: там свободно, и фигура не
-      // загораживает работы и таблички. Сторону берём противоположную
-      // арт-объекту, чтобы проход не оказался заставлен с одного края.
-      if (ai < self.artists.length - 1) {
-        var pside = ai % 2 === 0 ? -1 : 1;      // напротив арт-объекта
-        var pz = z + Math.round(GAP * 0.34);
-        self.addPerson(world, decor, PEOPLE[ai % PEOPLE.length],
-          Math.round(HW * 0.56 * pside), pz, pside, HH);
-        // в одном из проходов — пара: зал выглядит обжитым, а не расставленным
-        if (ai === 2) {
-          self.addPerson(world, decor, PEOPLE[(ai + 1) % PEOPLE.length],
-            Math.round(HW * 0.34 * pside), pz - Math.round(GAP * 0.12), pside, HH);
-        }
       }
     });
 
@@ -770,7 +695,7 @@
       zoom: 1, targetZoom: 1,
       bob: 0, yaw: 0, pitch: 0, focus: null,
       progress: 0, moving: false, hitsPlaced: false, t0: Date.now(),
-      probeN: 0, probeT: 0, lite: false
+      probeN: 0, probeMs: 0, probeLast: 0, lite: false
     };
 
     // «влёт» в зал при первом открытии
@@ -784,34 +709,6 @@
 
     this.bindHall();
     this.hallLoop();
-  };
-
-  /* Силуэт посетителя у стены: плоская фигура, слегка развёрнутая к работам,
-     с тенью на полу. Переминается с ноги на ногу — но это чистый CSS,
-     кадры сцены на это не тратятся. */
-  Widget.prototype.addPerson = function (world, decor, man, x, z, side, HH) {
-    var scale = HH / 315 * 1.12;                    // рост человека к высоте зала
-    var ph = Math.round(man.h * scale);
-    var pw = Math.round(man.w * scale);
-
-    var p = el('div', 'artc-person', '<i>' + man.svg + '</i>');
-    p.style.setProperty('--pw', pw + 'px');
-    p.style.setProperty('--pd', (Math.abs(z) % 7) * 340 + 'ms');
-    p.style.transform = 'translate(-50%, -50%) translate3d(' + x + 'px, ' +
-      (HH - ph / 2) + 'px, ' + z + 'px) rotateY(' + (side * 26) + 'deg)';
-    p.setAttribute('data-z', z);
-    p.nearDist = 2600;
-    world.appendChild(p);
-    decor.push(p);
-
-    var sh = el('div', 'artc-object-shadow artc-person-shadow');
-    sh.style.setProperty('--sw', Math.round(pw * 0.8) + 'px');
-    sh.style.transform = 'translate(-50%, -50%) translate3d(' + x + 'px, ' +
-      (HH - 2) + 'px, ' + z + 'px) rotateX(90deg)';
-    sh.setAttribute('data-z', z);
-    sh.nearDist = 2600;
-    world.appendChild(sh);
-    decor.push(sh);
   };
 
   Widget.prototype.bindHall = function () {
@@ -841,15 +738,11 @@
     stage.querySelector('.artc-tour')
       .addEventListener('click', function (e) { e.stopPropagation(); self.toggleTour(); });
 
-    var gyroBtn = stage.querySelector('.artc-gyro');
-    if (gyroBtn) {
-      gyroBtn.addEventListener('click', function (e) { e.stopPropagation(); self.toggleGyro(); });
-    }
 
     // экскурсию прерывает любое вмешательство посетителя
     ['wheel', 'pointerdown', 'keydown'].forEach(function (ev) {
       stage.addEventListener(ev, function (e) {
-        if (self.tour && e.target.closest && !e.target.closest('.artc-tour, .artc-gyro')) self.stopTour();
+        if (self.tour && e.target.closest && !e.target.closest('.artc-tour')) self.stopTour();
       }, true);
     });
 
@@ -920,7 +813,6 @@
     stage.addEventListener('pointerup', function () { endDrag(true); });
     stage.addEventListener('pointercancel', function () { endDrag(false); });
     stage.addEventListener('pointerleave', function () {
-      if (self.gyro) return;
       h.yaw = 0; h.pitch = 0;
       // именно applyCamera, а не сброс transform: иначе с камеры пропадут
       // доворот к работе и наезд, а цикл их не вернёт (кадр-то не изменился)
@@ -963,14 +855,17 @@
 
   Widget.prototype.hallParallax = function (e) {
     var h = this.hall;
-    if (!h || this.gyro || prefersReducedMotion() || window.innerWidth < 720) return;
+    if (!h || prefersReducedMotion() || window.innerWidth < 720) return;
     var r = h.stage.getBoundingClientRect();
-    // разворот вправо/влево заметно шире: полотно на боковой стене
-    // можно рассмотреть, просто сместив курсор к краю сцены
+    // Курсор ведёт взгляд за собой: увели вправо — смотрим вправо, вниз —
+    // вниз. Положительный rotateY поворачивает камеру вправо, положительный
+    // rotateX — вверх, отсюда знаки.
+    // Разворот вправо/влево заметно шире вертикального: полотно на боковой
+    // стене можно рассмотреть, просто сместив курсор к краю сцены.
     var fx = (e.clientX - r.left) / r.width - 0.5;
     var fy = (e.clientY - r.top) / r.height - 0.5;
-    h.yaw = -Math.sign(fx) * Math.pow(Math.abs(fx) * 2, 1.3) * 25;
-    h.pitch = fy * 5;
+    h.yaw = Math.sign(fx) * Math.pow(Math.abs(fx) * 2, 1.3) * 25;
+    h.pitch = -fy * 5;
     this.applyCamera();
   };
 
@@ -1058,13 +953,18 @@
       // шаг сглаживания не зависит от частоты кадров
       var now = (window.performance && performance.now) ? performance.now() : Date.now();
 
-      // первые полторы секунды считаем кадры: на слабых устройствах
-      // переводим зал в облегчённый режим, чтобы ходьба оставалась плавной
-      if (!hall.lite && hall.probeN < 1e6) {
-        if (!hall.probeT) hall.probeT = now;
-        hall.probeN++;
-        if (now - hall.probeT > 1500) {
-          var fps = hall.probeN / (now - hall.probeT) * 1000;
+      // Замер скорости: на слабых устройствах переводим зал в облегчённый
+      // режим, чтобы ходьба оставалась плавной. Считаем только те кадры, в
+      // которых сцена действительно перерисовывается (камера едет) — на
+      // стоянке кадры даром не тратятся, и по ним о скорости не судить.
+      // Паузы между проходами в замер не попадают.
+      if (!hall.probeAfter) hall.probeAfter = now + 700;    // первые кадры — распаковка картинок
+      if (!hall.lite && hall.probeN < 1e6 && hall.moving && now > hall.probeAfter) {
+        var gap = now - (hall.probeLast || now);
+        hall.probeLast = now;
+        if (gap > 0 && gap < 140) { hall.probeMs += gap; hall.probeN++; }
+        if (hall.probeMs > 1400) {
+          var fps = hall.probeN / hall.probeMs * 1000;
           hall.probeN = 1e6;
           if (fps < 34) {
             hall.lite = true;
@@ -1242,81 +1142,6 @@
     this.tour = null;
     if (this.hall) this.hall.stage.classList.remove('is-touring');
     this.blurArt();
-  };
-
-  /* ------------- осмотр зала поворотом телефона ------------- */
-
-  /* Телефон становится «окном» в зал: поворот вокруг вертикали смотрит
-     влево-вправо, наклон — вверх-вниз. Углы отсчитываются от того положения,
-     в котором посетитель держал телефон в момент включения. */
-  Widget.prototype.toggleGyro = function () {
-    if (this.gyro) { this.stopGyro(); return; }
-    var self = this;
-    var DOE = window.DeviceOrientationEvent;
-    // iOS 13+ отдаёт датчик только по явному разрешению и только по нажатию
-    if (DOE && typeof DOE.requestPermission === 'function') {
-      DOE.requestPermission().then(function (state) {
-        if (state === 'granted') self.startGyro(); else self.gyroDenied();
-      })['catch'](function () { self.gyroDenied(); });
-    } else {
-      this.startGyro();
-    }
-  };
-
-  Widget.prototype.startGyro = function () {
-    var self = this;
-    var h = this.hall;
-    if (!h || this.gyro) return;
-    var base = null;
-
-    var onOrient = function (e) {
-      var hall = self.hall;
-      if (!hall || typeof e.alpha !== 'number') return;
-      var angle = (window.screen && window.screen.orientation && window.screen.orientation.angle) ||
-                  window.orientation || 0;
-      // alpha — поворот вокруг вертикали, он и нужен для взгляда вбок;
-      // наклон вверх-вниз в портрете даёт beta, в альбоме — gamma
-      var tilt = Math.abs(angle) === 90
-        ? (angle > 0 ? -(e.gamma || 0) : (e.gamma || 0))
-        : (e.beta || 0);
-      if (!base) base = { a: e.alpha, t: tilt };
-
-      var da = e.alpha - base.a;
-      if (da > 180) da -= 360; else if (da < -180) da += 360;
-      var yaw = Math.max(-34, Math.min(34, da * 1.1));
-      var pitch = Math.max(-8, Math.min(8, (base.t - tilt) * 0.5));
-
-      // сглаживаем сами: датчик шумит, а плавный переход камеры выключен
-      hall.yaw += (yaw - hall.yaw) * 0.22;
-      hall.pitch += (pitch - hall.pitch) * 0.22;
-      self.applyCamera();
-    };
-
-    window.addEventListener('deviceorientation', onOrient, true);
-    this.gyro = {
-      off: function () { window.removeEventListener('deviceorientation', onOrient, true); }
-    };
-    h.stage.classList.add('is-gyro');
-    this.hideHint();
-  };
-
-  Widget.prototype.stopGyro = function () {
-    if (!this.gyro) return;
-    this.gyro.off();
-    this.gyro = null;
-    var h = this.hall;
-    if (!h) return;
-    h.stage.classList.remove('is-gyro');
-    h.yaw = 0; h.pitch = 0;
-    this.applyCamera();
-  };
-
-  Widget.prototype.gyroDenied = function () {
-    var btn = this.hall && this.hall.stage.querySelector('.artc-gyro');
-    if (!btn) return;
-    btn.disabled = true;
-    var label = btn.querySelector('.artc-gyro__label');
-    if (label) label.textContent = 'Датчик недоступен';
   };
 
   /* Зоны нажатия ставим по фактическому положению нарисованных стрелок:

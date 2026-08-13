@@ -562,10 +562,10 @@
       rgba(255, 246, 219, 0) 76%),
     /* мягкий свет по центру прохода вместо полосатого ритма */
     linear-gradient(to right,
-      rgba(20, 12, 4, .16) 0 14%,
+      rgba(20, 12, 4, .16) 0 6%,
       rgba(255, 244, 214, .10) 40%,
       rgba(255, 244, 214, .10) 60%,
-      rgba(20, 12, 4, .16) 86% 100%),
+      rgba(20, 12, 4, .16) 94% 100%),
     repeating-linear-gradient(to right,
       rgba(255, 236, 196, .03) 0 120px,
       rgba(40, 28, 12, .05) 120px 122px),
@@ -1142,19 +1142,19 @@
   background: radial-gradient(50% 50% at 50% 50%, rgba(28, 18, 4, .45), rgba(28, 18, 4, 0) 72%);
 }
 
-/* --- отражения в полированном полу --- */
-/* Плоскость лежит на полу и повторяет разворот полотна: изображение
-   перевёрнуто (низ работы — у стены) и гаснет к середине прохода.
-   Никаких фильтров: размытость имитируют прозрачность и растяжка. */
+/* --- отражения в полу --- */
+/* Плоскость лежит на полу и вытянута вдоль прохода к зрителю; изображение
+   перевёрнуто (низ работы — у стены) и гаснет по мере удаления.
+   Никаких тяжёлых приёмов: всё держится на прозрачности и лёгком размытии. */
 .artc-refl {
   pointer-events: none;
   width: var(--rw, 300px);
-  height: var(--rh, 186px);
-  opacity: .26;
+  height: var(--rh, 600px);
+  opacity: .38;
   overflow: hidden;
-  filter: blur(4px);                   /* полотна маленькие — размытие им по карману */
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, .9), rgba(0, 0, 0, 0) 72%);
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, .9), rgba(0, 0, 0, 0) 72%);
+  filter: blur(3px);                   /* полотна маленькие — размытие им по карману */
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, .95) 14%, rgba(0, 0, 0, .3) 52%, rgba(0, 0, 0, 0) 92%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, .95) 14%, rgba(0, 0, 0, .3) 52%, rgba(0, 0, 0, 0) 92%);
   animation: artc-refl-in 1.4s .5s ease-out both;
 }
 .artc-refl img,
@@ -1164,29 +1164,9 @@
   object-fit: cover;
   transform: scaleY(-1);
 }
-.artc-refl--obj { opacity: .2; }
+.artc-refl--obj { opacity: .3; }
 .artc-refl--obj svg { object-fit: contain; }
 @keyframes artc-refl-in { from { opacity: 0; } }
-
-/* --- посетители зала --- */
-.artc-person {
-  pointer-events: none;
-  width: var(--pw, 120px);
-  color: rgba(50, 37, 17, .56);
-  transform-origin: 50% 100%;
-}
-.artc-person i {
-  display: block;
-  animation: artc-person-idle 7s ease-in-out infinite;
-  animation-delay: var(--pd, 0ms);
-}
-.artc-person svg { display: block; width: 100%; height: auto; }
-@keyframes artc-person-idle {
-  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
-  30%      { transform: translate3d(-2px, -3px, 0) rotate(-.5deg); }
-  65%      { transform: translate3d(3px, -1px, 0) rotate(.6deg); }
-}
-.artc-person-shadow { opacity: .75; }
 
 /* --- ритм архитектуры: пилястры и карниз для глубины --- */
 /* пилястры — отдельные узкие элементы внутри стены: тот же ритм,
@@ -1228,11 +1208,9 @@
 .artc-stage.is-lite .artc-art__frame { box-shadow: 0 14px 24px rgba(0, 0, 0, .45); }
 .artc-stage.is-lite .artc-art__frame::after { display: none; }
 .artc-stage.is-lite .artc-object { filter: none; }
-/* отражения и посетители — самое дорогое в сцене: на слабых устройствах
-   отказываемся от них целиком, чтобы ходьба осталась плавной */
-.artc-stage.is-lite .artc-refl,
-.artc-stage.is-lite .artc-person,
-.artc-stage.is-lite .artc-person-shadow { display: none; }
+/* на слабых устройствах отражения остаются, но без размытия: сам эффект
+   дешёвый, дорого только размытие */
+.artc-stage.is-lite .artc-refl { filter: none; opacity: .32; }
 .artc-stage.is-lite .artc-wall { background-image: none; }
 .artc-stage.is-lite .artc-pad--fwd span { animation: none; opacity: .85; }
 
@@ -1376,5 +1354,5 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .artc-tour, .artc-gyro { transition: none; }
-  .artc-person i, .artc-refl { animation: none !important; }
+  .artc-refl { animation: none !important; }
 }
