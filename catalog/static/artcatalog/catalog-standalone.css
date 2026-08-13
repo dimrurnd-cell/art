@@ -525,6 +525,11 @@
 .artc-camera {
   position: absolute; inset: 0;
   transform-style: preserve-3d;
+  /* Центр вращения — точка зрения (она же perspective-origin, вынесенная
+     вперёд на величину perspective). Иначе поворот камеры получается не
+     поворотом головы, а облётом точки в полутора метрах перед зрителем,
+     и работа, к которой подошли, уезжает из центра кадра. */
+  transform-origin: 50% 47% 1150px;
   transition: transform .45s cubic-bezier(.22, .61, .36, 1);
 }
 .artc-world {
@@ -549,6 +554,12 @@
 }
 .artc-floor {
   background:
+    /* полировка: продольный глянец по центру прохода — в нём и «отражается» зал */
+    linear-gradient(to right,
+      rgba(255, 246, 219, 0) 0 24%,
+      rgba(255, 246, 219, .08) 44%,
+      rgba(255, 246, 219, .08) 56%,
+      rgba(255, 246, 219, 0) 76%),
     /* мягкий свет по центру прохода вместо полосатого ритма */
     linear-gradient(to right,
       rgba(20, 12, 4, .16) 0 14%,
@@ -647,7 +658,11 @@
 .artc-end__ticket[aria-disabled="true"] { opacity: .85; cursor: default; }
 
 /* --- имя художника на стене --- */
+/* backface-visibility — чтобы при довороте камеры к работе не показывалась
+   зеркальная изнанка надписей и рам */
 .artc-sign {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   width: 620px;
   text-align: center;
   font-family: var(--artc-font-head);
@@ -680,6 +695,8 @@
   -webkit-tap-highlight-color: transparent;
 }
 .artc-art__frame {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   position: relative;
   display: block;
   width: 100%;
@@ -728,6 +745,8 @@
 
 /* табличка под полотном: фото художника + название */
 .artc-art__plaque {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   display: flex;
   align-items: center;
   gap: 11px;
@@ -943,6 +962,7 @@
     border-radius: 16px;
   }
   .artc-scene { perspective: 700px; }
+  .artc-camera { transform-origin: 50% 47% 700px; }   /* см. основной блок */
   .artc-sign { font-size: 26px; width: 330px; }
   .artc-sign small { font-size: 13px; letter-spacing: 3px; }
   .artc-art__plaque { margin-top: 12px; padding: 6px 10px 6px 6px; gap: 8px; }
@@ -1122,6 +1142,52 @@
   background: radial-gradient(50% 50% at 50% 50%, rgba(28, 18, 4, .45), rgba(28, 18, 4, 0) 72%);
 }
 
+/* --- отражения в полированном полу --- */
+/* Плоскость лежит на полу и повторяет разворот полотна: изображение
+   перевёрнуто (низ работы — у стены) и гаснет к середине прохода.
+   Никаких фильтров: размытость имитируют прозрачность и растяжка. */
+.artc-refl {
+  pointer-events: none;
+  width: var(--rw, 300px);
+  height: var(--rh, 186px);
+  opacity: .26;
+  overflow: hidden;
+  filter: blur(4px);                   /* полотна маленькие — размытие им по карману */
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, .9), rgba(0, 0, 0, 0) 72%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, .9), rgba(0, 0, 0, 0) 72%);
+  animation: artc-refl-in 1.4s .5s ease-out both;
+}
+.artc-refl img,
+.artc-refl svg {
+  display: block;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transform: scaleY(-1);
+}
+.artc-refl--obj { opacity: .2; }
+.artc-refl--obj svg { object-fit: contain; }
+@keyframes artc-refl-in { from { opacity: 0; } }
+
+/* --- посетители зала --- */
+.artc-person {
+  pointer-events: none;
+  width: var(--pw, 120px);
+  color: rgba(50, 37, 17, .56);
+  transform-origin: 50% 100%;
+}
+.artc-person i {
+  display: block;
+  animation: artc-person-idle 7s ease-in-out infinite;
+  animation-delay: var(--pd, 0ms);
+}
+.artc-person svg { display: block; width: 100%; height: auto; }
+@keyframes artc-person-idle {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  30%      { transform: translate3d(-2px, -3px, 0) rotate(-.5deg); }
+  65%      { transform: translate3d(3px, -1px, 0) rotate(.6deg); }
+}
+.artc-person-shadow { opacity: .75; }
+
 /* --- ритм архитектуры: пилястры и карниз для глубины --- */
 /* пилястры — отдельные узкие элементы внутри стены: тот же ритм,
    но рисуется десяток полос вместо заливки всей плоскости */
@@ -1162,6 +1228,11 @@
 .artc-stage.is-lite .artc-art__frame { box-shadow: 0 14px 24px rgba(0, 0, 0, .45); }
 .artc-stage.is-lite .artc-art__frame::after { display: none; }
 .artc-stage.is-lite .artc-object { filter: none; }
+/* отражения и посетители — самое дорогое в сцене: на слабых устройствах
+   отказываемся от них целиком, чтобы ходьба осталась плавной */
+.artc-stage.is-lite .artc-refl,
+.artc-stage.is-lite .artc-person,
+.artc-stage.is-lite .artc-person-shadow { display: none; }
 .artc-stage.is-lite .artc-wall { background-image: none; }
 .artc-stage.is-lite .artc-pad--fwd span { animation: none; opacity: .85; }
 
@@ -1248,4 +1319,62 @@
   .artc-fs { width: 38px; height: 38px; top: 10px; right: 10px; }
   .artc-fs svg { width: 17px; height: 17px; }
   .artc-hit::after { font-size: 12px; padding: 6px 12px; }
+}
+
+/* ------------------- автоэкскурсия и фокус ------------------- */
+.artc-tools {
+  display: flex; gap: 8px;
+  justify-content: center; flex-wrap: wrap;
+}
+.artc-tour, .artc-gyro {
+  pointer-events: auto;
+  display: flex; align-items: center; gap: 9px;
+  border: 1px solid rgba(255, 247, 228, .3);
+  background: rgba(255, 247, 228, .12);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #FBF3E0;
+  border-radius: 999px;
+  padding: 8px 20px 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background .25s ease, transform .25s ease, border-color .25s ease;
+}
+.artc-tour svg, .artc-gyro svg { width: 16px; height: 16px; }
+.artc-tour .artc-tour__stop { display: none; }
+.artc-tour:hover, .artc-gyro:hover { background: rgba(255, 247, 228, .24); transform: translateY(-2px); }
+.artc-tour:focus-visible,
+.artc-gyro:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+.artc-stage.is-touring .artc-tour {
+  background: var(--artc-coral); border-color: var(--artc-coral);
+  box-shadow: 0 6px 18px rgba(228, 115, 111, .45);
+}
+.artc-stage.is-touring .artc-tour__play { display: none; }
+.artc-stage.is-touring .artc-tour__stop { display: block; }
+
+/* осмотр поворотом телефона: пока включён — кнопка активна, а камера
+   ходит за датчиком без сглаживающего перехода (иначе взгляд запаздывает) */
+.artc-stage.is-gyro .artc-gyro {
+  background: var(--artc-coral); border-color: var(--artc-coral);
+  box-shadow: 0 6px 18px rgba(228, 115, 111, .45);
+}
+.artc-stage.is-gyro .artc-camera { transition: none; }
+.artc-gyro:disabled { opacity: .5; cursor: default; transform: none; }
+
+/* полотно, к которому подошли: свет ярче, рама чуть выступает */
+.artc-art.is-focused .artc-art__frame {
+  transform: translateZ(26px);
+  box-shadow: 0 34px 60px rgba(0, 0, 0, .58), 0 0 0 1px rgba(255, 236, 190, .45);
+  filter: brightness(1.08);
+}
+.artc-art.is-focused .artc-art__spot { opacity: .95; }
+.artc-art.is-focused .artc-art__plaque { transform: translateZ(18px); }
+
+@media (max-width: 600px) {
+  .artc-tour, .artc-gyro { padding: 7px 14px 7px 11px; font-size: 12.5px; }
+  .artc-tools { gap: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .artc-tour, .artc-gyro { transition: none; }
+  .artc-person i, .artc-refl { animation: none !important; }
 }

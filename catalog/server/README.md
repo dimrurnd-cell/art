@@ -29,7 +29,7 @@
     └── masterskaya/ …
 ```
 
-Всего 137 файлов, ~16 МБ (133 из них бинарные). Права: файлы 644, папки 755.
+Всего 139 файлов, ~16 МБ (133 из них бинарные). Права: файлы 644, папки 755.
 
 ### Бинарный режим в WinSCP
 
@@ -46,7 +46,7 @@
 
 ### Быстрее: одним архивом
 
-137 файлов по SFTP заливаются долго, часть может не докачаться. Надёжнее
+139 файлов по SFTP заливаются долго, часть может не докачаться. Надёжнее
 загрузить архив и распаковать его на сервере (терминал в WinSCP — Ctrl+T):
 
 ```bash
@@ -68,7 +68,7 @@ rm -rf repo.zip art-claude-repository-overview-h8lcj2
 
 ```bash
 cd /home/develop/donexpo/static/artcatalog
-find . -type f | wc -l    # 137
+find . -type f | wc -l    # 139
 du -sh .                  # ~16M
 ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 ```
@@ -77,10 +77,12 @@ ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 
 | Файл | Байт |
 |---|---|
-| `catalog.js` | 70 666 |
+| `catalog.js` | 92 258 |
 | `catalog.css` | 17 163 |
-| `hall.css` | 28 984 |
+| `hall.css` | 37 076 |
 | `artists.json` | 13 282 |
+| `artists.js` | 11 113 |
+| `catalog-standalone.css` | 81 607 |
 | `fonts/parangon.woff2` | 20 328 |
 | `img/logo.webp` | 31 726 |
 
