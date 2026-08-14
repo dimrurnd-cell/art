@@ -360,6 +360,26 @@
 .artc-lightbox .artc-modal__close:hover { background: var(--artc-coral); }
 .artc-lightbox .artc-buy { padding: 11px 26px; font-size: 15px; }
 
+/* кнопки под работой: купить и вернуться в зал */
+.artc-lightbox__actions {
+  display: flex; flex-wrap: wrap;
+  gap: 10px; justify-content: center;
+}
+.artc-back {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 11px 24px 11px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 247, 228, .38);
+  background: rgba(255, 247, 228, .12);
+  color: #FBF3E0;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background .25s ease, transform .25s ease;
+}
+.artc-back svg { width: 16px; height: 16px; }
+.artc-back:hover { background: rgba(255, 247, 228, .26); transform: translateY(-2px); }
+.artc-back:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+
 /* --------------------- форма «Хочу купить» --------------------- */
 .artc-form-modal { z-index: 99994; } /* форма всегда поверх лайтбокса */
 .artc-form-modal .artc-modal__dialog { max-width: 480px; }

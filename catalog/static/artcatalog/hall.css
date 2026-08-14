@@ -103,18 +103,12 @@
 }
 .artc-floor {
   background:
-    /* полировка: продольный глянец по центру прохода — в нём и «отражается» зал */
-    linear-gradient(to right,
-      rgba(255, 246, 219, 0) 0 24%,
-      rgba(255, 246, 219, .08) 44%,
-      rgba(255, 246, 219, .08) 56%,
-      rgba(255, 246, 219, 0) 76%),
     /* мягкий свет по центру прохода вместо полосатого ритма */
     linear-gradient(to right,
-      rgba(20, 12, 4, .16) 0 6%,
+      rgba(20, 12, 4, .16) 0 14%,
       rgba(255, 244, 214, .10) 40%,
       rgba(255, 244, 214, .10) 60%,
-      rgba(20, 12, 4, .16) 94% 100%),
+      rgba(20, 12, 4, .16) 86% 100%),
     repeating-linear-gradient(to right,
       rgba(255, 236, 196, .03) 0 120px,
       rgba(40, 28, 12, .05) 120px 122px),
@@ -243,11 +237,17 @@
   transform-style: preserve-3d;
   -webkit-tap-highlight-color: transparent;
 }
+/* рамка — отдельная кнопка: по ней работа открывается во весь экран */
 .artc-art__frame {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   position: relative;
   display: block;
+  border: none; margin: 0;
+  font: inherit; color: inherit;
+  cursor: pointer;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
   width: 100%;
   height: var(--art-h);
   padding: 13px;
@@ -293,10 +293,17 @@
 }
 
 /* табличка под полотном: фото художника + название */
+/* табличка — вторая кнопка: по ней открывается карточка художника */
 .artc-art__plaque {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   display: flex;
+  border: none;
+  font: inherit; color: inherit;
+  cursor: pointer;
+  width: 100%;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
   align-items: center;
   gap: 11px;
   margin-top: 20px;
@@ -348,8 +355,13 @@
 .artc-art:focus-visible .artc-art__spot { opacity: .95; }
 .artc-art:hover .artc-art__plaque,
 .artc-art:focus-visible .artc-art__plaque { transform: translateZ(22px); box-shadow: 0 18px 30px rgba(0, 0, 0, .42); }
-.artc-art:focus-visible { outline: none; }
-.artc-art:focus-visible .artc-art__frame { outline: 3px solid var(--artc-teal); outline-offset: 6px; }
+.artc-art__frame:focus-visible,
+.artc-art__plaque:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 5px; }
+/* табличка отзывается на курсор сама по себе — это отдельная кнопка */
+.artc-art__plaque:hover {
+  background: linear-gradient(to bottom, #fff, rgba(246, 238, 216, .99));
+  box-shadow: 0 18px 30px rgba(0, 0, 0, .42), 0 0 0 1px rgba(228, 115, 111, .55) inset;
+}
 
 /* появление полотен при входе в зал */
 .artc-art .artc-art__frame,
@@ -691,32 +703,6 @@
   background: radial-gradient(50% 50% at 50% 50%, rgba(28, 18, 4, .45), rgba(28, 18, 4, 0) 72%);
 }
 
-/* --- отражения в полу --- */
-/* Плоскость лежит на полу и вытянута вдоль прохода к зрителю; изображение
-   перевёрнуто (низ работы — у стены) и гаснет по мере удаления.
-   Никаких тяжёлых приёмов: всё держится на прозрачности и лёгком размытии. */
-.artc-refl {
-  pointer-events: none;
-  width: var(--rw, 300px);
-  height: var(--rh, 600px);
-  opacity: .38;
-  overflow: hidden;
-  filter: blur(3px);                   /* полотна маленькие — размытие им по карману */
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, .95) 14%, rgba(0, 0, 0, .3) 52%, rgba(0, 0, 0, 0) 92%);
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, .95) 14%, rgba(0, 0, 0, .3) 52%, rgba(0, 0, 0, 0) 92%);
-  animation: artc-refl-in 1.4s .5s ease-out both;
-}
-.artc-refl img,
-.artc-refl svg {
-  display: block;
-  width: 100%; height: 100%;
-  object-fit: cover;
-  transform: scaleY(-1);
-}
-.artc-refl--obj { opacity: .3; }
-.artc-refl--obj svg { object-fit: contain; }
-@keyframes artc-refl-in { from { opacity: 0; } }
-
 /* --- ритм архитектуры: пилястры и карниз для глубины --- */
 /* пилястры — отдельные узкие элементы внутри стены: тот же ритм,
    но рисуется десяток полос вместо заливки всей плоскости */
@@ -757,9 +743,6 @@
 .artc-stage.is-lite .artc-art__frame { box-shadow: 0 14px 24px rgba(0, 0, 0, .45); }
 .artc-stage.is-lite .artc-art__frame::after { display: none; }
 .artc-stage.is-lite .artc-object { filter: none; }
-/* на слабых устройствах отражения остаются, но без размытия: сам эффект
-   дешёвый, дорого только размытие */
-.artc-stage.is-lite .artc-refl { filter: none; opacity: .32; }
 .artc-stage.is-lite .artc-wall { background-image: none; }
 .artc-stage.is-lite .artc-pad--fwd span { animation: none; opacity: .85; }
 
@@ -903,5 +886,4 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .artc-tour, .artc-gyro { transition: none; }
-  .artc-refl { animation: none !important; }
 }

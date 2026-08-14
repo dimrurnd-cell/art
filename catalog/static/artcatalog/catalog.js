@@ -545,50 +545,36 @@
         var x = (HW - sink - 26) * (left ? -1 : 1);
         var turn = left ? WALL_TURN : -WALL_TURN;
 
-        var b = el('button', 'artc-art');
-        b.type = 'button';
+        // Полотно и табличка — две разные кнопки: по картине открывается
+        // сама работа во весь экран, по табличке — карточка художника.
+        var b = el('div', 'artc-art');
         b.style.setProperty('--aw', aw + 'px');
         b.style.setProperty('--d', (200 + wi * 90 + ai * 40) + 'ms');
         b.style.transform = 'translate(-50%, -50%) translate3d(' + x + 'px, -20px, ' + artZ + 'px) rotateY(' + turn + 'deg)';
         b.setAttribute('data-artist', ai);
+        b.setAttribute('data-work', wi);
         b.setAttribute('data-z', artZ);
         b.setAttribute('data-x', x);
         b.setAttribute('data-turn', turn);
-        b.setAttribute('aria-label', 'Открыть карточку художника: ' + a.name +
-          (w.title ? ', работа «' + w.title + '»' : ''));
         b.innerHTML =
           '<span class="artc-art__spot"></span>' +
-          '<span class="artc-art__frame">' +
+          '<button type="button" class="artc-art__frame" aria-label="Рассмотреть работу' +
+              (w.title ? ' «' + esc(w.title) + '»' : '') + ' — ' + esc(a.name) + '">' +
             '<img src="' + BLANK + '" data-src="' + esc(self.url(w.medium).replace(/\.webp$/, '.jpg')) + '" ' +
               'data-webp="' + esc(self.url(w.medium)) + '" alt="' +
               esc((w.title || 'Работа') + ' — ' + a.name) + '">' +
-          '</span>' +
-          '<span class="artc-art__plaque">' +
+          '</button>' +
+          '<button type="button" class="artc-art__plaque" aria-label="Открыть карточку художника: ' +
+              esc(a.name) + '">' +
             '<span class="artc-art__ava">' + pictureHTML(self.url(a.avatar), a.name, true) + '</span>' +
             '<span class="artc-art__meta">' +
               '<span class="artc-art__title">' + esc(w.title || 'Без названия') + '</span>' +
               '<span class="artc-art__author">' + esc(a.name) + '</span>' +
             '</span>' +
-          '</span>';
+          '</button>';
         world.appendChild(b);
         arts.push(b);
 
-        // Отражение работы в полу. Плоскость лежит на полу и вытянута вдоль
-        // прохода — к зрителю, а не поперёк: настоящий блик на полированном
-        // камне точно так же тянется от предмета в сторону смотрящего.
-        var rd = Math.round(ARTH * 2);               // длина блика вдоль прохода
-        var refl = el('div', 'artc-refl');
-        refl.style.setProperty('--rw', aw + 'px');
-        refl.style.setProperty('--rh', rd + 'px');
-        refl.style.transform = 'translate(-50%, -50%) translate3d(' +
-          Math.round(x * 0.94) + 'px, ' + (HH - 6) + 'px, ' +
-          Math.round(artZ + rd / 2) + 'px) rotateX(90deg)';
-        refl.innerHTML = '<img src="' + BLANK + '" alt="">';
-        refl.setAttribute('data-z', artZ);
-        refl.nearDist = 2200;                        // вблизи заметно, издалека не нужно
-        world.appendChild(refl);
-        b.refl = refl;
-        decor.push(refl);
       });
 
       // имя художника — на левой стене, город — на правой
@@ -636,17 +622,6 @@
         world.appendChild(sh);
         decor.push(sh);
 
-        // отблеск объекта — так же, вытянутым бликом вдоль прохода
-        var ord = Math.round(oh * 1.6);
-        var orf = el('div', 'artc-refl artc-refl--obj', obj.svg);
-        orf.style.setProperty('--rw', ow + 'px');
-        orf.style.setProperty('--rh', ord + 'px');
-        orf.style.transform = 'translate(-50%, -50%) translate3d(' + ox + 'px, ' +
-          (HH - 6) + 'px, ' + (oz + ord / 2) + 'px) rotateX(90deg)';
-        orf.setAttribute('data-z', oz);
-        orf.nearDist = 2200;
-        world.appendChild(orf);
-        decor.push(orf);
       }
     });
 
@@ -784,7 +759,8 @@
       if (fromModal(e) || e.target.closest('.artc-hud, .artc-rooms, .artc-pad, .artc-hit, .artc-fs, .artc-end__ticket')) return;
       drag = {
         x: e.clientX, y: e.clientY, z: h.targetZ, moved: 0, id: e.pointerId,
-        art: e.target.closest('.artc-art')
+        art: e.target.closest('.artc-art'),
+        plaque: !!e.target.closest('.artc-art__plaque')
       };
       stage.classList.add('is-grabbing');
       // после первого касания зал слушает стрелки, не дёргая прокрутку страницы
@@ -803,10 +779,13 @@
     });
     var endDrag = function (open) {
       if (drag && stage.releasePointerCapture) { try { stage.releasePointerCapture(drag.id); } catch (err) {} }
-      // короткое нажатие по полотну (без протяжки) — открываем карточку.
+      // Короткое нажатие (без протяжки): по табличке — карточка художника,
+      // по самому полотну — работа во весь экран.
       // Именно pointerup, а не click: при захвате указателя click приходит
       // на саму сцену, и полотно в нём уже не определить.
-      if (open && drag && drag.art && drag.moved <= 8) self.openArt(drag.art);
+      if (open && drag && drag.art && drag.moved <= 8) {
+        if (drag.plaque) self.openArtCard(drag.art); else self.openArtWork(drag.art);
+      }
       drag = null;
       stage.classList.remove('is-grabbing');
     };
@@ -823,17 +802,35 @@
     stage.addEventListener('click', function (e) {
       if (fromModal(e)) return;
       var art = e.target.closest('.artc-art');
-      if (art && e.detail === 0) self.openArt(art);
+      if (art && e.detail === 0) {
+        if (e.target.closest('.artc-art__plaque')) self.openArtCard(art);
+        else self.openArtWork(art);
+      }
     });
   };
 
-  /* подходим к полотну и открываем карточку его автора */
-  Widget.prototype.openArt = function (art) {
+  /* Нажатие по полотну: подходим к нему и разворачиваем работу во весь экран. */
+  Widget.prototype.openArtWork = function (art) {
+    var self = this;
+    this.focusArt(art);
+    clearTimeout(this.openT);
+    this.openT = setTimeout(function () {
+      self.artistIdx = +art.getAttribute('data-artist');
+      self.fromHall = art;                 // чтобы знать, куда возвращаться
+      self.lbFromHall = true;              // и показать кнопку «Вернуться в зал»
+      self.openWork(+art.getAttribute('data-work'));
+    }, 620);
+  };
+
+  /* Нажатие по табличке под полотном: карточка художника. */
+  Widget.prototype.openArtCard = function (art) {
     var self = this;
     this.focusArt(art);
     // даём камере подойти к работе и только потом показываем карточку
     clearTimeout(this.openT);
     this.openT = setTimeout(function () {
+      self.fromHall = art;                 // чтобы знать, куда возвращаться
+      self.lbFromHall = false;
       self.openArtist(+art.getAttribute('data-artist'));
     }, 760);
   };
@@ -853,19 +850,15 @@
     h.camera.style.transform = t;
   };
 
+  /* Лёгкий параллакс за курсором: зал чуть отзывается на движение мыши.
+     Углы намеренно маленькие — это оживление картинки, а не управление
+     обзором: большой разворот сбивал с толку при ходьбе. */
   Widget.prototype.hallParallax = function (e) {
     var h = this.hall;
     if (!h || prefersReducedMotion() || window.innerWidth < 720) return;
     var r = h.stage.getBoundingClientRect();
-    // Курсор ведёт взгляд за собой: увели вправо — смотрим вправо, вниз —
-    // вниз. Положительный rotateY поворачивает камеру вправо, положительный
-    // rotateX — вверх, отсюда знаки.
-    // Разворот вправо/влево заметно шире вертикального: полотно на боковой
-    // стене можно рассмотреть, просто сместив курсор к краю сцены.
-    var fx = (e.clientX - r.left) / r.width - 0.5;
-    var fy = (e.clientY - r.top) / r.height - 0.5;
-    h.yaw = Math.sign(fx) * Math.pow(Math.abs(fx) * 2, 1.3) * 25;
-    h.pitch = -fy * 5;
+    h.yaw = ((e.clientX - r.left) / r.width - 0.5) * -7;
+    h.pitch = ((e.clientY - r.top) / r.height - 0.5) * 3.2;
     this.applyCamera();
   };
 
@@ -934,7 +927,23 @@
 
   Widget.prototype.hideHint = function () {
     var hint = this.hall && this.hall.stage.querySelector('.artc-hint');
-    if (hint && !hint.classList.contains('is-hidden')) hint.classList.add('is-hidden');
+    if (!hint) return;
+    hint.style.animation = '';                 // вернуть css-анимацию ухода
+    if (!hint.classList.contains('is-hidden')) hint.classList.add('is-hidden');
+  };
+
+  /* Ненадолго показать подсказку поверх зала — тем же элементом, что и
+     подсказка на входе: место для неё уже есть. Появление задаём инлайном,
+     иначе сработала бы анимация входа с её девятисотмиллисекундной паузой. */
+  Widget.prototype.showHint = function (text) {
+    var self = this;
+    var hint = this.hall && this.hall.stage.querySelector('.artc-hint');
+    if (!hint) return;
+    hint.querySelector('span').innerHTML = text;
+    hint.classList.remove('is-hidden');
+    hint.style.animation = 'artc-hint-in .45s ease-out both';
+    clearTimeout(this.hintT);
+    this.hintT = setTimeout(function () { self.hideHint(); }, 5000);
   };
 
   Widget.prototype.hallLoop = function () {
@@ -1051,15 +1060,8 @@
       if (art.loaded || !near) continue;
       var img = art.querySelector('img[data-webp]');
       if (!img) { art.loaded = true; continue; }
-      var mirror = art.refl && art.refl.querySelector('img');
-      img.onerror = function () {
-        this.onerror = null;
-        this.src = this.getAttribute('data-src');
-        if (mirror) mirror.src = this.src;
-      };
+      img.onerror = function () { this.onerror = null; this.src = this.getAttribute('data-src'); };
       img.src = img.getAttribute('data-webp') || img.getAttribute('data-src');
-      // отражение берёт уже загруженный файл — второго запроса не будет
-      if (mirror) mirror.src = img.src;
       art.loaded = true;
     }
 
@@ -1342,6 +1344,14 @@
 
   Widget.prototype.closeModal = function (m) {
     m.classList.remove('is-open');
+    // работу или карточку открывали из зала — возвращаем зрителя в коридор
+    if ((m === this.lightbox || m === this.artistModal) && this.fromHall &&
+        !document.querySelector('.artc-modal.is-open')) {
+      this.fromHall = null;
+      this.blurArt();
+      this.showHint('Вы снова в зале — идите дальше: перетаскивайте, крутите ' +
+        'колесо или жмите стрелки на полу');
+    }
     var anyOpen = document.querySelector('.artc-modal.is-open');
     if (!anyOpen) {
       document.body.style.overflow = document.body.getAttribute('data-artc-lock') || '';
@@ -1410,7 +1420,8 @@
 
     dlg.querySelector('.artc-works').addEventListener('click', function (e) {
       var b = e.target.closest('[data-work]');
-      if (b) self.openWork(+b.getAttribute('data-work'));
+      // лайтбокс поверх карточки: возвращаться он должен в карточку, а не в зал
+      if (b) { self.lbFromHall = false; self.openWork(+b.getAttribute('data-work')); }
     });
     dlg.querySelector('.artc-buy').addEventListener('click', function () { self.openForm(a, null); });
     dlg.querySelectorAll('[data-nav]').forEach(function (b) {
@@ -1443,7 +1454,12 @@
         '</picture>' +
         '<button type="button" class="artc-arrow artc-arrow--next" aria-label="Следующая работа">' + ARROW_R + '</button>' +
         '<p class="artc-lightbox__caption">' + caption + '</p>' +
-        '<button type="button" class="artc-buy">Хочу купить картину</button>' +
+        '<div class="artc-lightbox__actions">' +
+          '<button type="button" class="artc-buy">Хочу купить картину</button>' +
+          (this.lbFromHall
+            ? '<button type="button" class="artc-back">' + ARROW_L + 'Вернуться в зал</button>'
+            : '') +
+        '</div>' +
       '</div>';
 
     var lb = this.lightbox;
@@ -1451,6 +1467,8 @@
     lb.querySelector('.artc-arrow--prev').addEventListener('click', function () { self.openWork(self.workIdx - 1); });
     lb.querySelector('.artc-arrow--next').addEventListener('click', function () { self.openWork(self.workIdx + 1); });
     lb.querySelector('.artc-buy').addEventListener('click', function () { self.openForm(a, w); });
+    var back = lb.querySelector('.artc-back');
+    if (back) back.addEventListener('click', function () { self.closeModal(lb); });
     this.bindSwipeLightbox(lb.querySelector('.artc-lightbox__stage'));
     this.openModal(lb);
   };
