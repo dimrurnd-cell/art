@@ -62,12 +62,33 @@
     <div class="drop" id="drop">
       <b>Перетащите сюда папку с художниками</b>
       <span>или нажмите и выберите её. Внутри — папка на каждого художника
-        (фотографии работ и текст о нём — <code>.docx</code> или <code>.xlsx</code>).<br>
-        Если есть разделы «Арт-салон» и «Галереи» — перетащите папку, в которой лежат оба.</span>
+        (только фотографии работ; имя папки должно быть похоже на ФИО —
+        по нему найдётся запись в общем списке ниже).<br>
+        Если есть разделы «Арт-салон» и «Галереи» — перетащите папку, в которой лежат оба.
+        Если для кого-то текста в общем списке нет — можно, как раньше, положить
+        файл <code>.docx</code> или <code>.xlsx</code> прямо в его папку.</span>
     </div>
     <!-- поле выбора вынесено из зоны: внутри неё клик по нему всплывал бы
          обратно в обработчик зоны и вызывал сам себя без конца -->
     <input type="file" id="pick" webkitdirectory directory multiple class="hide">
+
+    <div class="row" style="margin-top:20px;flex-direction:column;align-items:stretch;gap:8px">
+      <div style="font-weight:600">Общие списки — один файл Word на весь зал (необязательно)</div>
+      <div class="row" style="margin-top:0">
+        <label class="ghost" style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:999px;cursor:pointer">
+          Выбрать: художники (.docx)
+          <input type="file" id="pickArtists" accept=".docx" class="hide">
+        </label>
+        <span id="rosterArtistsInfo" style="color:var(--muted);font-size:13.5px">файл не выбран</span>
+      </div>
+      <div class="row" style="margin-top:0">
+        <label class="ghost" style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:999px;cursor:pointer">
+          Выбрать: галереи (.docx)
+          <input type="file" id="pickGalleries" accept=".docx" class="hide">
+        </label>
+        <span id="rosterGalleriesInfo" style="color:var(--muted);font-size:13.5px">файл не выбран</span>
+      </div>
+    </div>
 
     <div class="row">
       <label><input type="checkbox" id="chkJpeg" checked> делать запасные JPEG</label>
@@ -94,11 +115,18 @@
       <li>Откройте страницу с каталогом и обновите её через <code>Ctrl+Shift+R</code>.</li>
     </ol>
     <p style="color:var(--muted);font-size:14px;margin:12px 0 0">
-      Текст о художнике берётся из документа Word (<code>.docx</code>) или анкеты
-      Excel (<code>.xlsx</code>), лежащей в его папке — с подписями «Город», «О себе»
-      или просто сплошным текстом. Проверьте в <code>artists.json</code> названия
-      работ (берутся из имён файлов), тексты и порядок. Личные телефоны и почты
-      не попадают в каталог — публикуются только ссылки на соцсети.
+      Если выбраны общие списки — текст о художнике или галерее берётся оттуда:
+      каждая запись общего списка ищется по совпадению слов с именем папки
+      (совпадение хотя бы одного значимого слова — фамилии, названия студии).
+      Для папки без пары или без выбранного общего списка текст, как и раньше,
+      берётся из файла <code>.docx</code>/<code>.xlsx</code> внутри неё, а если
+      и его нет — именем становится название папки. В журнале ниже будут видны
+      все папки и записи списка, которым не нашлась пара, — проверьте их вручную.
+      Проверьте в <code>artists.json</code> названия работ (берутся из имён файлов),
+      тексты и порядок. Личные телефоны и почты не попадают в каталог —
+      публикуются только ссылки на соцсети; Instagram* пропускается —
+      сервис принадлежит компании, деятельность которой признана экстремистской
+      и запрещена в РФ.
     </p>
   </div>
 </div>
@@ -121,6 +149,30 @@
   var bar = document.getElementById('bar');
   var files = [];
   var result = null;
+
+  var pickArtists = document.getElementById('pickArtists');
+  var pickGalleries = document.getElementById('pickGalleries');
+  var rosterArtistsInfo = document.getElementById('rosterArtistsInfo');
+  var rosterGalleriesInfo = document.getElementById('rosterGalleriesInfo');
+  var roster = { artists: [], galleries: [] };   // общие списки, уже разобранные
+
+  pickArtists.addEventListener('change', function () {
+    loadRoster(pickArtists.files[0], 'artists', rosterArtistsInfo);
+  });
+  pickGalleries.addEventListener('change', function () {
+    loadRoster(pickGalleries.files[0], 'galleries', rosterGalleriesInfo);
+  });
+
+  function loadRoster(file, kind, infoEl) {
+    if (!file) return;
+    infoEl.textContent = 'читаю…';
+    readRosterDocx(file).then(function (records) {
+      roster[kind] = records.map(parseRosterRecord).filter(function (r) { return r && r.name; });
+      infoEl.textContent = file.name + ' — записей: ' + roster[kind].length;
+    }).catch(function (e) {
+      infoEl.textContent = 'не удалось прочитать: ' + (e && e.message || e);
+    });
+  }
 
   function log(msg, cls) {
     logBox.classList.remove('hide');
@@ -244,7 +296,9 @@
     'й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u',
     'ф':'f','х':'kh','ц':'ts','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e',
     'ю':'yu','я':'ya' };
-  var GENERIC = ['galereya','galerei','studiya','masterskaya','art','salon','tsentr','muzey','shkola','dom'];
+  var GENERIC = ['galereya','galerei','studiya','masterskaya','art','salon','tsentr','muzey',
+    'shkola','dom','tvorcheskoe','tvorcheskaya','obedinenie','gruppirovka','soobschestvo',
+    'khudozhnik','khudozhnitsa','zhivopisets','khudozhestvennaya','khudozhestvennyy'];
 
   function slugify(name, full) {
     var s = String(name).toLowerCase(), out = '';
@@ -350,6 +404,333 @@
   }
 
   function utf8(bytes) { return new TextDecoder('utf-8').decode(bytes); }
+
+  /* ---------- общий список (один Word-файл, таблица — строка на запись) ----------
+     Внутри строки текст разбит на абзацы <w:p>, а внутри абзаца иногда ещё и
+     на строки через <w:br/> (перевод строки без нового абзаца) — оба вида
+     разрывов нужно учитывать, иначе слова слипаются («Круглянская галереяРО»,
+     как уже было в этом же документе при первом чтении). Первая строка первого
+     абзаца — ФИО/название; часто там же, через <w:br/>, идёт и город («Гупал
+     Светлана Николаевна» + перевод строки + «г. Азов» — один и тот же абзац). */
+
+  // строки одного абзаца, разрезанные по <w:br/>
+  function paraLines(p) {
+    var buf = '', lines = [];
+    var kids = p.getElementsByTagName('*');
+    for (var i = 0; i < kids.length; i++) {
+      var tag = kids[i].tagName;
+      if (tag === 'w:t' || tag === 't') buf += kids[i].textContent;
+      else if (tag === 'w:tab' || tag === 'tab') buf += '\t';
+      else if (tag === 'w:br' || tag === 'br') { lines.push(buf); buf = ''; }
+    }
+    lines.push(buf);
+    return lines;
+  }
+
+  // группы строк одной строки таблицы: один элемент группы — один исходный
+  // абзац Word, внутри — его строки по порядку (нужно, чтобы потом склеить
+  // абзацы через пустую строку, а строки внутри абзаца — через одну)
+  function rowGroups(root, targets) {
+    var ps = root.getElementsByTagName('w:p');
+    if (!ps.length) ps = root.getElementsByTagName('p');
+    var groups = [];
+    for (var i = 0; i < ps.length; i++) {
+      var urlSuffix = '';
+      var hl = ps[i].getElementsByTagName('w:hyperlink');
+      for (var k = 0; k < hl.length; k++) {
+        var id = hl[k].getAttribute('r:id') || hl[k].getAttribute('id');
+        if (targets[id]) urlSuffix += ' ' + targets[id];
+      }
+      var lines = paraLines(ps[i]).map(function (s) { return s.replace(/\s{2,}/g, ' ').trim(); });
+      if (urlSuffix && lines.length) lines[lines.length - 1] = (lines[lines.length - 1] + urlSuffix).trim();
+      lines = lines.filter(Boolean);
+      if (lines.length) groups.push(lines);
+    }
+    return groups;
+  }
+
+  function readRosterDocx(file) {
+    return file.arrayBuffer().then(unzip).then(function (entries) {
+      var xml = entries['word/document.xml'];
+      if (!xml) return [];
+      var targets = {};
+      var rels = entries['word/_rels/document.xml.rels'];
+      if (rels) {
+        var rdoc = new DOMParser().parseFromString(utf8(rels), 'application/xml');
+        var rl = rdoc.getElementsByTagName('Relationship');
+        for (var r = 0; r < rl.length; r++) {
+          var t = rl[r].getAttribute('Target') || '';
+          if (/^https?:\/\//.test(t)) targets[rl[r].getAttribute('Id')] = t;
+        }
+      }
+      var doc = new DOMParser().parseFromString(utf8(xml), 'application/xml');
+      var rows = doc.getElementsByTagName('w:tr');
+      if (!rows.length) rows = doc.getElementsByTagName('tr');
+      var records = [];
+      if (rows.length) {
+        for (var i = 0; i < rows.length; i++) records.push(rowGroups(rows[i], targets));
+      } else {
+        // таблицы нет — считаем весь документ одной записью (на всякий случай)
+        records.push(rowGroups(doc, targets));
+      }
+      return records.filter(function (g) { return g.length; });
+    });
+  }
+
+  // подписи полей внутри строки записи: «Тел.:», «ВК:» и т.д. Метки короче
+  // трёх букв («ВК», «ТГ», «ОК») легко найти внутри обычного слова
+  // («выставОК:»), поэтому спереди — проверка, что перед меткой не буква.
+  var LABEL_RE = /(?<![A-Za-zА-ЯЁа-яё])(Тел\.?|Телефон|Почта|E-?mail|ВК|VK|ТГ|Telegram|MAX|Сайт|Site|Соц\.?\s*сет[ьи]|Соцсеть|ОК|Одноклассники|Запись)\s*:\s*/gi;
+
+  function normalizeLabel(raw) {
+    var s = raw.toLowerCase().replace(/[.\s]+/g, '');
+    if (/^(тел|телефон)/.test(s)) return 'phone';
+    if (/^(почта|e-?mail)/.test(s)) return 'email';
+    if (s === 'вк' || s === 'vk') return 'vk';
+    if (s === 'тг' || s === 'telegram') return 'tg';
+    if (s === 'сайт' || s === 'site' || s === 'запись') return 'site';
+    if (/^соц/.test(s)) return 'soc';
+    if (s === 'ок' || /одноклассники/.test(s)) return 'ok';
+    return 'other';                     // напр. MAX — платформа без понятного адреса
+  }
+
+  // токен-домен («vk.com/id1», «@natallia15.art», голый адрес сайта) →
+  // ссылка каталога. Строгая проверка: без пробелов внутри, значит не
+  // затронет «Kalina Yagodka» — в такой строке нет разделяемого домена.
+  function domainOnly(tok) {
+    tok = tok.replace(/^[*\s]+|[*\s.,;:]+$/g, '');
+    if (!tok) return null;
+    var bare = tok.charAt(0) === '@' ? tok.slice(1) : tok;
+    var m = bare.match(/^(?:https?:\/\/)?(?:www\.)?([a-zа-яё0-9][a-zа-яё0-9-]*(?:\.[a-zа-яё0-9-]+)*\.[a-zа-яё]{2,})(\/[^\s]*)?$/i);
+    if (!m) return null;
+    var host = m[1].toLowerCase(), path = m[2] || '';
+    if (/(^|\.)instagram\.com$/.test(host)) return { instagram: true };
+    var label = /(^|\.)(vk\.com|vk\.ru)$/.test(host) ? 'ВКонтакте'
+      : host === 't.me' ? 'Telegram'
+      : /(^|\.)ok\.ru$/.test(host) ? 'Одноклассники'
+      : 'Сайт';
+    return { label: label, url: 'https://' + host + path };
+  }
+
+  // токен вида «vk.com/id1», «@handle» или голый ник под меткой ВК/ТГ.
+  // Сначала пробуем как домен, и только если не получилось (и в токене нет
+  // пробелов — иначе это не ник, а обычное имя вроде «Kalina Yagodka») —
+  // как ник без «@» под понятной меткой.
+  function classifyToken(tok, labelType) {
+    var d = domainOnly(tok);
+    if (d) return d;
+    tok = tok.replace(/^[*\s]+|[*\s.,;:]+$/g, '');
+    if (!tok) return null;
+    var hadAt = tok.charAt(0) === '@';
+    var bare = hadAt ? tok.slice(1) : tok;
+    if ((hadAt || labelType === 'vk' || labelType === 'tg') && /^[A-Za-zА-ЯЁа-яё0-9_.]{3,}$/.test(bare)) {
+      if (labelType === 'vk') return { label: 'ВКонтакте', url: 'https://vk.com/' + bare };
+      if (labelType === 'tg') return { label: 'Telegram', url: 'https://t.me/' + bare };
+    }
+    return null;                        // платформа неясна — не угадываем
+  }
+
+  // разбирает одну строку записи: город (если ещё не найден), ссылки,
+  // приватные контакты (вычищаются без следа) и то, что остаётся — идёт
+  // в биографию как есть. skipCity — уже нашли город раньше в этой же
+  // записи, повторные «г. …» в биографии (например, «работает в г. Тула»)
+  // трогать не нужно — это обычный текст, а не карточка контактов.
+  function extractMeta(text, skipCity) {
+    var labels = [], re = new RegExp(LABEL_RE.source, 'gi'), m;
+    while ((m = re.exec(text))) labels.push({ type: normalizeLabel(m[1]), start: m.index, end: re.lastIndex });
+
+    var city = '', cityMatchStr = '';
+    if (!skipCity) {
+      var zoneEnd = labels.length ? labels[0].start : text.length;
+      var zone = text.slice(0, zoneEnd);
+      var rm = zone.match(/^\s*Республика\s+[А-ЯЁ][а-яё]+/);
+      if (rm) {
+        city = rm[0].trim();
+        cityMatchStr = rm[0];
+      } else {
+        var cm = zone.match(/(?:^|\s)(?:г|гор|город|п|пос|ст|с|рп)\.?\s+([А-ЯЁ][а-яёА-ЯЁ\-]*(?:[\s\-][а-яёА-ЯЁ][а-яёА-ЯЁ\-]*){0,3})/);
+        if (cm) {
+          city = cm[1].trim();
+          cityMatchStr = cm[0];
+          var after = zone.slice(zone.indexOf(cm[0]) + cm[0].length);
+          var region = after.match(/^\s*,\s*([А-ЯЁ]{2,5})\s*$/);
+          if (region) { city += ', ' + region[1]; cityMatchStr += region[0]; }
+        }
+      }
+    }
+
+    var links = [], leftover = [], hadPrivate = false, skippedInstagram = false;
+    var bits = [], cursor = 0;
+    for (var i = 0; i < labels.length; i++) {
+      bits.push(text.slice(cursor, labels[i].start));
+      var end = i + 1 < labels.length ? labels[i + 1].start : text.length;
+      var value = text.slice(labels[i].end, end);
+      var type = labels[i].type;
+      if (type === 'phone' || type === 'email') {
+        hadPrivate = true;
+      } else {
+        // значения одной метки разделены запятой («ВК: id1, id2»); внутри
+        // куска пробелы не значат отдельные ссылки — «Kalina Yagodka» это
+        // одно имя, а не два адреса, поэтому весь кусок пробуем как единый
+        // токен и только потом — «первое слово домен, остальное — текст»
+        value.split(/[,\n]/).map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (chunk) {
+          var c = classifyToken(chunk, type);
+          if (c) {
+            if (c.instagram) { skippedInstagram = true; } else if (!links.some(function (l) { return l.url === c.url; })) links.push(c);
+            return;
+          }
+          var sp = chunk.indexOf(' ');
+          var head = sp > -1 ? chunk.slice(0, sp) : chunk;
+          var tail = sp > -1 ? chunk.slice(sp + 1).trim() : '';
+          var d = domainOnly(head);
+          if (d) {
+            if (d.instagram) skippedInstagram = true;
+            else if (!links.some(function (l) { return l.url === d.url; })) links.push(d);
+            if (tail) leftover.push(tail);
+          } else {
+            leftover.push(chunk);
+          }
+        });
+      }
+      cursor = end;
+    }
+    bits.push(text.slice(cursor));
+    var bioText = bits.join(' ');
+    // город убираем из текста, только если строка — короткая «карточка
+    // контактов» (типично: «г. Азов»); из длинного предложения-адреса
+    // («…расположен по адресу: г. Ростов-на-Дону, ул. Пушкинская, 59.»)
+    // город не вырезаем, чтобы не оставлять дыру в тексте
+    if (cityMatchStr && text.length <= 60) bioText = bioText.replace(cityMatchStr, ' ');
+    if (leftover.length) bioText += ' ' + leftover.join(' ');
+    bioText = bioText.replace(/\s{2,}/g, ' ')
+      .replace(/^[\s,.;:\-—/]+/, '').replace(/[\s,;:\-—/]+$/, '');
+    return { city: city, links: links, text: bioText, hadPrivate: hadPrivate,
+             skippedInstagram: skippedInstagram, leftover: leftover };
+  }
+
+  // абзац похож на «шапку» записи (имя/город/контакты), а не на биографию:
+  // короткий, либо в нём есть подпись поля или отметка города. Проверяем
+  // весь абзац целиком, а не отдельные строки — иначе длинный рассказ,
+  // разбитый на короткие предложения через <w:br/>, принимается за шапку
+  // сплошь (как случилось с «Художник Донского края. Стиль: … Жанр: …»).
+  function looksLikeHeader(lines) {
+    var joined = lines.join(' ');
+    if (!joined) return true;
+    if (joined.length <= 80) return true;
+    // метка поля (не просто «г. …» — это слишком легко встретить и в
+    // обычном предложении биографии, вроде «работает в г. Тула»)
+    return new RegExp(LABEL_RE.source, 'i').test(joined);
+  }
+
+  // одна запись общего списка (группы строк, см. rowGroups) → { name, city,
+  // bio, links, matchText, ... }. matchText шире имени: включает все
+  // «шапочные» абзацы перед началом биографии — имя может стоять отдельно
+  // от фамилии художника («Творческое объединение «АзовАрт»» — заголовок,
+  // а «Строганова Ольга Юрьевна» — отдельным абзацем сразу под ним) —
+  // иначе папка, названная по фамилии художника, не найдёт запись.
+  function parseRosterRecord(groups) {
+    if (!groups.length) return null;
+    var name = (groups[0][0] || '').trim();
+    var matchBits = [name], headerDone = false, headerGroups = 0;
+    groups.forEach(function (lines, gi) {
+      if (headerDone) return;
+      var rest = gi === 0 ? lines.slice(1) : lines;
+      if (!rest.length) return;
+      // не больше 3 «шапочных» абзацев сверх имени — этого достаточно для
+      // города и контактов, а дальше риск набрать биографию перевешивает
+      if (headerGroups >= 3 || !looksLikeHeader(rest)) { headerDone = true; return; }
+      matchBits = matchBits.concat(rest);
+      headerGroups++;
+    });
+    var city = '', cityFound = false, links = [], bioParts = [], warnings = [], privateRemoved = 0;
+    var rest = [groups[0].slice(1)].concat(groups.slice(1));
+    rest.forEach(function (lines) {
+      var kept = [];
+      lines.forEach(function (line) {
+        var meta = extractMeta(line, cityFound);
+        if (meta.city && !cityFound) { city = meta.city; cityFound = true; }
+        meta.links.forEach(function (l) {
+          if (!links.some(function (x) { return x.url === l.url; })) links.push(l);
+        });
+        if (meta.hadPrivate) privateRemoved++;
+        if (meta.skippedInstagram) warnings.push('ссылка на Instagram пропущена (запрещён в РФ)');
+        if (meta.leftover.length) warnings.push('нераспознанный контакт: «' + meta.leftover.join(' ') + '»');
+        if (meta.text) kept.push(meta.text);
+      });
+      if (kept.length) bioParts.push(kept.join('\n'));
+    });
+    return {
+      name: name, city: city, bio: bioParts.join('\n\n'), links: links,
+      matchText: matchBits.join(' '),
+      warnings: warnings, privateRemoved: privateRemoved
+    };
+  }
+
+  /* ---------- сопоставление папок с фото и записей общего списка по именам ---------- */
+
+  function translitWord(w) {
+    var out = '';
+    for (var i = 0; i < w.length; i++) out += TR[w[i]] !== undefined ? TR[w[i]] : w[i];
+    return out;
+  }
+
+  // значимые слова имени/названия — и сразу же транслитерация, чтобы папка
+  // с латинским именем («volvich») тоже находила кириллическую запись
+  // списка. Общие для многих названий слова («галерея», «студия», «арт»)
+  // в счёт не идут — иначе разные галереи путаются друг с другом.
+  function sigWords(s) {
+    var raw = String(s || '').toLowerCase().replace(/ё/g, 'е')
+      .replace(/[«»"'.,()!?]/g, ' ').split(/[\s\-]+/)
+      .filter(function (w) { return w.length >= 3; });
+    var set = {};
+    raw.forEach(function (w) {
+      var t = translitWord(w);
+      if (GENERIC.indexOf(t) !== -1 || GENERIC.indexOf(w) !== -1) return;
+      set[w] = 1; set[t] = 1;
+    });
+    return Object.keys(set);
+  }
+
+  function matchScore(a, b) {
+    var set = {}; b.forEach(function (w) { set[w] = 1; });
+    var n = 0;
+    a.forEach(function (w) { if (set[w]) n++; });
+    return n;
+  }
+
+  // жадное сопоставление: сортируем все пары «папка—запись» по числу общих
+  // слов и разбираем от лучшей к худшей, помечая уже занятые с обеих сторон
+  function matchGroups(groups) {
+    var index = [];
+    roster.artists.forEach(function (r) { index.push({ entry: r, words: sigWords(r.matchText), source: 'artists' }); });
+    roster.galleries.forEach(function (r) { index.push({ entry: r, words: sigWords(r.matchText), source: 'galleries' }); });
+
+    var pairs = [];
+    groups.forEach(function (g, gi) {
+      var sec = (g.section || '').toLowerCase();
+      var allow = /галере/.test(sec) ? 'galleries' : /салон/.test(sec) ? 'artists' : null;
+      var fw = sigWords(g.name);
+      index.forEach(function (ri, k) {
+        if (allow && ri.source !== allow) return;
+        var score = matchScore(fw, ri.words);
+        if (score > 0) pairs.push({ gi: gi, k: k, score: score });
+      });
+    });
+    pairs.sort(function (a, b) { return b.score - a.score; });
+
+    var usedG = {}, usedR = {};
+    pairs.forEach(function (p) {
+      if (usedG[p.gi] || usedR[p.k]) return;
+      usedG[p.gi] = usedR[p.k] = 1;
+      groups[p.gi].rosterMatch = index[p.k].entry;
+    });
+
+    var unmatchedRoster = index.filter(function (ri, k) { return !usedR[k]; })
+      .map(function (ri) { return ri.entry.name; });
+    var unmatchedGroups = groups.filter(function (g) { return !g.rosterMatch; })
+      .map(function (g) { return g.name; });
+    return { unmatchedRoster: unmatchedRoster, unmatchedGroups: unmatchedGroups };
+  }
 
   // минимальный распаковщик zip: только то, что нужно для xlsx
   function unzip(buf) {
@@ -582,6 +963,22 @@
     logBox.innerHTML = '';
     var jpeg = document.getElementById('chkJpeg').checked;
 
+    if (roster.artists.length || roster.galleries.length) {
+      var m = matchGroups(groups);
+      var matched = groups.length - m.unmatchedGroups.length;
+      log('Общий список: сопоставлено ' + matched + ' из ' + groups.length + ' папок.');
+      if (m.unmatchedGroups.length) {
+        log('  без пары в списке (текст возьмётся из файла в папке или из её названия):', 'warn');
+        m.unmatchedGroups.slice(0, 15).forEach(function (n) { log('    · ' + n, 'warn'); });
+        if (m.unmatchedGroups.length > 15) log('    … и ещё ' + (m.unmatchedGroups.length - 15), 'warn');
+      }
+      if (m.unmatchedRoster.length) {
+        log('  записи списка без папки с фото (не попадут в каталог):', 'warn');
+        m.unmatchedRoster.slice(0, 15).forEach(function (n) { log('    · ' + n, 'warn'); });
+        if (m.unmatchedRoster.length > 15) log('    … и ещё ' + (m.unmatchedRoster.length - 15), 'warn');
+      }
+    }
+
     var entries = [];              // файлы для zip
     var artists = [];
     var sections = [];
@@ -672,15 +1069,26 @@
 
       step([avatarFile], 0, true, function () {
         step(workFiles, 0, false, function () {
-          readForm(g.form).then(function (cells) {
+          var fromRoster = g.rosterMatch;
+          var formPromise = fromRoster ? Promise.resolve(null) : readForm(g.form);
+          formPromise.then(function (cells) {
             var form = fromForm(cells);
-            if (!form.name) log('    ФИО из анкеты не вытащил — впишите вручную', 'warn');
+            var name = (fromRoster && fromRoster.name) || form.name || g.name;
+            var city = (fromRoster && fromRoster.city) || form.city || 'Ростов-на-Дону';
+            var bio = (fromRoster && fromRoster.bio) || form.bio || '';
+            var links = (fromRoster && fromRoster.links.length) ? fromRoster.links : form.links;
+            if (fromRoster) log('    текст: из общего списка («' + fromRoster.name + '»)');
+            if (!name) log('    ФИО не вытащил — впишите вручную', 'warn');
+            if (!bio) log('    биография пустая — впишите вручную', 'warn');
+            if (fromRoster && fromRoster.warnings.length) {
+              fromRoster.warnings.forEach(function (w) { log('    ' + w, 'warn'); });
+            }
             var entry = {
               id: slug,
-              name: form.name || g.name,
-              city: form.city || 'Ростов-на-Дону',
-              bio: form.bio || '',
-              links: form.links,
+              name: name,
+              city: city,
+              bio: bio,
+              links: links,
               avatar: 'img/' + slug + '/avatar.webp',
               works: works,
               order: artists.length + 1
