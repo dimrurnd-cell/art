@@ -35,7 +35,7 @@
 .artc-views__btn:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
 
 .artc-view { display: none; }
-.artc-view.is-active { display: block; animation: artc-view-in .5s ease-out both; }
+.artc-view.is-active { display: block; animation: artc-view-in .5s ease-out; }
 @keyframes artc-view-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
 /* ---------------------- сцена зала ------------------------- */
@@ -814,6 +814,32 @@
 .artc-fs .artc-fs__exit { display: none; }
 .artc-stage.is-fs .artc-fs .artc-fs__exit { display: block; }
 .artc-stage.is-fs .artc-fs .artc-fs__enter { display: none; }
+
+/* Запасной полноэкранный режим (iPhone): зал переезжает в body внутрь
+   этой обёртки — она и растягивается на экран. Отступы и фон каталога
+   здесь сброшены, от .artc-root нужны только css-переменные. */
+.artc-fs-host {
+  position: fixed;
+  inset: 0;
+  z-index: 99980;
+  padding: 0;
+  border-radius: 0;
+  background: #1A150C;
+  overflow: hidden;
+}
+.artc-fs-host::after { display: none; }   /* зернистая текстура тут не нужна */
+.artc-fs-host .artc-stage {
+  max-width: none;
+  height: 100%;
+  margin: 0;
+  border-radius: 0;
+}
+
+/* Во весь экран странице уже нечего прокручивать, поэтому зал забирает
+   себе и вертикальные жесты: провести пальцем сверху вниз — самое
+   естественное движение «пройти по коридору». В обычном же режиме
+   вертикаль остаётся за страницей, иначе виджет запер бы прокрутку. */
+.artc-stage.is-fs { touch-action: none; }
 
 /* сцена, растянутая на весь экран */
 .artc-stage:fullscreen,

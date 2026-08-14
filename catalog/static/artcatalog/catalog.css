@@ -454,7 +454,25 @@
   .artc-lightbox .artc-arrow--prev { left: 4px; }
   .artc-lightbox .artc-arrow--next { right: 4px; }
   .artc-lightbox__img { max-height: calc(100vh - 210px); }
-  .artc-artist__foot { flex-direction: column; align-items: stretch; }
+  /* На телефоне карточка длинная, и главная кнопка уезжала под нижний край
+     экрана — приклеиваем низ карточки, чтобы «Хочу купить картину» была
+     видна сразу, без прокрутки до конца. overflow у диалога при этом снимаем:
+     любой промежуточный overflow между прилипающим элементом и прокруткой
+     делает прилипание бессмысленным — элемент «прилипает» к диалогу, а
+     прокручивается-то модалка. */
+  .artc-modal__dialog { overflow: visible; }
+  .artc-artist__foot {
+    flex-direction: column; align-items: stretch;
+    position: -webkit-sticky;
+    position: sticky;
+    bottom: -1px;
+    z-index: 2;
+    margin: 0 calc(clamp(18px, 4vw, 44px) * -1) -40px;
+    padding: 14px clamp(18px, 4vw, 44px) 18px;
+    background: var(--artc-bg);
+    /* мягкая растушёвка над прилипшей кнопкой, чтобы работы не обрывались резко */
+    box-shadow: 0 -16px 20px -6px var(--artc-bg);
+  }
   .artc-artist__nav { margin: 0 auto; }
   .artc-buy { text-align: center; }
 }

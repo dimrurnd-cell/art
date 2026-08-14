@@ -477,7 +477,7 @@
         '<div class="artc-vignette" aria-hidden="true"></div>' +
         '<div class="artc-curtain" aria-hidden="true"></div>' +
         '<p class="artc-hint">' + ICON_WALK + '<span>' + (window.innerWidth < 700
-          ? 'Проведите пальцем, чтобы пройти по залу'
+          ? 'Проведите пальцем влево или вправо, чтобы пройти по залу'
           : 'Идите по залу: перетаскивайте, крутите колесо или жмите <b>W</b>/<b>S</b>') + '</span></p>' +
         '<div class="artc-hud">' +
           '<div class="artc-hud__row">' +
@@ -690,9 +690,23 @@
     var h = this.hall, self = this;
     var stage = h.stage;
 
-    // шаг делается нажатием по широкой зоне, а стрелка на полу — её рисунок
+    // Шаг делается нажатием по широкой зоне, а стрелка на полу — её рисунок.
+    // Зоны большие и на телефоне закрывают половину экрана, поэтому они
+    // уступают дорогу: если под пальцем оказалось полотно — открываем его,
+    // а если палец вели, а не ткнули, — это был свайп, и шагать не нужно.
     var bindHit = function (hit, dir, cls) {
-      hit.addEventListener('click', function (e) { e.stopPropagation(); self.walkBy(h.step * dir); });
+      hit.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (self.dragMoved > 8) return;
+        var target = self.artUnder(e.clientX, e.clientY);
+        if (target) {
+          var art = target.closest('.artc-art');
+          if (target.classList.contains('artc-art__plaque')) self.openArtCard(art);
+          else self.openArtWork(art);
+          return;
+        }
+        self.walkBy(h.step * dir);
+      });
       hit.addEventListener('pointerenter', function () { stage.classList.add(cls); });
       hit.addEventListener('pointerleave', function () { stage.classList.remove(cls); });
     };
@@ -756,7 +770,7 @@
     // перетаскивание / свайп: тянем «на себя» — идём вперёд
     var drag = null;
     stage.addEventListener('pointerdown', function (e) {
-      if (fromModal(e) || e.target.closest('.artc-hud, .artc-rooms, .artc-pad, .artc-hit, .artc-fs, .artc-end__ticket')) return;
+      if (fromModal(e) || e.target.closest('.artc-hud, .artc-rooms, .artc-pad, .artc-fs, .artc-end__ticket')) return;
       drag = {
         x: e.clientX, y: e.clientY, z: h.targetZ, moved: 0, id: e.pointerId,
         art: e.target.closest('.artc-art'),
@@ -783,6 +797,7 @@
       // по самому полотну — работа во весь экран.
       // Именно pointerup, а не click: при захвате указателя click приходит
       // на саму сцену, и полотно в нём уже не определить.
+      self.dragMoved = drag ? drag.moved : 0;    // зоны шага смотрят на это
       if (open && drag && drag.art && drag.moved <= 8) {
         if (drag.plaque) self.openArtCard(drag.art); else self.openArtWork(drag.art);
       }
@@ -807,6 +822,18 @@
         else self.openArtWork(art);
       }
     });
+  };
+
+  /* Что за полотно лежит под точкой — сквозь прозрачные зоны шага. */
+  Widget.prototype.artUnder = function (x, y) {
+    if (!document.elementsFromPoint) return null;
+    var list = document.elementsFromPoint(x, y);
+    for (var i = 0; i < list.length; i++) {
+      var c = list[i].classList;
+      if (!c) continue;
+      if (c.contains('artc-art__frame') || c.contains('artc-art__plaque')) return list[i];
+    }
+    return null;
   };
 
   /* Нажатие по полотну: подходим к нему и разворачиваем работу во весь экран. */
@@ -1221,17 +1248,45 @@
     }, 450);
   };
 
-  /* Запасной «во весь экран» для браузеров без Fullscreen API (iPhone) */
+  /* Запасной «во весь экран» для браузеров без Fullscreen API (iPhone).
+
+     Зал на это время переезжает прямо в body. Иначе position: fixed ловится
+     ближайшим предком с трансформацией — а такой предок почти всегда есть:
+     и наша анимация появления раздела, и блоки Tilda с их эффектами
+     появления. Для fixed-потомка такой предок становится «экраном», и зал
+     разворачивается не на весь экран, а внутрь предка (у нас выходило
+     334×0 пикселя). Обёртка .artc-root нужна ради css-переменных: без неё
+     зал в body остался бы без фирменных цветов и шрифта. */
   Widget.prototype.fsFallback = function (on) {
     var stage = this.hall.stage;
     this.fsFake = on;
-    stage.style.position = on ? 'fixed' : '';
-    stage.style.inset = on ? '0' : '';
-    stage.style.zIndex = on ? '99980' : '';
+
+    if (on && !this.fsHost) {
+      this.fsSlot = document.createComment('artcatalog-fs');
+      stage.parentNode.insertBefore(this.fsSlot, stage);
+      this.fsHost = el('div', 'artc-root artc-fs-host');
+      document.body.appendChild(this.fsHost);
+      this.fsHost.appendChild(stage);
+    }
+
+    stage.style.width = on ? '100%' : '';
     stage.style.height = on ? '100%' : '';
     stage.style.maxWidth = on ? 'none' : '';
     stage.style.borderRadius = on ? '0' : '';
     document.body.style.overflow = on ? 'hidden' : '';
+
+    if (!on && this.fsHost) {
+      if (this.fsSlot && this.fsSlot.parentNode) {
+        this.fsSlot.parentNode.insertBefore(stage, this.fsSlot);
+        this.fsSlot.parentNode.removeChild(this.fsSlot);
+      } else {
+        this.wrap.querySelector('.artc-view--hall').appendChild(stage);
+      }
+      this.fsSlot = null;
+      this.fsHost.parentNode.removeChild(this.fsHost);
+      this.fsHost = null;
+    }
+
     this.onFsChange();
   };
 
@@ -1349,8 +1404,11 @@
         !document.querySelector('.artc-modal.is-open')) {
       this.fromHall = null;
       this.blurArt();
-      this.showHint('Вы снова в зале — идите дальше: перетаскивайте, крутите ' +
-        'колесо или жмите стрелки на полу');
+      // на телефоне про колесо мыши писать незачем
+      this.showHint(window.innerWidth < 700
+        ? 'Вы снова в зале — проведите пальцем, чтобы идти дальше'
+        : 'Вы снова в зале — идите дальше: перетаскивайте, крутите колесо ' +
+          'или жмите стрелки на полу');
     }
     var anyOpen = document.querySelector('.artc-modal.is-open');
     if (!anyOpen) {
