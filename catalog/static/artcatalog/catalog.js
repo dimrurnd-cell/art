@@ -694,18 +694,14 @@
     // Зоны большие и на телефоне закрывают половину экрана, поэтому они
     // уступают дорогу: если под пальцем оказалось полотно — открываем его,
     // а если палец вели, а не ткнули, — это был свайп, и шагать не нужно.
+    // Нажатие по зоне разбирается в pointerup (см. endDrag), а не в click:
+    // сцена забирает указатель себе (setPointerCapture), и мышиный click
+    // приходит уже ей, а не зоне — до обработчика зоны он не доходит.
+    // Здесь остаётся только клавиатура: у неё click.detail === 0.
     var bindHit = function (hit, dir, cls) {
       hit.addEventListener('click', function (e) {
         e.stopPropagation();
-        if (self.dragMoved > 8) return;
-        var target = self.artUnder(e.clientX, e.clientY);
-        if (target) {
-          var art = target.closest('.artc-art');
-          if (target.classList.contains('artc-art__plaque')) self.openArtCard(art);
-          else self.openArtWork(art);
-          return;
-        }
-        self.walkBy(h.step * dir);
+        if (e.detail === 0) self.walkBy(h.step * dir);
       });
       hit.addEventListener('pointerenter', function () { stage.classList.add(cls); });
       hit.addEventListener('pointerleave', function () { stage.classList.remove(cls); });
@@ -774,7 +770,9 @@
       drag = {
         x: e.clientX, y: e.clientY, z: h.targetZ, moved: 0, id: e.pointerId,
         art: e.target.closest('.artc-art'),
-        plaque: !!e.target.closest('.artc-art__plaque')
+        plaque: !!e.target.closest('.artc-art__plaque'),
+        hit: e.target.closest('.artc-hit'),
+        cx: e.clientX, cy: e.clientY
       };
       stage.classList.add('is-grabbing');
       // после первого касания зал слушает стрелки, не дёргая прокрутку страницы
@@ -797,9 +795,20 @@
       // по самому полотну — работа во весь экран.
       // Именно pointerup, а не click: при захвате указателя click приходит
       // на саму сцену, и полотно в нём уже не определить.
-      self.dragMoved = drag ? drag.moved : 0;    // зоны шага смотрят на это
-      if (open && drag && drag.art && drag.moved <= 8) {
-        if (drag.plaque) self.openArtCard(drag.art); else self.openArtWork(drag.art);
+      if (open && drag && drag.moved <= 8) {
+        if (drag.art) {
+          if (drag.plaque) self.openArtCard(drag.art); else self.openArtWork(drag.art);
+        } else if (drag.hit && !drag.hit.classList.contains('is-off')) {
+          // под зоной шага может оказаться заметное полотно — тогда открываем его
+          var target = self.artUnder(drag.cx, drag.cy);
+          if (target) {
+            var a2 = target.closest('.artc-art');
+            if (target.classList.contains('artc-art__plaque')) self.openArtCard(a2);
+            else self.openArtWork(a2);
+          } else {
+            self.walkBy(h.step * (drag.hit.classList.contains('artc-hit--fwd') ? 1 : -1));
+          }
+        }
       }
       drag = null;
       stage.classList.remove('is-grabbing');
@@ -824,14 +833,23 @@
     });
   };
 
-  /* Что за полотно лежит под точкой — сквозь прозрачные зоны шага. */
+  /* Что за полотно лежит под точкой — сквозь прозрачные зоны шага.
+
+     Уступаем дорогу только тому, во что зритель явно целился: вдоль коридора
+     под курсором почти всегда есть далёкие работы в несколько пикселей, и
+     если засчитывать и их, то по стрелкам на полу становится не попасть. */
   Widget.prototype.artUnder = function (x, y) {
     if (!document.elementsFromPoint) return null;
     var list = document.elementsFromPoint(x, y);
     for (var i = 0; i < list.length; i++) {
-      var c = list[i].classList;
+      var el = list[i];
+      var c = el.classList;
       if (!c) continue;
-      if (c.contains('artc-art__frame') || c.contains('artc-art__plaque')) return list[i];
+      var frame = c.contains('artc-art__frame');
+      if (!frame && !c.contains('artc-art__plaque')) continue;
+      var r = el.getBoundingClientRect();
+      if (frame ? (r.width >= 78 && r.height >= 78) : (r.width >= 90 && r.height >= 22)) return el;
+      return null;                       // ближайшее — мелкое, значит целились в пол
     }
     return null;
   };
@@ -842,9 +860,11 @@
     this.focusArt(art);
     clearTimeout(this.openT);
     this.openT = setTimeout(function () {
-      self.artistIdx = +art.getAttribute('data-artist');
       self.fromHall = art;                 // чтобы знать, куда возвращаться
       self.lbFromHall = true;              // и показать кнопку «Вернуться в зал»
+      // Карточка художника открывается под работой: закрыл работу — читаешь
+      // об авторе и видишь остальные его вещи, закрыл карточку — снова зал.
+      self.openArtist(+art.getAttribute('data-artist'));
       self.openWork(+art.getAttribute('data-work'));
     }, 620);
   };
@@ -884,8 +904,11 @@
     var h = this.hall;
     if (!h || prefersReducedMotion() || window.innerWidth < 720) return;
     var r = h.stage.getBoundingClientRect();
-    h.yaw = ((e.clientX - r.left) / r.width - 0.5) * -7;
-    h.pitch = ((e.clientY - r.top) / r.height - 0.5) * 3.2;
+    // Взгляд идёт за курсором: увели вправо — смотрим вправо, вниз — вниз.
+    // Положительный rotateY поворачивает камеру вправо, положительный
+    // rotateX — вверх, отсюда знаки.
+    h.yaw = ((e.clientX - r.left) / r.width - 0.5) * 7;
+    h.pitch = ((e.clientY - r.top) / r.height - 0.5) * -3.2;
     this.applyCamera();
   };
 
@@ -1029,6 +1052,11 @@
         hall.aim = hall.targetAim;
         hall.zoom = hall.targetZoom;
         hall.moving = false;
+        // камера встала — сверяем зоны шага с тем, где сейчас нарисованы
+        // стрелки: на ходу и во время «влёта» они качаются вместе с камерой.
+        // Считаем сразу: кадр без изменений до hallUpdate не доходит.
+        hall.hitsPlaced = false;
+        self.placeHits();
       }
 
       // покачивание шага
@@ -1182,12 +1210,24 @@
     var st = h.stage.getBoundingClientRect();
     if (!st.width || !st.height) return;
 
-    // нижняя граница зон: кнопки панели должны оставаться доступными
-    var hudTop = st.height;
-    var hudRow = h.stage.querySelector('.artc-hud__row');
-    if (hudRow) {
-      var hr = hudRow.getBoundingClientRect();
-      if (hr.height) hudTop = hr.top - st.top - 8;
+    // Нижняя граница зон. Мешают только те части панели, по которым правда
+    // нажимают: кнопки шага по краям строки и кнопки перехода к художникам.
+    // Полоса прогресса — просто индикатор, нажатия она не ловит (см. css).
+    var limit = st.height;
+    var rooms = h.stage.querySelector('.artc-rooms');
+    var row = h.stage.querySelector('.artc-hud__row');
+    var below = rooms && rooms.getBoundingClientRect().height ? rooms : row;
+    if (below) {
+      var br = below.getBoundingClientRect();
+      if (br.height) limit = br.top - st.top - 8;
+    }
+
+    // По бокам строки — круглые кнопки шага; зона не должна их накрывать
+    var side = 0;
+    var walk = h.stage.querySelector('.artc-walk');
+    if (walk) {
+      var wr = walk.getBoundingClientRect();
+      if (wr.width) side = wr.width + 26;
     }
 
     var rF = h.padF.getBoundingClientRect();
@@ -1196,14 +1236,17 @@
 
     var cyF = rF.top + rF.height / 2 - st.top;   // дальняя стрелка — «вперёд»
     var cyB = rB.top + rB.height / 2 - st.top;   // ближняя стрелка — «назад»
-    var w = Math.max(rB.width * 1.5, st.width * 0.56);
+    var w = Math.min(Math.max(rB.width * 1.5, st.width * 0.56), st.width - side * 2 - 16);
     var left = Math.round(st.width / 2 - w / 2);
 
     // Зоны обязаны идти встык, без наложения: пересекаясь, верхняя
     // перехватывала бы нажатия у нижней — по «назад» было не попасть.
-    var split = Math.round((cyF + cyB) / 2);
-    var topF = Math.max(0, Math.round(cyF - Math.max(60, st.height * 0.11)));
-    var bottomB = Math.round(Math.min(hudTop, cyB + Math.max(56, st.height * 0.1)));
+    // И обе целиком помещаются над панелью: иначе нижняя половина «назад»
+    // уходила под кнопки залов, и попасть по ней было нечем.
+    var bottomB = Math.round(Math.min(limit, cyB + Math.max(60, st.height * 0.1)));
+    var split = Math.min(Math.round((cyF + cyB) / 2), bottomB - 52);
+    var topF = Math.min(Math.round(cyF - Math.max(64, st.height * 0.11)), split - 52);
+    topF = Math.max(0, topF);
 
     var put = function (hit, top, bottom) {
       hit.style.left = left + 'px';
@@ -1526,7 +1569,10 @@
     lb.querySelector('.artc-arrow--next').addEventListener('click', function () { self.openWork(self.workIdx + 1); });
     lb.querySelector('.artc-buy').addEventListener('click', function () { self.openForm(a, w); });
     var back = lb.querySelector('.artc-back');
-    if (back) back.addEventListener('click', function () { self.closeModal(lb); });
+    if (back) back.addEventListener('click', function () {
+      self.closeModal(lb);
+      if (self.artistModal.classList.contains('is-open')) self.closeModal(self.artistModal);
+    });
     this.bindSwipeLightbox(lb.querySelector('.artc-lightbox__stage'));
     this.openModal(lb);
   };
@@ -1630,8 +1676,12 @@
       );
       for (var i = 0; i < inputs.length; i++) inputs[i].value = value;
     };
+    // Что именно хочет купить человек — в скрытых полях формы Tilda.
+    // Ссылка на изображение помогает менеджеру опознать работу, даже если
+    // название пустое или у художника несколько похожих вещей.
     fill('artist', artist.name);
-    fill('work', work ? (work.title || 'без названия') : '');
+    fill('work', work ? (work.title || 'без названия') : 'не выбрана (заявка из карточки художника)');
+    fill('workurl', work ? this.url(work.full) : '');
 
     // Tilda открывает попапы по клику на ссылку #popup:имя (обработчик делегированный)
     var a = document.createElement('a');
@@ -1682,7 +1732,8 @@
       email: email.value.trim(),
       artist: artist.name,
       artist_id: artist.id,
-      work: work ? (work.title || work.full) : '',
+      work: work ? (work.title || 'без названия') : 'не выбрана (заявка из карточки художника)',
+      work_url: work ? this.url(work.full) : '',
       page: location.href,
       website: form.querySelector('[name="website"]').value // honeypot
     };

@@ -82,6 +82,7 @@ def lead(request):
     email = (data.get("email") or "").strip()
     artist = (data.get("artist") or "").strip()[:200]
     work = (data.get("work") or "").strip()[:200]
+    work_url = (data.get("work_url") or "").strip()[:500]
     page = (data.get("page") or "").strip()[:300]
 
     if not PHONE_RE.match(phone):
@@ -104,6 +105,8 @@ def lead(request):
     ]
     if work:
         body_lines.append("Работа: %s" % work)
+    if work_url:
+        body_lines.append("Изображение: %s" % work_url)
     body_lines += [
         "Телефон: %s" % phone,
         "Email: %s" % email,
