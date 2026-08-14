@@ -486,6 +486,71 @@
   .artc-modal__dialog { animation: none !important; transition: none !important; }
 }
 
+/* ------------- поиск и указатель по буквам ------------- */
+.artc-filter {
+  position: relative; z-index: 3;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  margin: 0 auto 20px;
+}
+.artc-search {
+  position: relative;
+  display: flex; align-items: center; gap: 10px;
+  width: min(440px, 100%);
+  background: rgba(255, 255, 255, .72);
+  border: 1px solid rgba(33, 29, 23, .14);
+  border-radius: 999px;
+  padding: 0 8px 0 16px;
+}
+.artc-search svg { width: 17px; height: 17px; flex: 0 0 17px; opacity: .5; }
+.artc-search__input {
+  flex: 1 1 auto; min-width: 0;
+  border: none; background: none;
+  font: inherit; font-size: 15px;
+  color: var(--artc-ink);
+  padding: 12px 0;
+}
+.artc-search__input:focus { outline: none; }
+.artc-search:focus-within { border-color: var(--artc-teal); background: #fff; }
+.artc-search__clear {
+  flex: 0 0 32px; width: 32px; height: 32px;
+  border: none; border-radius: 50%; cursor: pointer;
+  background: rgba(33, 29, 23, .08);
+  color: var(--artc-muted);
+  font-size: 13px;
+}
+.artc-search__clear:hover { background: var(--artc-coral); color: #fff; }
+
+.artc-abc {
+  display: flex; flex-wrap: wrap; gap: 4px; justify-content: center;
+  max-width: 100%;
+}
+.artc-abc[hidden] { display: none; }
+.artc-abc button {
+  min-width: 30px; height: 30px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: rgba(33, 29, 23, .06);
+  color: var(--artc-ink);
+  font: inherit; font-size: 14px;
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease;
+}
+.artc-abc button:hover { background: rgba(62, 125, 149, .22); }
+.artc-abc button.is-active { background: var(--artc-teal); color: #fff; }
+.artc-abc button:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+.artc-filter__count { margin: 0; font-size: 13px; color: var(--artc-muted); }
+.artc-empty {
+  text-align: center; color: var(--artc-muted);
+  padding: 30px 16px 40px; margin: 0;
+}
+
+@media (max-width: 600px) {
+  .artc-abc button { min-width: 26px; height: 26px; font-size: 13px; border-radius: 8px; }
+  .artc-search__input { font-size: 14px; padding: 10px 0; }
+}
+
+.artc-dots:empty { display: none; }
+
 
 /* ============================================================
    Арт-Ростов — виртуальный зал (3D-тур)
@@ -1549,3 +1614,20 @@
   .artc-find__list button { padding: 7px 8px; }
   .artc-rooms__find { font-size: 13px; }
 }
+
+/* указатель по буквам внутри панели поиска зала */
+.artc-find__abc {
+  padding: 0 12px 10px;
+  gap: 4px;
+}
+.artc-find__abc button {
+  min-width: 28px; height: 28px;
+  border: none; border-radius: 8px;
+  background: rgba(255, 247, 228, .1);
+  color: #FBF3E0;
+  font: inherit; font-size: 13.5px;
+  cursor: pointer;
+}
+.artc-find__abc button:hover { background: rgba(255, 247, 228, .24); }
+.artc-find__abc button.is-active { background: var(--artc-coral); }
+.artc-find__abc[hidden] { display: none; }

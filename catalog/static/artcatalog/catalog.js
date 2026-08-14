@@ -211,6 +211,18 @@
      Раздел указывается полем section у художника; названия и порядок разделов
      можно задать списком sections. Старый формат (просто список artists)
      продолжает работать — получится один безымянный раздел. */
+  /* Фамилия — первое слово имени; у галерей отличается то, что в кавычках */
+  function sortKey(name) {
+    var full = String(name || '');
+    var quoted = full.match(/[«"']([^»"']{2,})[»"']/);
+    return (quoted ? quoted[1] : full).replace(/[«»"]/g, '').trim();
+  }
+
+  function firstLetter(name) {
+    var ch = sortKey(name).charAt(0).toUpperCase();
+    return /[А-ЯЁA-Z0-9]/.test(ch) ? (ch === 'Ё' ? 'Е' : ch) : '#';
+  }
+
   Widget.prototype.setData = function (data) {
     var list = (data.artists || []).slice().sort(function (a, b) {
       return (a.order || 0) - (b.order || 0);
@@ -253,6 +265,40 @@
     return (sec ? sec.list : []).map(function (i) { return self.artists[i]; });
   };
 
+  /* Сквозные номера художников раздела, прошедших поиск и выбранную букву.
+     Пустой отбор — это все, а не никто. */
+  Widget.prototype.picked = function () {
+    var sec = this.sections[this.section];
+    if (!sec) return [];
+    var self = this;
+    var q = (this.query || '').trim().toLowerCase();
+    var letter = this.letter || '';
+    return sec.list.filter(function (i) {
+      var a = self.artists[i];
+      if (letter && firstLetter(a.name) !== letter) return false;
+      if (!q) return true;
+      return (a.name + ' ' + (a.city || '')).toLowerCase().indexOf(q) !== -1;
+    });
+  };
+
+  /* Буквы, которые вообще есть у художников раздела */
+  Widget.prototype.letters = function () {
+    var sec = this.sections[this.section];
+    if (!sec) return [];
+    var self = this, seen = {}, out = [];
+    sec.list.forEach(function (i) {
+      var L = firstLetter(self.artists[i].name);
+      if (!seen[L]) { seen[L] = 1; out.push(L); }
+    });
+    return out.sort(function (a, b) {
+      if (a === '#') return 1;
+      if (b === '#') return -1;
+      var ra = /[А-ЯЁ]/.test(a), rb = /[А-ЯЁ]/.test(b);
+      if (ra !== rb) return ra ? -1 : 1;          // сперва кириллица
+      return a < b ? -1 : a > b ? 1 : 0;
+    });
+  };
+
   Widget.prototype.render = function () {
     var r = this.root;
     r.innerHTML = '';
@@ -289,6 +335,16 @@
         : '') +
       '<div class="artc-view artc-view--hall is-active"></div>' +
       '<div class="artc-view artc-view--grid">' +
+        '<div class="artc-filter">' +
+          '<div class="artc-search">' + ICON_FIND +
+            '<input type="search" class="artc-search__input" placeholder="Поиск по фамилии или городу" ' +
+              'aria-label="Поиск по фамилии или городу" autocomplete="off">' +
+            '<button type="button" class="artc-search__clear" aria-label="Очистить" hidden>&#10005;</button>' +
+          '</div>' +
+          '<div class="artc-abc" role="group" aria-label="Указатель по первой букве"></div>' +
+          '<p class="artc-filter__count" aria-live="polite"></p>' +
+        '</div>' +
+        '<p class="artc-empty" hidden>Никого не нашлось. Проверьте написание или сбросьте фильтр.</p>' +
         '<div class="artc-carousel" role="region" aria-roledescription="карусель" aria-label="Художники выставки" tabindex="0">' +
           '<button type="button" class="artc-arrow artc-arrow--prev" aria-label="Предыдущий художник">' + ARROW_L + '</button>' +
           '<div class="artc-carousel__viewport"><div class="artc-carousel__track"></div></div>' +
@@ -323,6 +379,27 @@
     wrap.querySelector('.artc-views').addEventListener('click', function (e) {
       var b = e.target.closest('[data-view]');
       if (b) self.switchView(b.getAttribute('data-view'));
+    });
+
+    // поиск и указатель по буквам
+    var search = wrap.querySelector('.artc-search__input');
+    var clear = wrap.querySelector('.artc-search__clear');
+    search.addEventListener('input', function () {
+      self.query = this.value;
+      clear.hidden = !this.value;
+      self.buildCarousel();
+    });
+    clear.addEventListener('click', function () {
+      search.value = ''; self.query = ''; clear.hidden = true;
+      self.buildCarousel();
+      search.focus();
+    });
+    wrap.querySelector('.artc-filter .artc-abc').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-letter]');
+      if (!b) return;
+      var L = b.getAttribute('data-letter');
+      self.letter = (self.letter === L) ? '' : L;    // повторное нажатие снимает
+      self.buildCarousel();
     });
 
     // переключатель разделов («Арт-салон» / «Галереи»)
@@ -393,8 +470,9 @@
     track.innerHTML = '';
     dots.innerHTML = '';
 
-    this.current().forEach(function (a, i) {
-      var gi = self.sections[self.section].list[i];
+    var picked = this.picked();
+    picked.forEach(function (gi, i) {
+      var a = self.artists[gi];
       var card = el('div', 'artc-card');
       card.innerHTML =
         '<button type="button" class="artc-card__inner" data-artist="' + gi + '">' +
@@ -407,12 +485,40 @@
         '</button>';
       track.appendChild(card);
 
-      var dot = el('button', 'artc-dot');
-      dot.type = 'button';
-      dot.setAttribute('aria-label', a.name);
-      dot.addEventListener('click', function () { self.goTo(i); });
-      dots.appendChild(dot);
+      // точки — только пока их можно охватить взглядом
+      if (picked.length <= 24) {
+        var dot = el('button', 'artc-dot');
+        dot.type = 'button';
+        dot.setAttribute('aria-label', a.name);
+        dot.addEventListener('click', function () { self.goTo(i); });
+        dots.appendChild(dot);
+      }
     });
+
+    this.buildAbc();
+    var total = (this.sections[this.section] || { list: [] }).list.length;
+    var count = this.wrap.querySelector('.artc-filter__count');
+    var filtered = this.query || this.letter;
+    count.textContent = filtered ? (picked.length + ' из ' + total) : (total + ' всего');
+    this.wrap.querySelector('.artc-empty').hidden = !!picked.length;
+    this.wrap.querySelector('.artc-carousel').hidden = !picked.length;
+    this.index = 0;
+    if (picked.length) this.goTo(0, true);
+  };
+
+  /* Указатель по первой букве фамилии */
+  Widget.prototype.buildAbc = function () {
+    // именно в каталоге: такой же указатель есть и в панели поиска зала
+    var box = this.wrap.querySelector('.artc-filter .artc-abc');
+    var self = this;
+    var html = '';
+    this.letters().forEach(function (L) {
+      html += '<button type="button" data-letter="' + L + '"' +
+        (self.letter === L ? ' class="is-active" aria-pressed="true"' : ' aria-pressed="false"') +
+        '>' + (L === '#' ? '…' : L) + '</button>';
+    });
+    box.innerHTML = html;
+    box.hidden = this.letters().length < 2;
   };
 
   Widget.prototype.switchSection = function (i) {
@@ -425,8 +531,11 @@
       btns[b].setAttribute('aria-selected', on);
     }
     this.index = 0;
+    this.query = '';
+    this.letter = '';
+    var input = this.wrap.querySelector('.artc-search__input');
+    if (input) { input.value = ''; this.wrap.querySelector('.artc-search__clear').hidden = true; }
     this.buildCarousel();
-    this.goTo(0, true);
     this.buildHall();          // коридор всегда показывает один раздел
   };
 
@@ -452,7 +561,7 @@
   };
 
   Widget.prototype.goTo = function (i, instant) {
-    var n = this.current().length;
+    var n = this.picked().length;
     if (!n) return;
     this.index = ((i % n) + n) % n; // зацикливание
     var track = this.wrap.querySelector('.artc-carousel__track');
@@ -585,6 +694,7 @@
               'aria-label="Поиск художника" autocomplete="off">' +
             '<button type="button" class="artc-find__close" aria-label="Закрыть список">&#10005;</button>' +
           '</div>' +
+          '<div class="artc-abc artc-find__abc" role="group" aria-label="Указатель по первой букве"></div>' +
           '<ul class="artc-find__list"></ul>' +
           '<p class="artc-find__empty" hidden>Никого не нашлось</p>' +
         '</div>' +
@@ -1342,6 +1452,7 @@
     h.stage.classList.toggle('is-finding', on);
     if (on) {
       this.stopTour();
+      this.findLetter = '';
       this.fillFind('');
       var input = box.querySelector('.artc-find__input');
       input.value = '';
@@ -1358,7 +1469,39 @@
     var html = '';
     var found = 0;
 
+    // указатель по первой букве — тем же составом, что и в каталоге
+    var abc = box.querySelector('.artc-find__abc');
+    var seen = {}, letters = [];
+    h.rooms.forEach(function (room) {
+      var L = firstLetter(room.name);
+      if (!seen[L]) { seen[L] = 1; letters.push(L); }
+    });
+    letters.sort(function (a, b) {
+      if (a === '#') return 1;
+      if (b === '#') return -1;
+      var ra = /[А-ЯЁ]/.test(a), rb = /[А-ЯЁ]/.test(b);
+      if (ra !== rb) return ra ? -1 : 1;
+      return a < b ? -1 : a > b ? 1 : 0;
+    });
+    abc.innerHTML = letters.map(function (L) {
+      return '<button type="button" data-letter="' + L + '"' +
+        (self.findLetter === L ? ' class="is-active" aria-pressed="true"' : ' aria-pressed="false"') +
+        '>' + (L === '#' ? '…' : L) + '</button>';
+    }).join('');
+    abc.hidden = letters.length < 2;
+    if (!abc.bound) {
+      abc.bound = true;
+      abc.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-letter]');
+        if (!b) return;
+        var L = b.getAttribute('data-letter');
+        self.findLetter = (self.findLetter === L) ? '' : L;
+        self.fillFind(box.querySelector('.artc-find__input').value);
+      });
+    }
+
     h.rooms.forEach(function (room, i) {
+      if (self.findLetter && firstLetter(room.name) !== self.findLetter) return;
       var hay = (room.name + ' ' + (room.city || '')).toLowerCase();
       if (q && hay.indexOf(q) === -1) return;
       found++;

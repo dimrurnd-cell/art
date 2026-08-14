@@ -1060,3 +1060,20 @@
   .artc-find__list button { padding: 7px 8px; }
   .artc-rooms__find { font-size: 13px; }
 }
+
+/* указатель по буквам внутри панели поиска зала */
+.artc-find__abc {
+  padding: 0 12px 10px;
+  gap: 4px;
+}
+.artc-find__abc button {
+  min-width: 28px; height: 28px;
+  border: none; border-radius: 8px;
+  background: rgba(255, 247, 228, .1);
+  color: #FBF3E0;
+  font: inherit; font-size: 13.5px;
+  cursor: pointer;
+}
+.artc-find__abc button:hover { background: rgba(255, 247, 228, .24); }
+.artc-find__abc button.is-active { background: var(--artc-coral); }
+.artc-find__abc[hidden] { display: none; }
