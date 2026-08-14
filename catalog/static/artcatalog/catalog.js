@@ -1840,7 +1840,13 @@
     var a = this.artists[this.artistIdx];
     var self = this;
 
-    var linksHTML = (a.links || []).map(function (l) {
+    // В каталоге публикуются только соцсети и сайты: личные телефоны и почта
+    // художников не показываются никогда. Данные готовят инструменты в tools/,
+    // которые их вычищают, но artists.json правят и руками — поэтому ссылки
+    // на mailto:/tel: (и прочие схемы) отсекаются и здесь, при выводе.
+    var linksHTML = (a.links || []).filter(function (l) {
+      return l && /^https?:\/\//i.test(String(l.url || ''));
+    }).map(function (l) {
       return '<li><a href="' + esc(l.url) + '" target="_blank" rel="noopener noreferrer">' + esc(l.label) + '</a></li>';
     }).join('');
 

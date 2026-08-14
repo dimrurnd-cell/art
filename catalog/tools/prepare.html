@@ -608,6 +608,34 @@
              skippedInstagram: skippedInstagram, leftover: leftover };
   }
 
+  /* Страховочный слой приватности. Выше контакты убираются по подписи
+     («Тел.:», «Почта:»), но подпись может оказаться незнакомой («Ватсап:»),
+     её может не быть вовсе, а номер — стоять посреди предложения. В каталоге
+     телефонов и почты быть не должно ни при каком виде исходника, поэтому
+     готовый текст ещё раз прочёсывается безусловно. */
+  var PRIVATE_RE = new RegExp(
+    '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}' +          // почта
+    '|(?:\\+?7|8)[\\s\\-(]*\\d{3}[\\s\\-)]*\\d{3}[\\s\\-]*\\d{2}[\\s\\-]*\\d{2}' +  // +7/8 (999) 123 45 67
+    '|(?:\\+?\\d[\\s\\-()]{0,3}){10,}',                          // просто 10+ цифр подряд
+    'g');
+
+  function scrubPrivate(text) {
+    // адреса соцсетей — не контакты, но внутри них бывают длинные числовые
+    // id (ok.ru/profile/152192133564), которые иначе примет за телефон:
+    // прячем ссылки на время проверки и возвращаем на место после
+    var urls = [], removed = 0;
+    var masked = String(text || '').replace(/https?:\/\/\S+|(?:[a-zа-яё0-9-]+\.)+[a-zа-яё]{2,}\/\S*/gi,
+      function (u) { urls.push(u); return '\u0001' + (urls.length - 1) + '\u0002'; });
+    masked = masked.replace(PRIVATE_RE, function () { removed++; return ' '; });
+    masked = masked.replace(/\u0001(\d+)\u0002/g, function (_, i) { return urls[+i]; });
+    masked = masked.split('\n').map(function (line) {
+      return line.replace(/[ \t]{2,}/g, ' ')
+        .replace(/\s+([,.;:!?])/g, '$1')
+        .replace(/^[\s,.;:\-—/]+/, '').replace(/[\s,;:\-—/]+$/, '');
+    }).join('\n').replace(/\n{3,}/g, '\n\n');
+    return { text: masked, removed: removed };
+  }
+
   // абзац похож на «шапку» записи (имя/город/контакты), а не на биографию:
   // короткий, либо в нём есть подпись поля или отметка города. Проверяем
   // весь абзац целиком, а не отдельные строки — иначе длинный рассказ,
@@ -659,10 +687,19 @@
       });
       if (kept.length) bioParts.push(kept.join('\n'));
     });
+    // последний рубеж: телефоны и почта не должны попасть в каталог, даже
+    // если стояли без подписи или под незнакомой («Ватсап:», «Контакты:»)
+    var safeBio = scrubPrivate(bioParts.join('\n\n'));
+    var safeName = scrubPrivate(name);
+    var safeCity = scrubPrivate(city);
+    var extra = safeBio.removed + safeName.removed + safeCity.removed;
+    if (extra) {
+      warnings.push('вырезан контакт без подписи (' + extra + ') — проверьте текст');
+    }
     return {
-      name: name, city: city, bio: bioParts.join('\n\n'), links: links,
+      name: safeName.text, city: safeCity.text, bio: safeBio.text, links: links,
       matchText: matchBits.join(' '),
-      warnings: warnings, privateRemoved: privateRemoved
+      warnings: warnings, privateRemoved: privateRemoved + extra
     };
   }
 
