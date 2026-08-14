@@ -62,7 +62,7 @@
     <div class="drop" id="drop">
       <b>Перетащите сюда папку с художниками</b>
       <span>или нажмите и выберите её. Внутри — папка на каждого художника
-        (фотографии работ и анкета <code>.xlsx</code>).<br>
+        (фотографии работ и текст о нём — <code>.docx</code> или <code>.xlsx</code>).<br>
         Если есть разделы «Арт-салон» и «Галереи» — перетащите папку, в которой лежат оба.</span>
     </div>
     <!-- поле выбора вынесено из зоны: внутри неё клик по нему всплывал бы
@@ -94,9 +94,11 @@
       <li>Откройте страницу с каталогом и обновите её через <code>Ctrl+Shift+R</code>.</li>
     </ol>
     <p style="color:var(--muted);font-size:14px;margin:12px 0 0">
-      Проверьте в <code>artists.json</code> названия работ (берутся из имён файлов),
-      тексты о художниках и порядок. Личные телефоны и почты из анкет не попадают
-      в каталог — публикуются только ссылки на соцсети.
+      Текст о художнике берётся из документа Word (<code>.docx</code>) или анкеты
+      Excel (<code>.xlsx</code>), лежащей в его папке — с подписями «Город», «О себе»
+      или просто сплошным текстом. Проверьте в <code>artists.json</code> названия
+      работ (берутся из имён файлов), тексты и порядок. Личные телефоны и почты
+      не попадают в каталог — публикуются только ссылки на соцсети.
     </p>
   </div>
 </div>
@@ -107,7 +109,7 @@
 
   var SIZES = [400, 800, 1600];
   var PHOTO = /\.(jpe?g|png|webp|bmp|gif|heic|heif|tiff?)$/i;
-  var FORM = /\.xlsx$/i;
+  var FORM = /\.(xlsx|docx)$/i;      // анкета Excel или текст Word
 
   var drop = document.getElementById('drop');
   var pick = document.getElementById('pick');
@@ -276,6 +278,7 @@
 
   function readForm(file) {
     if (!file || !window.DecompressionStream) return Promise.resolve(null);
+    if (/\.docx$/i.test(file.name)) return readDocx(file);
     return file.arrayBuffer().then(unzip).then(function (entries) {
       var shared = entries['xl/sharedStrings.xml'];
       var strings = [];
@@ -299,6 +302,50 @@
         });
       });
       return cells;
+    }).catch(function () { return null; });
+  }
+
+  /* Word-документ — это тот же zip: внутри word/document.xml с абзацами.
+     Возвращаем список абзацев — дальше они разбираются так же, как ячейки
+     анкеты. Ссылки в Word спрятаны в отдельном файле связей, поэтому
+     адреса гиперссылок добираем оттуда. */
+  function readDocx(file) {
+    return file.arrayBuffer().then(unzip).then(function (entries) {
+      var xml = entries['word/document.xml'];
+      if (!xml) return null;
+
+      // адреса гиперссылок лежат отдельно, в файле связей
+      var targets = {};
+      var rels = entries['word/_rels/document.xml.rels'];
+      if (rels) {
+        var rdoc = new DOMParser().parseFromString(utf8(rels), 'application/xml');
+        var rl = rdoc.getElementsByTagName('Relationship');
+        for (var r = 0; r < rl.length; r++) {
+          var t = rl[r].getAttribute('Target') || '';
+          if (/^https?:\/\//.test(t)) targets[rl[r].getAttribute('Id')] = t;
+        }
+      }
+
+      var doc = new DOMParser().parseFromString(utf8(xml), 'application/xml');
+      var lines = [], urls = [];
+      var paras = doc.getElementsByTagName('w:p');
+      if (!paras.length) paras = doc.getElementsByTagName('p');
+      for (var i = 0; i < paras.length; i++) {
+        var text = paras[i].textContent.replace(/\s+/g, ' ').trim();
+        var links = paras[i].getElementsByTagName('w:hyperlink');
+        var linkText = '';
+        for (var k = 0; k < links.length; k++) {
+          linkText += links[k].textContent.replace(/\s+/g, ' ').trim();
+          var id = links[k].getAttribute('r:id') || links[k].getAttribute('id');
+          if (targets[id] && urls.indexOf(targets[id]) === -1) urls.push(targets[id]);
+        }
+        // абзац целиком — ссылка: её подпись («моя страница») в текст не берём
+        if (text && text !== linkText) lines.push(text);
+      }
+      Object.keys(targets).forEach(function (id) {
+        if (urls.indexOf(targets[id]) === -1) urls.push(targets[id]);
+      });
+      return lines.concat(urls);
     }).catch(function () { return null; });
   }
 
@@ -349,8 +396,29 @@
       // вычищаем только сами контакты: подписи вроде «тел.» безобидны, а
       // выкусывать их по подстроке опасно — «оформителя» превращалось в «оформи я»
       return String(t || '').replace(priv, ' ').replace(/https?:\/\/\S+/g, ' ')
-        .replace(/\s{2,}/g, ' ').replace(/^[\s,.;:\-—/]+|[\s,.;:\-—/]+$/g, '');
+        .replace(/\s{2,}/g, ' ')
+        .replace(/^[\s,.;:\-—/]+/, '').replace(/[\s,;:\-—/]+$/, '');
     };
+    // Всё, что идёт после подписи и до следующей подписи. В Word рассказ о
+    // художнике — несколько абзацев, и брать только первый нельзя.
+    var LABELS = /^(фамилия|фио|имя|город|населённ|населенн|о себе|биограф|творческ|информация|контакт|телефон|почта|e-?mail|соцсет|ссылк|работы|названи)/i;
+    var tail = function (keys) {
+      for (var i = 0; i < cells.length; i++) {
+        var low = cells[i].toLowerCase();
+        var hit = keys.some(function (k) { return low.indexOf(k) !== -1; });
+        if (!hit) continue;
+        var parts = [];
+        var head = cells[i].indexOf(':') > -1 ? cells[i].split(':').slice(1).join(':').trim() : '';
+        if (head.length > 1) parts.push(head);
+        for (var j = i + 1; j < cells.length; j++) {
+          if (LABELS.test(cells[j]) || /^https?:\/\//.test(cells[j])) break;
+          parts.push(cells[j]);
+        }
+        if (parts.length) return parts.join(' ');
+      }
+      return '';
+    };
+
     var after = function (keys) {
       for (var i = 0; i < cells.length; i++) {
         var low = cells[i].toLowerCase();
@@ -366,7 +434,30 @@
     data.name = clean(after(['фамилия, имя', 'фио', 'фамилия имя']));
     data.city = clean(after(['город', 'населённый пункт', 'населенный пункт']).split(',')[0]
       .replace(/^\s*г\.?\s*/, ''));
-    data.bio = clean(after(['о себе', 'биограф', 'творческ', 'информация о']));
+    data.bio = clean(tail(['о себе', 'биограф', 'творческ', 'информация о']));
+
+    // Текст из Word обычно приходит без подписей — просто рассказ о художнике.
+    // Тогда за имя принимаем первую строку, если она похожа на ФИО, за город —
+    // строку с «г. …», а всё остальное целиком становится биографией.
+    var body = cells.filter(function (c) { return !/^https?:\/\//.test(c); });
+    if (!data.name && body.length) {
+      var head = clean(body[0]);
+      if (/^[А-ЯЁA-Z][^.!?]{2,60}$/.test(head) && head.split(/\s+/).length <= 5) {
+        data.name = head;
+        body = body.slice(1);
+      }
+    }
+    if (!data.city) {
+      for (var ci = 0; ci < body.length; ci++) {
+        var m = body[ci].match(/(?:^|\s)г\.\s*([А-ЯЁ][а-яё-]+(?:[ -][А-ЯЁа-яё-]+)*)/);
+        if (m) { data.city = clean(m[1]); break; }
+      }
+    }
+    if (!data.bio) {
+      data.bio = clean(body.filter(function (c) {
+        return c.length > 40 || /[.!?]/.test(c);       // подписи и заголовки не берём
+      }).join(' '));
+    }
     cells.forEach(function (c) {
       (c.match(/https?:\/\/\S+/g) || []).forEach(function (url) {
         url = url.replace(/[.,;)]+$/, '');
@@ -514,9 +605,14 @@
       log('· ' + (g.section ? g.section + ' / ' : '') + g.name + ' → img/' + slug + '/');
 
       // портрет — файл с фамилией в имени, иначе первый
-      var surname = g.name.split(/\s+/)[0].toLowerCase();
+      // Портрет — файл, в имени которого есть слово из имени художника
+      // («Тестов портрет.jpg») или прямое указание, что это автор.
+      var words = g.name.split(/\s+/).filter(function (w) { return w.length >= 4; })
+        .map(function (w) { return w.toLowerCase(); });
       var avatarFile = g.photos.filter(function (f) {
-        return f.name.toLowerCase().indexOf(surname) > -1;
+        var n = f.name.toLowerCase();
+        return words.some(function (w) { return n.indexOf(w) > -1; }) ||
+               /портрет|автор|о себе|photo|avatar/.test(n);
       })[0];
       if (!avatarFile) {
         avatarFile = g.photos[0];

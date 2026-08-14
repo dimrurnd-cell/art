@@ -3,7 +3,8 @@
 """Подготовка художников для каталога: из папок с исходниками — в готовую статику.
 
 Берёт папку, внутри которой лежат папки художников (как их присылают —
-фотографии работ плюс xlsx-анкета), и делает из каждой:
+фотографии работ плюс текст о художнике в .docx или анкета .xlsx),
+и делает из каждой:
 
   * img/<slug>/avatar.webp|.jpg               — фото автора, 400×400
   * img/<slug>/workN-400|800|1600.webp|.jpg   — работы в трёх размерах
@@ -23,7 +24,8 @@
 отдельных коридора с переключателем.
 
 Нужен Pillow:            pip install Pillow
-Для анкет .xlsx:         pip install openpyxl        (необязательно)
+Для анкет .xlsx:         pip install openpyxl        (необязательно;
+                         .docx читается сам, без дополнительных пакетов)
 Для фотографий .HEIC:    pip install pillow-heif     (необязательно)
 """
 
@@ -32,6 +34,7 @@ import json
 import os
 import re
 import sys
+import xml.etree.ElementTree as ET
 import zipfile
 
 try:
@@ -88,7 +91,7 @@ def public_text(value):
     # выкусывать их по подстроке опасно — «оформителя» станет «оформи я»
     text = PRIVATE.sub(" ", value or "")
     text = re.sub(r"\s{2,}", " ", text)
-    return text.strip(" ,.;:-—/")
+    return text.strip(" ,;:-—/").lstrip(".")
 
 
 # Слова, которые не отличают одну галерею от другой
@@ -128,26 +131,97 @@ def title_from_filename(path):
     return name[0].upper() + name[1:]
 
 
-def read_form(folder):
-    """Достаёт из xlsx-анкеты всё, что похоже на ФИО, город, биографию и соцсети."""
-    data = {"name": "", "city": "", "bio": "", "links": []}
-    if not XLSX:
-        return data
-    forms = [f for f in os.listdir(folder) if f.lower().endswith((".xlsx", ".xlsm"))]
-    if not forms:
-        return data
-    try:
-        wb = openpyxl.load_workbook(os.path.join(folder, forms[0]), data_only=True)
-    except Exception as e:                      # анкета битая — не повод падать
-        print("    ! анкету прочитать не вышло (%s)" % e)
-        return data
+W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+R = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 
+
+def read_docx(path):
+    """Абзацы документа Word. Сам .docx — это zip с xml, пакетов не нужно."""
+    lines, urls = [], []
+    with zipfile.ZipFile(path) as z:
+        names = z.namelist()
+        if "word/document.xml" not in names:
+            return []
+        targets = {}
+        if "word/_rels/document.xml.rels" in names:
+            rels = ET.fromstring(z.read("word/_rels/document.xml.rels"))
+            for rel in rels:
+                t = rel.get("Target", "")
+                if t.startswith("http"):
+                    targets[rel.get("Id")] = t
+        raw = z.read("word/document.xml")
+        try:
+            doc = ET.fromstring(raw)
+        except ET.ParseError:
+            # текст всё равно достанем: абзацы разделяем по <w:p>, куски — <w:t>
+            text = raw.decode("utf-8", "replace")
+            out = []
+            for chunk in re.split(r"<w:p[ >]", text)[1:]:
+                line = " ".join(re.findall(r"<w:t[^>]*>(.*?)</w:t>", chunk, re.S))
+                line = re.sub(r"<[^>]+>", "", line)
+                line = re.sub(r"\s+", " ", line).strip()
+                if line:
+                    out.append(line)
+            return out + [t for t in targets.values()]
+
+    def text_of(node):
+        return re.sub(r"\s+", " ", "".join(node.itertext())).strip()
+
+    for para in doc.iter(W + "p"):
+        text = text_of(para)
+        link_text = ""
+        for link in para.iter(W + "hyperlink"):
+            link_text += text_of(link)
+            url = targets.get(link.get(R + "id"))
+            if url and url not in urls:
+                urls.append(url)
+        # абзац целиком — ссылка: её подпись в текст не берём
+        if text and text != link_text:
+            lines.append(text)
+    for url in targets.values():
+        if url not in urls:
+            urls.append(url)
+    return lines + urls
+
+
+def read_xlsx(path):
+    """Ячейки анкеты Excel — по порядку, как они идут в листах."""
     cells = []
+    wb = openpyxl.load_workbook(path, data_only=True)
     for ws in wb.worksheets:
         for row in ws.iter_rows(values_only=True):
             for v in row:
                 if isinstance(v, str) and v.strip():
                     cells.append(v.strip())
+    return cells
+
+
+# Подписи в анкете: по ним видно, где кончается один ответ и начинается другой
+LABELS = re.compile(
+    r"^(фамилия|фио|имя|город|населённ|населенн|о себе|биограф|творческ|"
+    r"информация|контакт|телефон|почта|e-?mail|соцсет|ссылк|работы|названи)",
+    re.IGNORECASE,
+)
+
+
+def read_form(folder):
+    """Достаёт из текста о художнике ФИО, город, биографию и соцсети."""
+    data = {"name": "", "city": "", "bio": "", "links": []}
+    docs = [f for f in os.listdir(folder) if f.lower().endswith(".docx")
+            and not f.startswith("~$")]
+    forms = [f for f in os.listdir(folder) if f.lower().endswith((".xlsx", ".xlsm"))
+             and not f.startswith("~$")]
+    cells = []
+    try:
+        if docs:
+            cells = read_docx(os.path.join(folder, docs[0]))
+        elif forms and XLSX:
+            cells = read_xlsx(os.path.join(folder, forms[0]))
+    except Exception as e:                      # файл битый — не повод падать
+        print("    ! текст о художнике прочитать не вышло (%s)" % e)
+        return data
+    if not cells:
+        return data
 
     def after(*keys):
         for i, c in enumerate(cells):
@@ -161,12 +235,49 @@ def read_form(folder):
                     return cells[i + 1]
         return ""
 
+    def tail(*keys):
+        """Всё после подписи и до следующей: в Word рассказ — несколько абзацев."""
+        for i, c in enumerate(cells):
+            low = c.lower()
+            if not any(k in low for k in keys):
+                continue
+            parts = []
+            head = c.split(":", 1)[1].strip() if ":" in c else ""
+            if len(head) > 1:
+                parts.append(head)
+            for nxt in cells[i + 1:]:
+                if LABELS.match(nxt) or nxt.startswith("http"):
+                    break
+                parts.append(nxt)
+            if parts:
+                return " ".join(parts)
+        return ""
+
     data["name"] = public_text(after("фамилия, имя", "фио", "фамилия имя"))
     # в графе «город» анкеты часто дописывают телефон и почту — берём
     # только сам город и всё равно прогоняем через очистку
     city = after("город", "населённый пункт", "населенный пункт").split(",")[0]
     data["city"] = public_text(re.sub(r"^\s*г\.?\s*", "", city))
-    data["bio"] = public_text(after("о себе", "биограф", "творческ", "информация о"))
+    data["bio"] = public_text(tail("о себе", "биограф", "творческ", "информация о"))
+
+    # Текст из Word обычно приходит без подписей — просто рассказ о художнике.
+    # Тогда за имя принимаем первую строку, если она похожа на ФИО, за город —
+    # строку с «г. …», а всё остальное целиком становится биографией.
+    body = [c for c in cells if not c.startswith("http")]
+    if not data["name"] and body:
+        head = public_text(body[0])
+        if re.match(r"^[А-ЯЁA-Z][^.!?]{2,60}$", head) and len(head.split()) <= 5:
+            data["name"] = head
+            body = body[1:]
+    if not data["city"]:
+        for c in body:
+            m = re.search(r"(?:^|\s)г\.\s*([А-ЯЁ][а-яё-]+(?:[ -][А-ЯЁа-яё-]+)*)", c)
+            if m:
+                data["city"] = public_text(m.group(1))
+                break
+    if not data["bio"]:
+        data["bio"] = public_text(" ".join(
+            c for c in body if len(c) > 40 or re.search(r"[.!?]", c)))
     for c in cells:
         for url in re.findall(r"https?://\S+", c):
             url = url.rstrip(".,;)")
@@ -229,8 +340,10 @@ def process_artist(folder, out_root, order, taken, section=""):
         return None
 
     # Портрет автора — файл, в имени которого есть фамилия из названия папки
-    surname = name_from_folder.split()[0].lower()
-    portraits = [p for p in photos if surname in os.path.basename(p).lower()]
+    words = [w.lower() for w in name_from_folder.split() if len(w) >= 4]
+    portraits = [p for p in photos
+                 if any(w in os.path.basename(p).lower() for w in words)
+                 or re.search(r"портрет|автор|photo|avatar", os.path.basename(p), re.I)]
     avatar_src = portraits[0] if portraits else photos[0]
     works_src = [p for p in photos if p != avatar_src]
     if not portraits:
