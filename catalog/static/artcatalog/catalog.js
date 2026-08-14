@@ -566,7 +566,12 @@
           '</button>' +
           '<button type="button" class="artc-art__plaque" aria-label="Открыть карточку художника: ' +
               esc(a.name) + '">' +
-            '<span class="artc-art__ava">' + pictureHTML(self.url(a.avatar), a.name, true) + '</span>' +
+            '<span class="artc-art__ava">' +
+              // Фото автора грузится вместе с работой, а не сразу: в большом
+              // зале табличек сотни, и загодя это мегабайты впустую.
+              '<img src="' + BLANK + '" data-src="' + esc(self.url(a.avatar).replace(/\.webp$/, '.jpg')) + '" ' +
+                'data-webp="' + esc(self.url(a.avatar)) + '" alt="' + esc(a.name) + '">' +
+            '</span>' +
             '<span class="artc-art__meta">' +
               '<span class="artc-art__title">' + esc(w.title || 'Без названия') + '</span>' +
               '<span class="artc-art__author">' + esc(a.name) + '</span>' +
@@ -1113,10 +1118,13 @@
         art.style.visibility = near ? '' : 'hidden';
       }
       if (art.loaded || !near) continue;
-      var img = art.querySelector('img[data-webp]');
-      if (!img) { art.loaded = true; continue; }
-      img.onerror = function () { this.onerror = null; this.src = this.getAttribute('data-src'); };
-      img.src = img.getAttribute('data-webp') || img.getAttribute('data-src');
+      var imgs = art.querySelectorAll('img[data-webp]');   // полотно и фото автора
+      if (!imgs.length) { art.loaded = true; continue; }
+      for (var k = 0; k < imgs.length; k++) {
+        var img = imgs[k];
+        img.onerror = function () { this.onerror = null; this.src = this.getAttribute('data-src'); };
+        img.src = img.getAttribute('data-webp') || img.getAttribute('data-src');
+      }
       art.loaded = true;
     }
 
