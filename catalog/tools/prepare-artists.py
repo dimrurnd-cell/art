@@ -18,6 +18,10 @@
     python3 tools/prepare-artists.py "путь/к/папке/с/художниками"
     python3 tools/prepare-artists.py "путь" --out static/artcatalog --zip
 
+Если внутри лежат папки разделов («Арт-салон», «Галереи»), а художники —
+уже в них, скрипт разложит их по разделам сам: в зале это будут два
+отдельных коридора с переключателем.
+
 Нужен Pillow:            pip install Pillow
 Для анкет .xlsx:         pip install openpyxl        (необязательно)
 Для фотографий .HEIC:    pip install pillow-heif     (необязательно)
@@ -80,14 +84,19 @@ PRIVATE = re.compile(
 
 def public_text(value):
     """Убирает из текста анкеты личные контакты и лишние знаки."""
+    # вычищаем только сами контакты: подписи вроде «тел.» безобидны, а
+    # выкусывать их по подстроке опасно — «оформителя» станет «оформи я»
     text = PRIVATE.sub(" ", value or "")
-    text = re.sub(r"\s*(тел\.?|телефон|e-?mail|почта|вк|инст\w*)\s*[:\-]?\s*",
-                  " ", text, flags=re.IGNORECASE)
     text = re.sub(r"\s{2,}", " ", text)
     return text.strip(" ,.;:-—/")
 
 
-def slugify(name):
+# Слова, которые не отличают одну галерею от другой
+GENERIC = {"galereya", "galerei", "studiya", "masterskaya", "art", "salon",
+           "tsentr", "muzey", "obedinenie", "soyuz", "shkola", "dom"}
+
+
+def slugify(name, full=False):
     s = name.strip().lower()
     out = []
     for ch in s:
@@ -98,8 +107,14 @@ def slugify(name):
         elif ch in " -_":
             out.append("-")
     slug = re.sub(r"-+", "-", "".join(out)).strip("-")
-    # фамилии достаточно: имена папок вида «Вольвич Александра»
-    return slug.split("-")[0] or "artist"
+    if full:                                   # для разделов: «арт-салон» → art-salon
+        return slug or "section"
+    # Обычно достаточно фамилии («Вольвич Александра» → volvich), но у галерей
+    # первое слово у всех одинаковое — берём то, что их различает.
+    parts = [p for p in slug.split("-") if p]
+    while len(parts) > 1 and parts[0] in GENERIC:
+        parts.pop(0)
+    return parts[0] if parts else "artist"
 
 
 def title_from_filename(path):
@@ -187,7 +202,7 @@ def square(img, size=400):
     return ImageOps.fit(img, (size, size), Image.LANCZOS, centering=(0.5, 0.35))
 
 
-def process_artist(folder, out_root, order, taken):
+def process_artist(folder, out_root, order, taken, section=""):
     name_from_folder = os.path.basename(folder.rstrip("/\\"))
     slug = base = slugify(name_from_folder)
     # однофамильцы в списке — обычное дело; папки развести обязательно,
@@ -244,7 +259,7 @@ def process_artist(folder, out_root, order, taken):
     form = read_form(folder)
     if not form["name"]:
         print("    ! ФИО из анкеты не вытащил — впишите вручную")
-    return {
+    entry = {
         "id": slug,
         "name": form["name"] or name_from_folder,
         "city": form["city"] or "Ростов-на-Дону",
@@ -254,6 +269,9 @@ def process_artist(folder, out_root, order, taken):
         "works": works,
         "order": order,
     }
+    if section:
+        entry["section"] = section
+    return entry
 
 
 def main():
@@ -270,26 +288,53 @@ def main():
 
     out_root = os.path.abspath(args.out)
     src = os.path.abspath(args.src)
-    folders = sorted(
-        os.path.join(src, d) for d in os.listdir(src)
-        if os.path.isdir(os.path.join(src, d)) and not d.startswith(".")
-    )
-    if not folders:
-        sys.exit("В «%s» нет папок художников" % src)
+    def subdirs(path):
+        return sorted(
+            os.path.join(path, d) for d in os.listdir(path)
+            if os.path.isdir(os.path.join(path, d)) and not d.startswith(".")
+        )
 
-    print("Готовлю %d художников. Анкеты: %s. HEIC: %s.\n"
-          % (len(folders), "да" if XLSX else "нет (pip install openpyxl)",
+    def has_photos(path):
+        return any(os.path.splitext(f)[1].lower() in PHOTO_EXT for f in os.listdir(path))
+
+    # Внутри могут лежать либо сразу художники, либо разделы, а художники в них
+    top = subdirs(src)
+    if not top:
+        sys.exit("В «%s» нет папок художников" % src)
+    sections, folders = [], []
+    if any(not has_photos(d) and subdirs(d) for d in top):
+        for d in top:
+            title = os.path.basename(d)
+            sec_id = slugify(title, full=True)
+            inner = subdirs(d)
+            if not inner:
+                continue
+            sections.append({"id": sec_id, "title": title})
+            folders += [(f, sec_id) for f in inner]
+    else:
+        folders = [(f, "") for f in top]
+
+    print("Готовлю %d художников%s. Анкеты: %s. HEIC: %s.\n"
+          % (len(folders),
+             (" в %d разделах" % len(sections)) if sections else "",
+             "да" if XLSX else "нет (pip install openpyxl)",
              "да" if HEIC else "нет (pip install pillow-heif)"))
 
     artists, taken = [], set()
-    for i, folder in enumerate(folders):
-        entry = process_artist(folder, out_root, args.start_order + i, taken)
+    counters = {}
+    for folder, sec_id in folders:
+        counters[sec_id] = counters.get(sec_id, 0) + 1
+        entry = process_artist(folder, out_root, args.start_order + counters[sec_id] - 1,
+                               taken, sec_id)
         if entry:
             artists.append(entry)
 
+    out = {"artists": artists}
+    if sections:
+        out = {"sections": sections, "artists": artists}
     dest = os.path.join(out_root, "artists.generated.json")
     with open(dest, "w", encoding="utf-8") as f:
-        json.dump({"artists": artists}, f, ensure_ascii=False, indent=2)
+        json.dump(out, f, ensure_ascii=False, indent=2)
 
     total = sum(len(a["works"]) for a in artists)
     print("\nГотово: %d художников, %d работ." % (len(artists), total))

@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Подготовка художников — каталог «Арт-Ростов»</title>
+<style>
+  :root {
+    --bg: #EFE3C3; --card: #FBF5E4; --ink: #211D17; --muted: #6E6350;
+    --coral: #E4736F; --teal: #3E7D95; --green: #2E5B4C;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 18px 60px;
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  .sub { color: var(--muted); margin: 0 0 26px; }
+  .card {
+    background: var(--card); border-radius: 18px; padding: 22px;
+    box-shadow: 0 10px 30px rgba(46, 35, 15, .14); margin-bottom: 18px;
+  }
+  .drop {
+    border: 2px dashed rgba(33, 29, 23, .28); border-radius: 16px;
+    padding: 34px 20px; text-align: center; cursor: pointer;
+    transition: background .2s, border-color .2s;
+  }
+  .drop:hover, .drop.over { background: rgba(62, 125, 149, .1); border-color: var(--teal); }
+  .drop b { display: block; font-size: 18px; margin-bottom: 6px; }
+  .drop span { color: var(--muted); font-size: 14px; }
+  button {
+    font: inherit; border: none; border-radius: 999px; cursor: pointer;
+    padding: 13px 28px; background: var(--coral); color: #fff; font-weight: 600;
+  }
+  button:disabled { opacity: .5; cursor: default; }
+  button.ghost { background: rgba(33, 29, 23, .08); color: var(--ink); font-weight: 400; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+  .bar { height: 8px; border-radius: 999px; background: rgba(33, 29, 23, .1); overflow: hidden; margin: 14px 0 8px; }
+  .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #F0B450, var(--coral)); transition: width .2s; }
+  .log {
+    max-height: 320px; overflow: auto; font-size: 13.5px;
+    background: rgba(33, 29, 23, .05); border-radius: 12px; padding: 12px 14px; margin-top: 14px;
+    white-space: pre-wrap; font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+  .warn { color: #A2452B; }
+  .good { color: var(--green); }
+  ol { padding-left: 20px; } li { margin-bottom: 8px; }
+  code { background: rgba(33, 29, 23, .08); padding: 1px 6px; border-radius: 5px; font-size: 14px; }
+  .hide { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Подготовка художников для каталога</h1>
+  <p class="sub">Всё считается прямо в браузере: файлы никуда не отправляются.</p>
+
+  <div class="card">
+    <div class="drop" id="drop">
+      <b>Перетащите сюда папку с художниками</b>
+      <span>или нажмите и выберите её. Внутри — папка на каждого художника
+        (фотографии работ и анкета <code>.xlsx</code>).<br>
+        Если есть разделы «Арт-салон» и «Галереи» — перетащите папку, в которой лежат оба.</span>
+    </div>
+    <!-- поле выбора вынесено из зоны: внутри неё клик по нему всплывал бы
+         обратно в обработчик зоны и вызывал сам себя без конца -->
+    <input type="file" id="pick" webkitdirectory directory multiple class="hide">
+
+    <div class="row">
+      <label><input type="checkbox" id="chkJpeg" checked> делать запасные JPEG</label>
+    </div>
+
+    <div class="row">
+      <button id="go" disabled>Подготовить</button>
+      <button id="save" class="ghost hide">Скачать архив</button>
+      <button id="saveJson" class="ghost hide">Скачать artists.json</button>
+    </div>
+
+    <div class="bar hide" id="barBox"><i id="bar"></i></div>
+    <div class="log hide" id="log"></div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:18px;margin:0 0 10px">Что делать дальше</h2>
+    <ol>
+      <li>Скачайте архив и <code>artists.json</code>.</li>
+      <li>Архив залейте на сервер в <code>/home/develop/donexpo/static/artcatalog/</code>
+        и распакуйте там (в WinSCP терминал — <code>Ctrl+T</code>):
+        <code>unzip -o artcatalog-img.zip</code></li>
+      <li><code>artists.json</code> положите туда же, рядом с <code>catalog.js</code>.</li>
+      <li>Откройте страницу с каталогом и обновите её через <code>Ctrl+Shift+R</code>.</li>
+    </ol>
+    <p style="color:var(--muted);font-size:14px;margin:12px 0 0">
+      Проверьте в <code>artists.json</code> названия работ (берутся из имён файлов),
+      тексты о художниках и порядок. Личные телефоны и почты из анкет не попадают
+      в каталог — публикуются только ссылки на соцсети.
+    </p>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var SIZES = [400, 800, 1600];
+  var PHOTO = /\.(jpe?g|png|webp|bmp|gif|heic|heif|tiff?)$/i;
+  var FORM = /\.xlsx$/i;
+
+  var drop = document.getElementById('drop');
+  var pick = document.getElementById('pick');
+  var go = document.getElementById('go');
+  var save = document.getElementById('save');
+  var saveJson = document.getElementById('saveJson');
+  var logBox = document.getElementById('log');
+  var barBox = document.getElementById('barBox');
+  var bar = document.getElementById('bar');
+  var files = [];
+  var result = null;
+
+  function log(msg, cls) {
+    logBox.classList.remove('hide');
+    var line = document.createElement('div');
+    if (cls) line.className = cls;
+    line.textContent = msg;
+    logBox.appendChild(line);
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  /* ---------- выбор файлов ---------- */
+
+  drop.addEventListener('click', function () { pick.click(); });
+  pick.addEventListener('change', function () { take([].slice.call(pick.files)); });
+  ['dragenter', 'dragover'].forEach(function (t) {
+    drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.add('over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (t) {
+    drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.remove('over'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    e.preventDefault();
+    var items = e.dataTransfer.items;
+    if (!items || !items.length || !items[0].webkitGetAsEntry) {
+      take([].slice.call(e.dataTransfer.files));
+      return;
+    }
+    var entries = [];
+    for (var i = 0; i < items.length; i++) {
+      var en = items[i].webkitGetAsEntry();
+      if (en) entries.push(en);
+    }
+    if (!entries.length) { take([].slice.call(e.dataTransfer.files)); return; }
+    Promise.all(entries.map(walk)).then(function (lists) {
+      var flat = [].concat.apply([], lists);
+      // если папки прочитать не дали — берём хотя бы плоский список файлов
+      take(flat.length ? flat : [].slice.call(e.dataTransfer.files));
+    });
+  });
+
+  // рекурсивный обход перетащенных папок
+  function walk(entry, prefix) {
+    prefix = prefix || '';
+    if (entry.isFile) {
+      return new Promise(function (res) {
+        entry.file(function (f) {
+          f.relPath = prefix + entry.name;
+          res([f]);
+        }, function () { res([]); });
+      });
+    }
+    var reader = entry.createReader();
+    var all = [];
+    return new Promise(function (res) {
+      (function read() {
+        reader.readEntries(function (batch) {
+          if (!batch.length) {
+            Promise.all(all.map(function (en) {
+              return walk(en, prefix + entry.name + '/');
+            })).then(function (lists) { res([].concat.apply([], lists)); });
+            return;
+          }
+          all = all.concat([].slice.call(batch));
+          read();
+        }, function () { res([]); });
+      })();
+    });
+  }
+
+  function take(list) {
+    files = list.filter(function (f) {
+      var p = f.relPath || f.webkitRelativePath || f.name;
+      return PHOTO.test(p) || FORM.test(p);
+    }).map(function (f) {
+      f.relPath = f.relPath || f.webkitRelativePath || f.name;
+      return f;
+    });
+    logBox.innerHTML = '';
+    var groups = group(files);
+    log('Выбрано файлов: ' + files.length + ', художников: ' + groups.length);
+    groups.slice(0, 8).forEach(function (g) {
+      log('  · ' + (g.section ? g.section + ' / ' : '') + g.name + ' — фото: ' + g.photos.length);
+    });
+    if (groups.length > 8) log('  … и ещё ' + (groups.length - 8));
+    go.disabled = !groups.length;
+  }
+
+  /* ---------- раскладка по художникам и разделам ---------- */
+
+  function group(list) {
+    var map = {};
+    list.forEach(function (f) {
+      var parts = f.relPath.split('/').filter(Boolean);
+      if (parts.length < 2) return;                 // файл в корне — не художник
+      var artist = parts[parts.length - 2];
+      var section = parts.length > 2 ? parts[parts.length - 3] : '';
+      // верхняя папка, которую выбрал пользователь, разделом не считается,
+      // если художники лежат прямо в ней
+      var key = section + '/' + artist;
+      if (!map[key]) map[key] = { name: artist, section: section, photos: [], form: null };
+      if (FORM.test(f.name)) map[key].form = f;
+      else map[key].photos.push(f);
+    });
+    var arr = Object.keys(map).map(function (k) { return map[k]; })
+      .filter(function (g) { return g.photos.length; });
+    arr.forEach(function (g) {
+      g.photos.sort(function (a, b) { return a.name.localeCompare(b.name, 'ru'); });
+    });
+    // если у всех один и тот же «раздел» — значит это просто корневая папка
+    var secs = {};
+    arr.forEach(function (g) { secs[g.section] = 1; });
+    if (Object.keys(secs).length < 2) arr.forEach(function (g) { g.section = ''; });
+    return arr.sort(function (a, b) {
+      return (a.section + a.name).localeCompare(b.section + b.name, 'ru');
+    });
+  }
+
+  /* ---------- имена латиницей ---------- */
+
+  var TR = { 'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z','и':'i',
+    'й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u',
+    'ф':'f','х':'kh','ц':'ts','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e',
+    'ю':'yu','я':'ya' };
+  var GENERIC = ['galereya','galerei','studiya','masterskaya','art','salon','tsentr','muzey','shkola','dom'];
+
+  function slugify(name, full) {
+    var s = String(name).toLowerCase(), out = '';
+    for (var i = 0; i < s.length; i++) {
+      var ch = s[i];
+      if (TR[ch] !== undefined) out += TR[ch];
+      else if (/[a-z0-9]/.test(ch)) out += ch;
+      else if (/[\s\-_]/.test(ch)) out += '-';
+    }
+    out = out.replace(/-+/g, '-').replace(/^-|-$/g, '');
+    if (full) return out || 'section';
+    var parts = out.split('-').filter(Boolean);
+    while (parts.length > 1 && GENERIC.indexOf(parts[0]) !== -1) parts.shift();
+    return parts[0] || 'artist';
+  }
+
+  // \b в JS считает буквами только латиницу, поэтому границы слов задаём вручную —
+  // иначе «Ирис каталог 26» так и осталось бы с «каталогом»
+  var NOISE = /(^|[\s_\-])(каталог|katalog|копия|copy|img|image|photo|фото|final|итог|скан|scan)(?=$|[\s_\-])/gi;
+  var NOISE2 = /(^|[\s_\-])((19|20)\d{2}|IMG[_-]?\d+|DSC[_-]?\d+|\d{4,})(?=$|[\s_\-])|\d{4,}/gi;
+
+  function titleOf(filename) {
+    var n = filename.replace(/\.[^.]+$/, '').replace(/[_\-]+/g, ' ');
+    n = n.replace(NOISE, ' ').replace(NOISE2, ' ')
+         .replace(/\s\d{1,2}\s*$/, ' ').replace(/\s{2,}/g, ' ').trim();
+    if (!n || !/[^\d\s]/.test(n)) return '';
+    return n.charAt(0).toUpperCase() + n.slice(1);
+  }
+
+  /* ---------- чтение анкеты .xlsx (zip + xml, без библиотек) ---------- */
+
+  function readForm(file) {
+    if (!file || !window.DecompressionStream) return Promise.resolve(null);
+    return file.arrayBuffer().then(unzip).then(function (entries) {
+      var shared = entries['xl/sharedStrings.xml'];
+      var strings = [];
+      if (shared) {
+        var doc = new DOMParser().parseFromString(utf8(shared), 'application/xml');
+        [].forEach.call(doc.getElementsByTagName('si'), function (si) {
+          strings.push(si.textContent);
+        });
+      }
+      var cells = [];
+      Object.keys(entries).forEach(function (name) {
+        if (!/^xl\/worksheets\/sheet\d+\.xml$/.test(name)) return;
+        var d = new DOMParser().parseFromString(utf8(entries[name]), 'application/xml');
+        [].forEach.call(d.getElementsByTagName('c'), function (c) {
+          var v = c.getElementsByTagName('v')[0];
+          var t = c.getAttribute('t');
+          var text = t === 's' && v ? strings[+v.textContent]
+                   : t === 'inlineStr' ? c.textContent
+                   : v ? v.textContent : '';
+          if (text && text.trim()) cells.push(text.trim());
+        });
+      });
+      return cells;
+    }).catch(function () { return null; });
+  }
+
+  function utf8(bytes) { return new TextDecoder('utf-8').decode(bytes); }
+
+  // минимальный распаковщик zip: только то, что нужно для xlsx
+  function unzip(buf) {
+    var view = new DataView(buf), bytes = new Uint8Array(buf);
+    var out = {}, jobs = [];
+    // идём от конца к central directory
+    var eocd = -1;
+    for (var i = buf.byteLength - 22; i >= 0 && i > buf.byteLength - 65558; i--) {
+      if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) return Promise.reject(new Error('не zip'));
+    var count = view.getUint16(eocd + 10, true);
+    var off = view.getUint32(eocd + 16, true);
+    for (var n = 0; n < count; n++) {
+      var nameLen = view.getUint16(off + 28, true);
+      var extraLen = view.getUint16(off + 30, true);
+      var commentLen = view.getUint16(off + 32, true);
+      var method = view.getUint16(off + 10, true);
+      var size = view.getUint32(off + 20, true);
+      var local = view.getUint32(off + 42, true);
+      var name = utf8(bytes.subarray(off + 46, off + 46 + nameLen));
+      var lnLen = view.getUint16(local + 26, true);
+      var leLen = view.getUint16(local + 28, true);
+      var start = local + 30 + lnLen + leLen;
+      var data = bytes.subarray(start, start + size);
+      jobs.push(inflate(name, data, method, out));
+      off += 46 + nameLen + extraLen + commentLen;
+    }
+    return Promise.all(jobs).then(function () { return out; });
+  }
+
+  function inflate(name, data, method, out) {
+    if (method === 0) { out[name] = data; return Promise.resolve(); }
+    var ds = new DecompressionStream('deflate-raw');
+    return new Response(new Blob([data]).stream().pipeThrough(ds)).arrayBuffer()
+      .then(function (b) { out[name] = new Uint8Array(b); });
+  }
+
+  function fromForm(cells) {
+    var data = { name: '', city: '', bio: '', links: [] };
+    if (!cells) return data;
+    var priv = /[\w.+-]+@[\w-]+\.[\w.]+|(?:\+?\d[\s\-()]*){10,}/g;
+    var clean = function (t) {
+      // вычищаем только сами контакты: подписи вроде «тел.» безобидны, а
+      // выкусывать их по подстроке опасно — «оформителя» превращалось в «оформи я»
+      return String(t || '').replace(priv, ' ').replace(/https?:\/\/\S+/g, ' ')
+        .replace(/\s{2,}/g, ' ').replace(/^[\s,.;:\-—/]+|[\s,.;:\-—/]+$/g, '');
+    };
+    var after = function (keys) {
+      for (var i = 0; i < cells.length; i++) {
+        var low = cells[i].toLowerCase();
+        for (var k = 0; k < keys.length; k++) {
+          if (low.indexOf(keys[k]) === -1) continue;
+          var tail = cells[i].indexOf(':') > -1 ? cells[i].split(':').slice(1).join(':').trim() : '';
+          if (tail.length > 1) return tail;
+          if (i + 1 < cells.length) return cells[i + 1];
+        }
+      }
+      return '';
+    };
+    data.name = clean(after(['фамилия, имя', 'фио', 'фамилия имя']));
+    data.city = clean(after(['город', 'населённый пункт', 'населенный пункт']).split(',')[0]
+      .replace(/^\s*г\.?\s*/, ''));
+    data.bio = clean(after(['о себе', 'биограф', 'творческ', 'информация о']));
+    cells.forEach(function (c) {
+      (c.match(/https?:\/\/\S+/g) || []).forEach(function (url) {
+        url = url.replace(/[.,;)]+$/, '');
+        var label = url.indexOf('vk.com') > -1 ? 'ВКонтакте'
+                  : url.indexOf('t.me') > -1 ? 'Telegram'
+                  : url.indexOf('ok.ru') > -1 ? 'Одноклассники'
+                  : url.indexOf('youtu') > -1 ? 'YouTube' : 'Сайт';
+        if (!data.links.some(function (l) { return l.url === url; })) {
+          data.links.push({ label: label, url: url });
+        }
+      });
+    });
+    return data;
+  }
+
+  /* ---------- изображения ---------- */
+
+  function loadImage(file) {
+    if (window.createImageBitmap) {
+      return createImageBitmap(file).catch(function () { return viaTag(file); });
+    }
+    return viaTag(file);
+  }
+  function viaTag(file) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () { URL.revokeObjectURL(url); res(img); };
+      img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('не открылось')); };
+      img.src = url;
+    });
+  }
+
+  function resize(img, max, square) {
+    var w = img.width, h = img.height, cw, ch, sx = 0, sy = 0, sw = w, sh = h;
+    if (square) {
+      var side = Math.min(w, h);
+      sx = (w - side) / 2; sy = (h - side) * 0.35;   // лица обычно в верхней трети
+      sw = sh = side; cw = ch = max;
+    } else {
+      var k = Math.min(1, max / Math.max(w, h));
+      cw = Math.round(w * k); ch = Math.round(h * k);
+    }
+    var c = document.createElement('canvas');
+    c.width = cw; c.height = ch;
+    var ctx = c.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+    return c;
+  }
+
+  function toBlob(canvas, type, quality) {
+    return new Promise(function (res) { canvas.toBlob(res, type, quality); });
+  }
+
+  /* ---------- сборка zip (без сжатия: jpeg и webp уже сжаты) ---------- */
+
+  var CRC = (function () {
+    var t = new Uint32Array(256);
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+    return function (buf) {
+      var c = 0xFFFFFFFF;
+      for (var i = 0; i < buf.length; i++) c = t[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+      return (c ^ 0xFFFFFFFF) >>> 0;
+    };
+  })();
+
+  function makeZip(entries) {
+    var parts = [], central = [], offset = 0;
+    var enc = new TextEncoder();
+    entries.forEach(function (e) {
+      var nameBytes = enc.encode(e.name);
+      var crc = CRC(e.data);
+      var local = new Uint8Array(30 + nameBytes.length);
+      var dv = new DataView(local.buffer);
+      dv.setUint32(0, 0x04034b50, true);
+      dv.setUint16(4, 20, true);
+      dv.setUint16(6, 0x0800, true);           // имена в utf-8
+      dv.setUint16(8, 0, true);                // без сжатия
+      dv.setUint32(14, crc, true);
+      dv.setUint32(18, e.data.length, true);
+      dv.setUint32(22, e.data.length, true);
+      dv.setUint16(26, nameBytes.length, true);
+      local.set(nameBytes, 30);
+      parts.push(local, e.data);
+
+      var cen = new Uint8Array(46 + nameBytes.length);
+      var cv = new DataView(cen.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, e.data.length, true);
+      cv.setUint32(24, e.data.length, true);
+      cv.setUint16(28, nameBytes.length, true);
+      cv.setUint32(42, offset, true);
+      cen.set(nameBytes, 46);
+      central.push(cen);
+      offset += local.length + e.data.length;
+    });
+    var cenSize = central.reduce(function (s, c) { return s + c.length; }, 0);
+    var end = new Uint8Array(22);
+    var ev = new DataView(end.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(8, entries.length, true);
+    ev.setUint16(10, entries.length, true);
+    ev.setUint32(12, cenSize, true);
+    ev.setUint32(16, offset, true);
+    return new Blob(parts.concat(central, [end]), { type: 'application/zip' });
+  }
+
+  /* ---------- основной проход ---------- */
+
+  go.addEventListener('click', function () {
+    var groups = group(files);
+    go.disabled = true;
+    barBox.classList.remove('hide');
+    logBox.innerHTML = '';
+    var jpeg = document.getElementById('chkJpeg').checked;
+
+    var entries = [];              // файлы для zip
+    var artists = [];
+    var sections = [];
+    var seenSlug = {}, seenSec = {};
+    var totalPhotos = groups.reduce(function (s, g) { return s + g.photos.length; }, 0);
+    var done = 0, skipped = [];
+
+    (function next(gi) {
+      if (gi >= groups.length) return finish();
+      var g = groups[gi];
+      var slug = slugify(g.name), base = slug, n = 2;
+      while (seenSlug[slug]) slug = base + (n++);
+      seenSlug[slug] = 1;
+
+      var secId = '';
+      if (g.section) {
+        secId = slugify(g.section, true);
+        if (!seenSec[secId]) { seenSec[secId] = 1; sections.push({ id: secId, title: g.section }); }
+      }
+
+      log('· ' + (g.section ? g.section + ' / ' : '') + g.name + ' → img/' + slug + '/');
+
+      // портрет — файл с фамилией в имени, иначе первый
+      var surname = g.name.split(/\s+/)[0].toLowerCase();
+      var avatarFile = g.photos.filter(function (f) {
+        return f.name.toLowerCase().indexOf(surname) > -1;
+      })[0];
+      if (!avatarFile) {
+        avatarFile = g.photos[0];
+        log('    портрет не опознан, взял ' + avatarFile.name + ' — проверьте', 'warn');
+      }
+      var workFiles = g.photos.filter(function (f) { return f !== avatarFile; });
+      var works = [];
+
+      var step = function (list, i, isAvatar, after) {
+        if (i >= list.length) return after();
+        var file = list[i];
+        loadImage(file).then(function (img) {
+          var tasks = [];
+          if (isAvatar) {
+            tasks.push({ canvas: resize(img, 400, true), name: 'avatar' });
+          } else {
+            SIZES.forEach(function (size) {
+              tasks.push({ canvas: resize(img, size, false), name: 'work' + (i + 1) + '-' + size });
+            });
+          }
+          return tasks.reduce(function (chain, t) {
+            return chain.then(function () {
+              return toBlob(t.canvas, 'image/webp', 0.8).then(function (b) {
+                return b.arrayBuffer().then(function (ab) {
+                  entries.push({ name: 'img/' + slug + '/' + t.name + '.webp', data: new Uint8Array(ab) });
+                });
+              });
+            }).then(function () {
+              if (!jpeg) return;
+              return toBlob(t.canvas, 'image/jpeg', 0.82).then(function (b) {
+                return b.arrayBuffer().then(function (ab) {
+                  entries.push({ name: 'img/' + slug + '/' + t.name + '.jpg', data: new Uint8Array(ab) });
+                });
+              });
+            });
+          }, Promise.resolve()).then(function () {
+            if (!isAvatar) {
+              works.push({
+                title: titleOf(file.name),
+                thumb: 'img/' + slug + '/work' + (i + 1) + '-400.webp',
+                medium: 'img/' + slug + '/work' + (i + 1) + '-800.webp',
+                full: 'img/' + slug + '/work' + (i + 1) + '-1600.webp',
+                w: img.width, h: img.height
+              });
+            }
+          });
+        }).catch(function () {
+          skipped.push(file.relPath);
+          log('    ! не открылось: ' + file.name + (/heic|heif$/i.test(file.name)
+            ? ' (браузер не умеет HEIC — переведите в JPEG)' : ''), 'warn');
+        }).then(function () {
+          done++;
+          bar.style.width = (done / totalPhotos * 100).toFixed(1) + '%';
+          setTimeout(function () { step(list, i + 1, isAvatar, after); }, 0);
+        });
+      };
+
+      step([avatarFile], 0, true, function () {
+        step(workFiles, 0, false, function () {
+          readForm(g.form).then(function (cells) {
+            var form = fromForm(cells);
+            if (!form.name) log('    ФИО из анкеты не вытащил — впишите вручную', 'warn');
+            var entry = {
+              id: slug,
+              name: form.name || g.name,
+              city: form.city || 'Ростов-на-Дону',
+              bio: form.bio || '',
+              links: form.links,
+              avatar: 'img/' + slug + '/avatar.webp',
+              works: works,
+              order: artists.length + 1
+            };
+            if (secId) entry.section = secId;
+            artists.push(entry);
+            log('    работ: ' + works.length, 'good');
+            next(gi + 1);
+          });
+        });
+      });
+    })(0);
+
+    function finish() {
+      var data = sections.length ? { sections: sections, artists: artists } : { artists: artists };
+      result = {
+        zip: makeZip(entries),
+        json: new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      };
+      var mb = (result.zip.size / 1048576).toFixed(1);
+      log('');
+      log('Готово: ' + artists.length + ' художников, ' +
+          artists.reduce(function (s, a) { return s + a.works.length; }, 0) + ' работ, архив ' + mb + ' МБ', 'good');
+      if (skipped.length) log('Не удалось открыть файлов: ' + skipped.length + ' — см. выше', 'warn');
+      save.classList.remove('hide');
+      saveJson.classList.remove('hide');
+      go.disabled = false;
+    }
+  });
+
+  function download(blob, name) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  save.addEventListener('click', function () { if (result) download(result.zip, 'artcatalog-img.zip'); });
+  saveJson.addEventListener('click', function () { if (result) download(result.json, 'artists.json'); });
+})();
+</script>
+</body>
+</html>

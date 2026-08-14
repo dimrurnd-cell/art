@@ -1405,3 +1405,147 @@
 @media (prefers-reduced-motion: reduce) {
   .artc-tour, .artc-gyro { transition: none; }
 }
+
+/* ============================================================
+   Разделы выставки и поиск художника в длинном зале
+   ============================================================ */
+
+/* переключатель «Арт-салон / Галереи» — под переключателем режима просмотра */
+.artc-sections {
+  position: relative; z-index: 3;
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  margin: -8px auto 22px;
+}
+.artc-sections__btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid rgba(33, 29, 23, .16);
+  background: rgba(255, 255, 255, .5);
+  color: var(--artc-ink);
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background .25s ease, border-color .25s ease, transform .25s ease;
+}
+.artc-sections__btn i {
+  font-style: normal; font-size: 12px;
+  padding: 1px 8px; border-radius: 999px;
+  background: rgba(33, 29, 23, .1);
+}
+.artc-sections__btn:hover { background: #fff; transform: translateY(-1px); }
+.artc-sections__btn.is-active {
+  background: var(--artc-teal); border-color: var(--artc-teal); color: #fff;
+}
+.artc-sections__btn.is-active i { background: rgba(255, 255, 255, .26); }
+.artc-sections__btn:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+
+/* кнопка со списком художников вместо ряда фамилий */
+.artc-rooms--find { justify-content: center; }
+.artc-rooms__find {
+  pointer-events: auto;
+  display: inline-flex; align-items: center; gap: 9px;
+  max-width: 100%;
+  border: 1px solid rgba(255, 247, 228, .3);
+  background: rgba(255, 247, 228, .12);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #FBF3E0;
+  border-radius: 999px;
+  padding: 7px 8px 7px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background .25s ease, transform .25s ease;
+}
+.artc-rooms__find svg { width: 15px; height: 15px; flex: 0 0 15px; }
+.artc-rooms__find span {
+  max-width: 46vw;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.artc-rooms__find i {
+  font-style: normal; font-size: 12px;
+  padding: 2px 9px; border-radius: 999px;
+  background: rgba(255, 247, 228, .18);
+}
+.artc-rooms__find:hover { background: rgba(255, 247, 228, .24); transform: translateY(-2px); }
+.artc-rooms__find:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+
+/* сама панель поиска — внутри сцены, поэтому работает и в полноэкранном режиме */
+.artc-find {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  width: min(460px, calc(100% - 28px));
+  max-height: min(78%, 560px);
+  display: flex; flex-direction: column;
+  background: rgba(24, 18, 8, .92);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, .55);
+  overflow: hidden;
+  animation: artc-find-in .25s ease-out;
+}
+@keyframes artc-find-in {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(.97); }
+}
+.artc-find[hidden] { display: none; }
+.artc-find__head { display: flex; gap: 8px; padding: 12px 12px 10px; }
+.artc-find__input {
+  flex: 1 1 auto; min-width: 0;
+  border: 1px solid rgba(255, 247, 228, .26);
+  background: rgba(255, 247, 228, .1);
+  color: #FBF3E0;
+  border-radius: 12px;
+  padding: 11px 14px;
+  font: inherit; font-size: 15px;
+}
+.artc-find__input::placeholder { color: rgba(251, 243, 224, .55); }
+.artc-find__input:focus { outline: 2px solid var(--artc-teal); outline-offset: 1px; }
+.artc-find__close {
+  flex: 0 0 42px; width: 42px; height: 42px;
+  border: none; border-radius: 50%;
+  background: rgba(255, 247, 228, .12);
+  color: #FBF3E0; font-size: 16px; cursor: pointer;
+}
+.artc-find__close:hover { background: var(--artc-coral); }
+.artc-find__list {
+  list-style: none; margin: 0; padding: 0 8px 10px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.artc-find__list button {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%;
+  border: none; background: none;
+  color: #FBF3E0;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font: inherit;
+  cursor: pointer;
+}
+.artc-find__list button:hover,
+.artc-find__list button:focus-visible {
+  background: rgba(255, 247, 228, .14);
+  outline: none;
+}
+.artc-find__ava {
+  flex: 0 0 40px; width: 40px; height: 40px;
+  border-radius: 50%; overflow: hidden;
+  background: rgba(255, 247, 228, .12);
+}
+.artc-find__ava img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.artc-find__meta { min-width: 0; }
+.artc-find__meta b { display: block; font-weight: 600; font-size: 15px; }
+.artc-find__meta span { display: block; font-size: 12px; color: rgba(251, 243, 224, .6); }
+.artc-find__empty { margin: 0; padding: 6px 22px 20px; color: rgba(251, 243, 224, .6); font-size: 14px; }
+
+@media (max-width: 600px) {
+  .artc-sections { margin: -4px auto 18px; gap: 6px; }
+  .artc-sections__btn { padding: 7px 14px; font-size: 13.5px; }
+  .artc-find { width: calc(100% - 16px); max-height: 84%; }
+  .artc-find__list button { padding: 7px 8px; }
+  .artc-rooms__find { font-size: 13px; }
+}

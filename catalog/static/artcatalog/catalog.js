@@ -79,6 +79,11 @@
       '<rect x="6" y="5" width="4.4" height="14" rx="1.2"/>' +
       '<rect x="13.6" y="5" width="4.4" height="14" rx="1.2"/></svg>';
 
+  var ICON_FIND =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>';
+
   var ICON_FS =
     '<svg class="artc-fs__enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -89,9 +94,13 @@
 
   var BLANK = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="4" height="3"%3E%3C/svg%3E';
 
-  // короткое имя для кнопок навигации: фамилия либо два первых слова
+  // Короткое имя для кнопок навигации: фамилия либо два первых слова.
+  // У галерей отличается не первое слово, а то, что в кавычках
+  // («Галерея «Меценат»» → «Меценат»), иначе все кнопки выйдут одинаковыми.
   function shortName(name) {
-    var parts = String(name).replace(/[«»"]/g, '').split(/\s+/);
+    var full = String(name);
+    var quoted = full.match(/[«"']([^»"']{2,})[»"']/);
+    var parts = (quoted ? quoted[1] : full).replace(/[«»"]/g, '').split(/\s+/);
     var s = parts[0] || '';
     if (s.length < 5 && parts[1]) s += ' ' + parts[1];
     return s.length > 16 ? s.slice(0, 15) + '…' : s;
@@ -173,9 +182,7 @@
     // оттуда: так каталог работает и на сервере без CORS-заголовков —
     // обычный скрипт браузер грузит с любого домена без разрешения.
     if (window.ARTCATALOG_DATA) {
-      this.artists = (window.ARTCATALOG_DATA.artists || []).slice().sort(function (a, b) {
-        return (a.order || 0) - (b.order || 0);
-      });
+      this.setData(window.ARTCATALOG_DATA);
       this.render();
       return;
     }
@@ -186,9 +193,7 @@
         return r.json();
       })
       .then(function (data) {
-        self.artists = (data.artists || []).slice().sort(function (a, b) {
-          return (a.order || 0) - (b.order || 0);
-        });
+        self.setData(data);
         self.render();
       })
       .catch(function (err) {
@@ -199,6 +204,54 @@
   };
 
   /* ---------------- разметка ---------------- */
+
+  /* Данные каталога. Художники могут быть разложены по разделам («Арт-салон»,
+     «Галереи») — тогда зал строится по одному разделу за раз: 123 художника в
+     одном коридоре — это два километра пути, ходить по такому невозможно.
+     Раздел указывается полем section у художника; названия и порядок разделов
+     можно задать списком sections. Старый формат (просто список artists)
+     продолжает работать — получится один безымянный раздел. */
+  Widget.prototype.setData = function (data) {
+    var list = (data.artists || []).slice().sort(function (a, b) {
+      return (a.order || 0) - (b.order || 0);
+    });
+    this.artists = list;
+
+    var titles = {}, order = [];
+    (data.sections || []).forEach(function (sec) {
+      if (!sec || !sec.id) return;
+      titles[sec.id] = sec.title || sec.id;
+      order.push(sec.id);
+    });
+    list.forEach(function (a) {
+      var id = a.section || '';
+      if (order.indexOf(id) === -1) order.push(id);
+    });
+
+    var byId = {};
+    this.sections = order.map(function (id) {
+      var sec = { id: id, title: titles[id] || id, list: [] };
+      byId[id] = sec;
+      return sec;
+    });
+    list.forEach(function (a, i) {
+      var sec = byId[a.section || ''] || this.sections[0];
+      a.secIndex = this.sections.indexOf(sec);
+      a.secPos = sec.list.length;
+      sec.list.push(i);
+    }, this);
+
+    // разделы без художников ни к чему
+    this.sections = this.sections.filter(function (sec) { return sec.list.length; });
+    this.section = 0;
+  };
+
+  /* Художники текущего раздела — их видит и зал, и карусель */
+  Widget.prototype.current = function () {
+    var sec = this.sections[this.section];
+    var self = this;
+    return (sec ? sec.list : []).map(function (i) { return self.artists[i]; });
+  };
 
   Widget.prototype.render = function () {
     var r = this.root;
@@ -224,6 +277,16 @@
         '<button type="button" class="artc-views__btn" data-view="grid" role="tab" aria-selected="false">' +
           ICON_GRID + 'Каталог</button>' +
       '</div>' +
+      (this.sections.length > 1
+        ? '<div class="artc-sections" role="tablist" aria-label="Раздел выставки">' +
+            this.sections.map(function (sec, i) {
+              return '<button type="button" class="artc-sections__btn' +
+                (i === 0 ? ' is-active' : '') + '" data-section="' + i + '" role="tab" ' +
+                'aria-selected="' + (i === 0) + '">' + esc(sec.title) +
+                '<i>' + sec.list.length + '</i></button>';
+            }).join('') +
+          '</div>'
+        : '') +
       '<div class="artc-view artc-view--hall is-active"></div>' +
       '<div class="artc-view artc-view--grid">' +
         '<div class="artc-carousel" role="region" aria-roledescription="карусель" aria-label="Художники выставки" tabindex="0">' +
@@ -236,30 +299,10 @@
     r.appendChild(wrap);
     this.wrap = wrap;
 
-    var track = wrap.querySelector('.artc-carousel__track');
-    var dots = wrap.querySelector('.artc-dots');
     var self = this;
+    this.buildCarousel();
 
-    this.artists.forEach(function (a, i) {
-      var card = el('div', 'artc-card');
-      card.innerHTML =
-        '<button type="button" class="artc-card__inner" data-artist="' + i + '">' +
-          '<span class="artc-card__cover">' + pictureHTML(self.url(a.works[0].thumb), 'Работа: ' + (a.works[0].title || a.name), i >= 3) + '</span>' +
-          '<span class="artc-card__meta">' +
-            '<span class="artc-card__ava">' + pictureHTML(self.url(a.avatar), a.name, i >= 3) + '</span>' +
-            '<span><span class="artc-card__name">' + esc(a.name) + '</span>' +
-            '<span class="artc-card__city">' + esc(a.city) + '</span></span>' +
-          '</span>' +
-        '</button>';
-      track.appendChild(card);
-
-      var dot = el('button', 'artc-dot');
-      dot.type = 'button';
-      dot.setAttribute('aria-label', a.name);
-      dot.addEventListener('click', function () { self.goTo(i); });
-      dots.appendChild(dot);
-    });
-
+    var track = wrap.querySelector('.artc-carousel__track');
     track.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-artist]');
       if (btn) self.openArtist(+btn.getAttribute('data-artist'));
@@ -281,6 +324,15 @@
       var b = e.target.closest('[data-view]');
       if (b) self.switchView(b.getAttribute('data-view'));
     });
+
+    // переключатель разделов («Арт-салон» / «Галереи»)
+    var secBox = wrap.querySelector('.artc-sections');
+    if (secBox) {
+      secBox.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-section]');
+        if (b) self.switchSection(+b.getAttribute('data-section'));
+      });
+    }
 
     var resizeT = null;
     window.addEventListener('resize', function () {
@@ -331,6 +383,53 @@
     this.buildHall(true);
   };
 
+  /* Карточки карусели — по текущему разделу. data-artist хранит сквозной
+     номер художника: по нему открывается карточка, и он не зависит от
+     того, какой раздел показан сейчас. */
+  Widget.prototype.buildCarousel = function () {
+    var self = this;
+    var track = this.wrap.querySelector('.artc-carousel__track');
+    var dots = this.wrap.querySelector('.artc-dots');
+    track.innerHTML = '';
+    dots.innerHTML = '';
+
+    this.current().forEach(function (a, i) {
+      var gi = self.sections[self.section].list[i];
+      var card = el('div', 'artc-card');
+      card.innerHTML =
+        '<button type="button" class="artc-card__inner" data-artist="' + gi + '">' +
+          '<span class="artc-card__cover">' + pictureHTML(self.url(a.works[0].thumb), 'Работа: ' + (a.works[0].title || a.name), i >= 3) + '</span>' +
+          '<span class="artc-card__meta">' +
+            '<span class="artc-card__ava">' + pictureHTML(self.url(a.avatar), a.name, i >= 3) + '</span>' +
+            '<span><span class="artc-card__name">' + esc(a.name) + '</span>' +
+            '<span class="artc-card__city">' + esc(a.city) + '</span></span>' +
+          '</span>' +
+        '</button>';
+      track.appendChild(card);
+
+      var dot = el('button', 'artc-dot');
+      dot.type = 'button';
+      dot.setAttribute('aria-label', a.name);
+      dot.addEventListener('click', function () { self.goTo(i); });
+      dots.appendChild(dot);
+    });
+  };
+
+  Widget.prototype.switchSection = function (i) {
+    if (i === this.section || !this.sections[i]) return;
+    this.section = i;
+    var btns = this.wrap.querySelectorAll('[data-section]');
+    for (var b = 0; b < btns.length; b++) {
+      var on = +btns[b].getAttribute('data-section') === i;
+      btns[b].classList.toggle('is-active', on);
+      btns[b].setAttribute('aria-selected', on);
+    }
+    this.index = 0;
+    this.buildCarousel();
+    this.goTo(0, true);
+    this.buildHall();          // коридор всегда показывает один раздел
+  };
+
   Widget.prototype.switchView = function (view) {
     var wrap = this.wrap;
     var btns = wrap.querySelectorAll('.artc-views__btn');
@@ -353,7 +452,7 @@
   };
 
   Widget.prototype.goTo = function (i, instant) {
-    var n = this.artists.length;
+    var n = this.current().length;
     if (!n) return;
     this.index = ((i % n) + n) % n; // зацикливание
     var track = this.wrap.querySelector('.artc-carousel__track');
@@ -391,6 +490,7 @@
 
   var WALL_TURN = 62;   // разворот полотна относительно стены, градусы
   var VIEW_DIST = 620;  // с какого расстояния камера смотрит на комнату
+  var CHIPS_MAX = 10;    // столько фамилий ещё помещается в ряд
   var FOCUS_TURN = 0.3;  // доля разворота полотна, на которую доворачивается камера
   var FOCUS_DIST = 0.44; // дистанция подхода к полотну в долях шага
   var FOCUS_ZOOM = 1.35; // наезд камеры, когда зритель встал перед работой
@@ -479,6 +579,15 @@
         '<p class="artc-hint">' + ICON_WALK + '<span>' + (window.innerWidth < 700
           ? 'Проведите пальцем влево или вправо, чтобы пройти по залу'
           : 'Идите по залу: перетаскивайте, крутите колесо или жмите <b>W</b>/<b>S</b>') + '</span></p>' +
+        '<div class="artc-find" hidden>' +
+          '<div class="artc-find__head">' +
+            '<input type="search" class="artc-find__input" placeholder="Найти художника" ' +
+              'aria-label="Поиск художника" autocomplete="off">' +
+            '<button type="button" class="artc-find__close" aria-label="Закрыть список">&#10005;</button>' +
+          '</div>' +
+          '<ul class="artc-find__list"></ul>' +
+          '<p class="artc-find__empty" hidden>Никого не нашлось</p>' +
+        '</div>' +
         '<div class="artc-hud">' +
           '<div class="artc-hud__row">' +
             '<button type="button" class="artc-walk artc-walk--back" aria-label="Шаг назад">' + ARROW_DOWN + '</button>' +
@@ -522,11 +631,14 @@
     var world = host.querySelector('.artc-world');
     var self = this;
     var arts = [];
+    var pending = [];          // полотна, ещё не вставленные в DOM
     var rooms = [];
     var decor = [];
     var z = -START;
 
-    this.artists.forEach(function (a, ai) {
+    var shown = this.current();
+    var globals = this.sections.length ? this.sections[this.section].list : [];
+    shown.forEach(function (a, ai) {
       var slots = Math.ceil(a.works.length / 2);
       var roomStart = z;
       var roomEntry = z + Math.round(GAP * 0.42);
@@ -551,7 +663,7 @@
         b.style.setProperty('--aw', aw + 'px');
         b.style.setProperty('--d', (200 + wi * 90 + ai * 40) + 'ms');
         b.style.transform = 'translate(-50%, -50%) translate3d(' + x + 'px, -20px, ' + artZ + 'px) rotateY(' + turn + 'deg)';
-        b.setAttribute('data-artist', ai);
+        b.setAttribute('data-artist', globals[ai]);
         b.setAttribute('data-work', wi);
         b.setAttribute('data-z', artZ);
         b.setAttribute('data-x', x);
@@ -577,7 +689,10 @@
               '<span class="artc-art__author">' + esc(a.name) + '</span>' +
             '</span>' +
           '</button>';
-        world.appendChild(b);
+        // Создание элементов — самое дорогое при сотне художников. В DOM
+        // кладём порциями: сперва ближние ко входу, остальные в следующих
+        // кадрах. Дальние всё равно скрыты отсечением по дистанции.
+        pending.push(b);
         arts.push(b);
 
       });
@@ -595,11 +710,12 @@
         (-HH + 104) + 'px, ' + roomEntry + 'px) rotateY(-90deg)';
       world.appendChild(sign2);
 
-      rooms.push({ name: a.name, z: -roomStart - viewDist });
+      rooms.push({ name: a.name, city: a.city, avatar: self.url(a.avatar),
+                   z: -roomStart - viewDist });
       z = roomStart - (slots - 1) * STEP - GAP;
 
       // между залами — по одному арт-объекту у стены, стороны чередуются
-      if (ai < self.artists.length - 1) {
+      if (ai < shown.length - 1) {
         var obj = OBJECTS[ai % OBJECTS.length];
         var side = ai % 2 === 0 ? 1 : -1;
         var ox = (HW - 132) * side;
@@ -648,21 +764,35 @@
       dust.innerHTML = html;
     }
 
-    // кнопки перехода по «залам» художников
+    // Переход к художнику. Пока их немного — ряд кнопок с фамилиями. Когда
+    // счёт идёт на сотню, такой ряд занимает пол-экрана и им невозможно
+    // пользоваться, поэтому вместо него одна кнопка со списком и поиском.
     var roomsBox = host.querySelector('.artc-rooms');
-    rooms.forEach(function (room, i) {
-      var b = el('button', 'artc-rooms__btn');
-      b.type = 'button';
-      b.textContent = shortName(room.name);
-      b.title = room.name;
-      b.addEventListener('click', function () { self.walkTo(room.z); });
-      roomsBox.appendChild(b);
-    });
+    var manyRooms = rooms.length > CHIPS_MAX;
+    if (manyRooms) {
+      var findBtn = el('button', 'artc-rooms__find');
+      findBtn.type = 'button';
+      findBtn.innerHTML = ICON_FIND + '<span>Художники</span><i>' + rooms.length + '</i>';
+      findBtn.addEventListener('click', function (e) { e.stopPropagation(); self.toggleFind(true); });
+      roomsBox.appendChild(findBtn);
+      roomsBox.classList.add('artc-rooms--find');
+    } else {
+      rooms.forEach(function (room, i) {
+        var b = el('button', 'artc-rooms__btn');
+        b.type = 'button';
+        b.textContent = shortName(room.name);
+        b.title = room.name;
+        b.addEventListener('click', function () { self.walkTo(room.z); });
+        roomsBox.appendChild(b);
+      });
+    }
 
     this.hall = {
       host: host, stage: stage, world: world,
       camera: host.querySelector('.artc-camera'),
-      arts: arts, decor: decor, rooms: rooms, roomBtns: roomsBox.children,
+      arts: arts, decor: decor, rooms: rooms,
+      roomBtns: manyRooms ? [] : roomsBox.children,
+      findBtn: manyRooms ? roomsBox.querySelector('.artc-rooms__find') : null,
       padF: host.querySelector('.artc-pad--fwd'), padB: host.querySelector('.artc-pad--back'),
       hitF: host.querySelector('.artc-hit--fwd'), hitB: host.querySelector('.artc-hit--back'),
       fsBtn: host.querySelector('.artc-fs'),
@@ -687,8 +817,31 @@
       this.hall.targetZ = startAt;
     }
 
+    this.flushArts(pending, 60);
     this.bindHall();
     this.hallLoop();
+  };
+
+  /* Вставка полотен в сцену порциями, чтобы первый кадр не ждал всех */
+  Widget.prototype.flushArts = function (pending, first) {
+    var self = this;
+    var target = this.hall ? this.hall.world : null;
+    if (!target) return;
+    var i = 0;
+    var put = function (n) {
+      var frag = document.createDocumentFragment();
+      for (var k = 0; k < n && i < pending.length; k++, i++) frag.appendChild(pending[i]);
+      target.appendChild(frag);
+    };
+    put(first);
+    if (i >= pending.length) return;
+    var step = function () {
+      if (!self.hall || self.hall.world !== target) return;   // зал уже пересобрали
+      put(40);
+      if (i < pending.length) requestAnimationFrame(step);
+      else self.hall.frameKey = '';                           // перерисовать с новыми
+    };
+    requestAnimationFrame(step);
   };
 
   Widget.prototype.bindHall = function () {
@@ -727,6 +880,16 @@
 
     stage.querySelector('.artc-tour')
       .addEventListener('click', function (e) { e.stopPropagation(); self.toggleTour(); });
+
+    var find = stage.querySelector('.artc-find');
+    find.querySelector('.artc-find__close')
+      .addEventListener('click', function (e) { e.stopPropagation(); self.toggleFind(false); });
+    find.querySelector('.artc-find__input').addEventListener('input', function () {
+      self.fillFind(this.value);
+    });
+    find.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { e.stopPropagation(); self.toggleFind(false); }
+    });
 
 
     // экскурсию прерывает любое вмешательство посетителя
@@ -771,7 +934,7 @@
     // перетаскивание / свайп: тянем «на себя» — идём вперёд
     var drag = null;
     stage.addEventListener('pointerdown', function (e) {
-      if (fromModal(e) || e.target.closest('.artc-hud, .artc-rooms, .artc-pad, .artc-fs, .artc-end__ticket')) return;
+      if (fromModal(e) || e.target.closest('.artc-hud, .artc-rooms, .artc-find, .artc-pad, .artc-fs, .artc-end__ticket')) return;
       drag = {
         x: e.clientX, y: e.clientY, z: h.targetZ, moved: 0, id: e.pointerId,
         art: e.target.closest('.artc-art'),
@@ -1167,6 +1330,57 @@
     }
   };
 
+  /* ------------- поиск художника в длинном зале ------------- */
+
+  Widget.prototype.toggleFind = function (on) {
+    var h = this.hall;
+    if (!h) return;
+    var box = h.stage.querySelector('.artc-find');
+    if (!box) return;
+    if (on === undefined) on = box.hidden;
+    box.hidden = !on;
+    h.stage.classList.toggle('is-finding', on);
+    if (on) {
+      this.stopTour();
+      this.fillFind('');
+      var input = box.querySelector('.artc-find__input');
+      input.value = '';
+      try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
+    }
+  };
+
+  Widget.prototype.fillFind = function (query) {
+    var h = this.hall;
+    var box = h.stage.querySelector('.artc-find');
+    var list = box.querySelector('.artc-find__list');
+    var self = this;
+    var q = (query || '').trim().toLowerCase();
+    var html = '';
+    var found = 0;
+
+    h.rooms.forEach(function (room, i) {
+      var hay = (room.name + ' ' + (room.city || '')).toLowerCase();
+      if (q && hay.indexOf(q) === -1) return;
+      found++;
+      html += '<li><button type="button" data-room="' + i + '">' +
+        '<span class="artc-find__ava"><img src="' + esc(room.avatar) + '" alt="" loading="lazy"></span>' +
+        '<span class="artc-find__meta"><b>' + esc(room.name) + '</b>' +
+        (room.city ? '<span>' + esc(room.city) + '</span>' : '') + '</span></button></li>';
+    });
+    list.innerHTML = html;
+    box.querySelector('.artc-find__empty').hidden = !!found;
+
+    if (!list.bound) {
+      list.bound = true;
+      list.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-room]');
+        if (!b) return;
+        self.walkTo(self.hall.rooms[+b.getAttribute('data-room')].z);
+        self.toggleFind(false);
+      });
+    }
+  };
+
   /* ---------------- автоэкскурсия ---------------- */
 
   /* Камера сама обходит зал: подходит к каждой работе, задерживается
@@ -1475,6 +1689,11 @@
   Widget.prototype.openArtist = function (i) {
     var n = this.artists.length;
     this.artistIdx = ((i % n) + n) % n;
+    // если художник из другого раздела (переход из зала) — переключим раздел
+    var target = this.artists[this.artistIdx];
+    if (target && target.secIndex !== this.section && this.sections.length > 1) {
+      this.switchSection(target.secIndex);
+    }
     var a = this.artists[this.artistIdx];
     var self = this;
 
@@ -1534,7 +1753,13 @@
     });
     dlg.querySelector('.artc-buy').addEventListener('click', function () { self.openForm(a, null); });
     dlg.querySelectorAll('[data-nav]').forEach(function (b) {
-      b.addEventListener('click', function () { self.openArtist(self.artistIdx + (+b.getAttribute('data-nav'))); });
+      b.addEventListener('click', function () {
+        // сосед берётся внутри раздела: «Галереи» и «Арт-салон» не смешиваем
+        var cur = self.artists[self.artistIdx];
+        var sec = self.sections[cur.secIndex] || self.sections[0];
+        var pos = (cur.secPos + (+b.getAttribute('data-nav')) + sec.list.length) % sec.list.length;
+        self.openArtist(sec.list[pos]);
+      });
     });
 
     this.openModal(dlg);
