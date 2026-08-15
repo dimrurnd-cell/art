@@ -116,10 +116,28 @@
       <button id="go" disabled>Подготовить</button>
       <button id="save" class="ghost hide">Скачать архив</button>
       <button id="saveJson" class="ghost hide">Скачать artists.json</button>
+      <button id="saveJs" class="ghost hide">Скачать artists.js</button>
     </div>
 
     <div class="bar hide" id="barBox"><i id="bar"></i></div>
     <div class="log hide" id="log"></div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:18px;margin:0 0 10px">Уже есть artists.json? Сделать из него artists.js</h2>
+    <p style="color:var(--muted);font-size:14px;margin:0 0 12px">
+      Нужен, если статику раздаёт сервер без заголовков CORS — тогда в блоке
+      вставки подключён <code>artists.js</code>, и <code>artists.json</code>
+      виджет не читает вовсе. Пересчитывать картинки заново не надо: выберите
+      готовый <code>artists.json</code> и получите <code>artists.js</code>.
+    </p>
+    <div class="row" style="margin-top:0">
+      <label class="ghost" style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:999px;cursor:pointer">
+        Выбрать artists.json
+        <input type="file" id="pickJson" accept=".json" class="hide">
+      </label>
+      <span id="jsonInfo" style="color:var(--muted);font-size:13.5px">файл не выбран</span>
+    </div>
   </div>
 
   <div class="card">
@@ -170,6 +188,7 @@
   var go = document.getElementById('go');
   var save = document.getElementById('save');
   var saveJson = document.getElementById('saveJson');
+  var saveJs = document.getElementById('saveJs');
   var logBox = document.getElementById('log');
   var barBox = document.getElementById('barBox');
   var bar = document.getElementById('bar');
@@ -1642,6 +1661,7 @@
       }
       save.classList.remove('hide');
       saveJson.classList.remove('hide');
+      saveJs.classList.remove('hide');
       go.disabled = false;
     }
   });
@@ -1656,6 +1676,42 @@
   }
   save.addEventListener('click', function () { if (result) download(result.zip, 'artcatalog-img.zip'); });
   saveJson.addEventListener('click', function () { if (result) download(result.json, 'artists.json'); });
+
+  /* artists.js — те же данные, что в artists.json, но обёрнутые в присваивание.
+     Нужен, когда статику раздаёт сервер без заголовков CORS: обычный скрипт
+     браузер грузит с любого домена без разрешения, а запрос за json — нет.
+     Виджет, найдя window.ARTCATALOG_DATA, за artists.json уже не идёт. */
+  function makeArtistsJs(jsonText) {
+    return new Blob([
+      '/* Собрано в tools/prepare.html.\n' +
+      '   Данные художников для сервера без CORS-заголовков.\n' +
+      '   Это тот же artists.json, только присвоенный переменной. */\n' +
+      'window.ARTCATALOG_DATA = ', jsonText, ';\n'
+    ], { type: 'application/javascript' });
+  }
+
+  var pickJson = document.getElementById('pickJson');
+  var jsonInfo = document.getElementById('jsonInfo');
+  pickJson.addEventListener('change', function () {
+    var f = pickJson.files[0];
+    if (!f) return;
+    f.text().then(function (txt) {
+      var data = JSON.parse(txt);              // заодно проверяем, что файл целый
+      var n = (data.artists || []).length;
+      if (!n) throw new Error('в файле нет художников');
+      download(makeArtistsJs(txt), 'artists.js');
+      jsonInfo.textContent = 'готово: artists.js, художников ' + n;
+    }).catch(function (e) {
+      jsonInfo.textContent = 'не удалось: ' + (e && e.message || e);
+    });
+  });
+
+  saveJs.addEventListener('click', function () {
+    if (!result) return;
+    result.json.text().then(function (txt) {
+      download(makeArtistsJs(txt), 'artists.js');
+    });
+  });
 })();
 </script>
 </body>
