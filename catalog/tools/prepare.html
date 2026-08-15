@@ -99,6 +99,13 @@
         </label>
         <span id="mapInfo" style="color:var(--muted);font-size:13.5px">файл не выбран</span>
       </div>
+      <div class="row" style="margin-top:0">
+        <label class="ghost" style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:999px;cursor:pointer">
+          Выбрать: catalog-images.zip
+          <input type="file" id="pickPack" accept=".zip" class="hide">
+        </label>
+        <span id="packInfo" style="color:var(--muted);font-size:13.5px">файл не выбран</span>
+      </div>
     </div>
 
     <div class="row">
@@ -194,13 +201,47 @@
       var m = JSON.parse(txt);
       if (!m || !m.pages || !m.pages.length) throw new Error('в файле нет записей');
       catalogMap = m;
-      catalogMap.pages.forEach(function (p) { p._words = sigWords(p.title); });
+      catalogMap.pages.forEach(function (p) {
+        // участник мог прислать папку под другой фамилией — учитываем и её
+        p._words = sigWords([p.title].concat(p.alt || []).join(' '));
+        p._names = [p.title].concat(p.alt || []);
+      });
       mapInfo.textContent = f.name + ' — записей: ' + m.pages.length;
     }).catch(function (e) {
       catalogMap = null;
       mapInfo.textContent = 'не удалось прочитать: ' + (e && e.message || e);
     });
   });
+
+  var pickPack = document.getElementById('pickPack');
+  var packInfo = document.getElementById('packInfo');
+  var catalogPack = null;            // картинки из печатного каталога, на замену
+
+  pickPack.addEventListener('change', function () {
+    var f = pickPack.files[0];
+    if (!f) return;
+    packInfo.textContent = 'читаю…';
+    f.arrayBuffer().then(unzip).then(function (entries) {
+      var n = Object.keys(entries).length;
+      if (!n) throw new Error('архив пуст');
+      catalogPack = entries;
+      packInfo.textContent = f.name + ' — картинок: ' + n;
+    }).catch(function (e) {
+      catalogPack = null;
+      packInfo.textContent = 'не удалось прочитать: ' + (e && e.message || e);
+    });
+  });
+
+  // изображение из каталога как обычный файл — дальше оно идёт общим путём
+  function packFile(page, name) {
+    if (!catalogPack) return null;
+    var data = catalogPack['p' + page + '/' + name + '.jpg'];
+    if (!data) return null;
+    var f = new File([data], name + '.jpg', { type: 'image/jpeg' });
+    f.relPath = 'catalog/p' + page + '/' + name + '.jpg';
+    f.fromCatalog = true;
+    return f;
+  }
 
   function loadRoster(file, kind, infoEl) {
     if (!file) return;
@@ -1004,8 +1045,17 @@
 
   var MIN_NAME_SCORE = 0.45;   // ниже — совпало только общее имя, это не пара
   var MATCH_MAX = 14;      // дальше этого — уже не тот же снимок
-  var SIG_MAX = 900;       // порог по цветовой подписи
-  var SIG_GAP = 60;        // и требуемый отрыв от следующего кандидата
+  /* Пороги подобраны замером по каталогу: у своего снимка после кадрирования
+     расстояние 62 в медиане и 274 в худшем случае, у чужого с той же страницы
+     — 559 уже на пятом процентиле. При 900 чужие проскакивали пачками. */
+  var SIG_MAX = 300;       // порог по цветовой подписи (для портрета)
+  var SIG_GAP = 120;       // и требуемый отрыв от следующего кандидата
+  /* Для работ порог строже. Портрет среди снимков работ стоит особняком, а
+     работы одного автора часто написаны в общей палитре: у одной художницы
+     две разные работы разошлись всего на 200 — по цвету их не различить.
+     Ошибиться здесь дороже: непризнанная работа просто подставится из
+     каталога, а ложное совпадение испортит порядок. */
+  var SIG_MAX_WORK = 120;
   var MATCH_GAP = 4;       // насколько ближе должен быть победитель, чтобы ему верить
 
   function hashPhotos(photos, onProgress) {
@@ -1033,7 +1083,7 @@
     groups.forEach(function (g, gi) {
       var fw = sigWords(g.name);
       catalogMap.pages.forEach(function (p, k) {
-        if (surnameConflict(g.name, p.title)) return;
+        if ((p._names || [p.title]).every(function (n) { return surnameConflict(g.name, n); })) return;
         var s = matchScore(fw, p._words);
         if (s >= MIN_NAME_SCORE) pairs.push({ gi: gi, k: k, score: s });
       });
@@ -1077,9 +1127,22 @@
     return { rec: byName, votes: 0 };
   }
 
+  // Страница каталога описывает одного участника. Если её уже забрала другая
+  // папка — эта не в счёт: так «Кочура» не задваивает «АРТ КАЛИНУ», работы
+  // которой лежат у неё же в папке.
+  var claimedPages = {};
+
+  function claimPage(rec, votes) {
+    if (!rec) return false;
+    var prev = claimedPages[rec.page];
+    if (prev && prev.votes >= votes) return false;
+    claimedPages[rec.page] = { votes: votes };
+    return true;
+  }
+
   // Ближайший файл к изображению каталога. Сначала по отпечатку — он точен;
   // если снимок кадрировали и отпечаток не сошёлся, пробуем по цвету.
-  function closest(hashes, item) {
+  function closest(hashes, item, sigMax) {
     var byHash = hashes.filter(function (h) { return h.hash; })
       .map(function (h) { return { h: h, d: hamming(h.hash, item.hash) }; })
       .sort(function (a, b) { return a.d - b.d; });
@@ -1091,7 +1154,7 @@
     var bySig = hashes.filter(function (h) { return h.sig; })
       .map(function (h) { return { h: h, d: sigDist(h.sig, item.sig) }; })
       .sort(function (a, b) { return a.d - b.d; });
-    if (!bySig.length || bySig[0].d > SIG_MAX) return null;
+    if (!bySig.length || bySig[0].d > (sigMax || SIG_MAX)) return null;
     if (bySig.length > 1 && bySig[1].d - bySig[0].d < SIG_GAP) return null;
     return bySig[0].h;
   }
@@ -1338,6 +1401,7 @@
     var seenSlug = {}, seenSec = {};
     var totalPhotos = groups.reduce(function (s, g) { return s + g.photos.length; }, 0);
     var done = 0, skipped = [], skippedArtists = [];
+    claimedPages = {};
 
     (function next(gi) {
       if (gi >= groups.length) return finish();
@@ -1379,23 +1443,31 @@
               log('    в печатном каталоге не найден — пропускаю', 'warn');
               return { skip: true };
             }
+            if (!claimPage(rec, found.votes)) {
+              log('    страницу каталога «' + rec.title + '» уже занял другой участник — пропускаю', 'warn');
+              return { skip: true };
+            }
             var hit = closest(hashes, rec.portrait);
             if (!hit) {
               log('    «' + rec.title + '»: портрет каталога среди файлов не найден', 'warn');
-              return null;
             }
             if (rec.sure === false) {
               log('    «' + rec.title + '»: на странице каталога портрета нет — проверьте', 'warn');
             }
             // порядок работ тоже берём из каталога
-            var order = {};
+            var order = {}, missing = [];
             rec.works.forEach(function (w, i) {
-              var c = closest(hashes, w);
-              if (c && c.file !== hit.file && order[c.file.relPath] === undefined) {
+              var c = closest(hashes, w, SIG_MAX_WORK);
+              // совпало с файлом портрета — значит на самом деле не совпало
+              if (c && hit && c.file === hit.file) c = null;
+              if (c && order[c.file.relPath] === undefined) {
                 order[c.file.relPath] = i;
+              } else if (!c) {
+                missing.push(i);          // такой работы среди файлов нет
               }
             });
-            return { file: hit.file, order: order, title: rec.title, rec: rec };
+            return { file: hit && hit.file, order: order, missing: missing,
+                     title: rec.title, rec: rec };
           });
 
       decide.then(function (found) {
@@ -1405,15 +1477,46 @@
           bar.style.width = (done / totalPhotos * 100).toFixed(1) + '%';
           return next(gi + 1);
         }
-        if (found) {
-          g.catalogRec = found.rec || null;
+        if (found) g.catalogRec = found.rec || null;
+        if (found && found.file) {
           avatarFile = found.file;
           log('    портрет по каталогу: ' + avatarFile.name);
         } else {
-          avatarFile = byName || g.photos[0];
-          if (!byName) log('    портрет не опознан, взял ' + avatarFile.name + ' — проверьте', 'warn');
+          var rec = found && found.rec;
+          var fromPack = rec && catalogPack ? packFile(rec.page, 'portrait') : null;
+          if (fromPack) {
+            avatarFile = fromPack;
+            log('    портрет взят из каталога (своего файла нет)', 'warn');
+          } else {
+            avatarFile = byName || g.photos[0];
+            if (!byName) log('    портрет не опознан, взял ' + avatarFile.name + ' — проверьте', 'warn');
+          }
         }
         workFiles = g.photos.filter(function (f) { return f !== avatarFile; });
+
+        /* Работа есть в печатном каталоге, а файла у участника нет — прислал не
+           всё или снимок лежит в .tif, который браузер не открывает. Подставляем
+           картинку из каталога, но только на недостачу: если файлов столько же,
+           сколько работ на странице, значит они просто не опознались, и
+           подстановка сделала бы дубли. */
+        if (found && found.rec && catalogPack && found.missing && found.missing.length) {
+          var usable = workFiles.length;
+          var deficit = found.rec.works.length - usable;
+          if (deficit > 0) {
+            var added = 0;
+            found.missing.forEach(function (i) {
+              if (added >= deficit) return;
+              var f = packFile(found.rec.page, 'work' + (i + 1));
+              if (f) {
+                if (found.order) found.order[f.relPath] = i;
+                workFiles.push(f);
+                added++;
+              }
+            });
+            if (added) log('    работ добавлено из каталога: ' + added, 'warn');
+          }
+        }
+
         if (found && found.order) {
           var ord = found.order;
           workFiles.sort(function (a, b) {
