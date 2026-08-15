@@ -767,11 +767,73 @@
     return Object.keys(set);
   }
 
+  /* Вес слова: чем в большем числе записей оно встречается, тем меньше значит.
+     Иначе «Водолазова Елена» цепляется к «Истоминой Елене», а «Копорушкина
+     Мария» — к «Мурашкиной Марии»: общее имя весит столько же, сколько
+     фамилия. Частоты считаем по самому списку, вручную перечислять имена не
+     нужно — редкая фамилия получит вес сама. */
+  var wordWeight = {};
+
+  function learnWeights(lists) {
+    var df = {}, total = 0;
+    lists.forEach(function (words) {
+      total++;
+      var uniq = {};
+      words.forEach(function (w) { uniq[w] = 1; });
+      Object.keys(uniq).forEach(function (w) { df[w] = (df[w] || 0) + 1; });
+    });
+    wordWeight = {};
+    Object.keys(df).forEach(function (w) {
+      // слово из одной записи весит 1, из половины записей — почти ноль
+      wordWeight[w] = Math.log((total + 1) / (df[w] + 0.5)) / Math.log(total + 1);
+    });
+  }
+
+  function weightOf(w) {
+    var v = wordWeight[w];
+    return v === undefined ? 1 : Math.max(0.05, v);
+  }
+
+  // «копорушкина» и «копорушкин» — одна фамилия в женской и мужской форме,
+  // «ковалёва» и «ковалев» тоже. Сравниваем по началу слова.
+  function stemEq(a, b) {
+    if (a === b) return true;
+    var n = Math.min(a.length, b.length);
+    if (n < 5) return false;
+    return a.slice(0, n) === b.slice(0, n);
+  }
+
   function matchScore(a, b) {
-    var set = {}; b.forEach(function (w) { set[w] = 1; });
-    var n = 0;
-    a.forEach(function (w) { if (set[w]) n++; });
-    return n;
+    var s = 0;
+    a.forEach(function (w) {
+      for (var i = 0; i < b.length; i++) {
+        if (stemEq(w, b[i])) { s += weightOf(w); return; }
+      }
+    });
+    return s;
+  }
+
+  // Название вида «Фамилия Имя Отчество» — в отличие от «Студия «Колорит»».
+  // У двух таких названий обязана совпасть фамилия: одного общего имени мало,
+  // иначе «Тюрина Людмила» прилипает к «Брыль Людмиле».
+  function personalName(s) {
+    var t = String(s || '').trim();
+    if (/[«»"']/.test(t)) return null;
+    var first = t.split(/[\s,\-]+/)[0] || '';
+    first = first.toLowerCase().replace(/ё/g, 'е');
+    if (first.length < 4) return null;
+    if (GENERIC.indexOf(translitWord(first)) !== -1) return null;
+    return first;
+  }
+
+  function surnameConflict(nameA, nameB) {
+    var a = personalName(nameA), b = personalName(nameB);
+    if (!a || !b) return false;
+    // фамилия могла попасть не в начало: «Минаева (Шестернина) Анастасия»
+    var wa = sigWords(nameA), wb = sigWords(nameB);
+    var hit = wa.some(function (w) { return stemEq(w, b); }) ||
+              wb.some(function (w) { return stemEq(w, a); });
+    return !hit;
   }
 
   // жадное сопоставление: сортируем все пары «папка—запись» по числу общих
@@ -780,6 +842,9 @@
     var index = [];
     roster.artists.forEach(function (r) { index.push({ entry: r, words: sigWords(r.matchText), source: 'artists' }); });
     roster.galleries.forEach(function (r) { index.push({ entry: r, words: sigWords(r.matchText), source: 'galleries' }); });
+    learnWeights(index.map(function (ri) { return ri.words; })
+      .concat(groups.map(function (g) { return sigWords(g.name); }))
+      .concat(catalogMap ? catalogMap.pages.map(function (p) { return p._words; }) : []));
 
     var pairs = [];
     groups.forEach(function (g, gi) {
@@ -788,8 +853,10 @@
       var fw = sigWords(g.name);
       index.forEach(function (ri, k) {
         if (allow && ri.source !== allow) return;
+        if (surnameConflict(g.name, ri.entry.name)) return;   // разные фамилии
         var score = matchScore(fw, ri.words);
-        if (score > 0) pairs.push({ gi: gi, k: k, score: score });
+        // одного общего имени мало: нужен хотя бы один заметный общий признак
+        if (score >= MIN_NAME_SCORE) pairs.push({ gi: gi, k: k, score: score });
       });
     });
     pairs.sort(function (a, b) { return b.score - a.score; });
@@ -935,7 +1002,10 @@
      есть достоверный ответ на вопрос «где автор, а где его работа». Здесь мы
      считаем отпечатки файлов папки и сверяем их с отпечатками из карты. */
 
+  var MIN_NAME_SCORE = 0.45;   // ниже — совпало только общее имя, это не пара
   var MATCH_MAX = 14;      // дальше этого — уже не тот же снимок
+  var SIG_MAX = 900;       // порог по цветовой подписи
+  var SIG_GAP = 60;        // и требуемый отрыв от следующего кандидата
   var MATCH_GAP = 4;       // насколько ближе должен быть победитель, чтобы ему верить
 
   function hashPhotos(photos, onProgress) {
@@ -943,25 +1013,45 @@
     return photos.reduce(function (chain, f) {
       return chain.then(function () {
         return loadImage(f).then(function (img) {
-          out.push({ file: f, hash: hashOf(img) });
+          out.push({ file: f, hash: hashOf(img), sig: sigOf(img) });
           if (img.close) img.close();
         }).catch(function () {
-          out.push({ file: f, hash: null });
+          out.push({ file: f, hash: null, sig: null });
         }).then(function () { if (onProgress) onProgress(); });
       });
     }, Promise.resolve()).then(function () { return out; });
+  }
+
+  /* Записи каталога раздаём папкам сообща, а не каждой поодиночке: иначе
+     двум разным Ковалёвым (одна в Арт-салоне, другая в «АзовАрте») достанется
+     одна и та же страница. Сортируем пары по весу совпадения и разбираем от
+     лучшей к худшей, помечая занятые с обеих сторон. */
+  function assignCatalog(groups) {
+    learnWeights(catalogMap.pages.map(function (p) { return p._words; })
+      .concat(groups.map(function (g) { return sigWords(g.name); })));
+    var pairs = [];
+    groups.forEach(function (g, gi) {
+      var fw = sigWords(g.name);
+      catalogMap.pages.forEach(function (p, k) {
+        if (surnameConflict(g.name, p.title)) return;
+        var s = matchScore(fw, p._words);
+        if (s >= MIN_NAME_SCORE) pairs.push({ gi: gi, k: k, score: s });
+      });
+    });
+    pairs.sort(function (a, b) { return b.score - a.score; });
+    var usedG = {}, usedP = {};
+    pairs.forEach(function (p) {
+      if (usedG[p.gi] || usedP[p.k]) return;
+      usedG[p.gi] = usedP[p.k] = 1;
+      groups[p.gi].catalogByName = catalogMap.pages[p.k];
+    });
   }
 
   // какая запись каталога описывает эту папку: сперва по имени, а если имя
   // не сошлось — по тому, сколько снимков папки нашлось на странице
   function findRecord(group, hashes) {
     if (!catalogMap) return null;
-    var fw = sigWords(group.name);
-    var byName = null, bestName = 0;
-    catalogMap.pages.forEach(function (p) {
-      var s = matchScore(fw, p._words);
-      if (s > bestName) { bestName = s; byName = p; }
-    });
+    var byName = group.catalogByName || null;
     var live = hashes.filter(function (h) { return h.hash; });
     function votes(p) {
       var imgs = [p.portrait].concat(p.works);
@@ -987,14 +1077,23 @@
     return { rec: byName, votes: 0 };
   }
 
-  // ближайший файл к заданному отпечатку; null, если уверенности нет
-  function closest(hashes, hash) {
-    var list = hashes.filter(function (h) { return h.hash; })
-      .map(function (h) { return { h: h, d: hamming(h.hash, hash) }; })
+  // Ближайший файл к изображению каталога. Сначала по отпечатку — он точен;
+  // если снимок кадрировали и отпечаток не сошёлся, пробуем по цвету.
+  function closest(hashes, item) {
+    var byHash = hashes.filter(function (h) { return h.hash; })
+      .map(function (h) { return { h: h, d: hamming(h.hash, item.hash) }; })
       .sort(function (a, b) { return a.d - b.d; });
-    if (!list.length || list[0].d > MATCH_MAX) return null;
-    if (list.length > 1 && list[1].d - list[0].d < MATCH_GAP) return null;
-    return list[0].h;
+    if (byHash.length && byHash[0].d <= MATCH_MAX &&
+        (byHash.length < 2 || byHash[1].d - byHash[0].d >= MATCH_GAP)) {
+      return byHash[0].h;
+    }
+    if (!item.sig) return null;
+    var bySig = hashes.filter(function (h) { return h.sig; })
+      .map(function (h) { return { h: h, d: sigDist(h.sig, item.sig) }; })
+      .sort(function (a, b) { return a.d - b.d; });
+    if (!bySig.length || bySig[0].d > SIG_MAX) return null;
+    if (bySig.length > 1 && bySig[1].d - bySig[0].d < SIG_GAP) return null;
+    return bySig[0].h;
   }
 
   /* ---------- изображения ---------- */
@@ -1067,6 +1166,46 @@
     for (var k = 0; k < bits.length; k += 4)
       out += parseInt(bits.slice(k, k + 4).join(''), 2).toString(16);
     return out;
+  }
+
+  /* Цветовая подпись — запасной способ узнать снимок. Отпечаток dHash не
+     переживает кадрирование: верстальщик обрезал фотографии под макет, и
+     обрез в 10% даёт расхождение 19 бит — столько же, сколько у чужого
+     снимка. Доля же пикселей по цветовым ячейкам от обреза почти не
+     меняется, поэтому портрет находится и в этом случае. */
+  var SIG_BINS = 4;
+
+  function sigOf(img) {
+    var c = document.createElement('canvas');
+    c.width = 64; c.height = 64;
+    var g = c.getContext('2d');
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(img, 0, 0, 64, 64);
+    var d = g.getImageData(0, 0, 64, 64).data;
+    var h = new Array(SIG_BINS * SIG_BINS * SIG_BINS);
+    for (var i = 0; i < h.length; i++) h[i] = 0;
+    for (var p = 0; p < 64 * 64; p++) {
+      var r = d[p * 4], gg = d[p * 4 + 1], b = d[p * 4 + 2];
+      h[((r * SIG_BINS) >> 8) * SIG_BINS * SIG_BINS +
+        ((gg * SIG_BINS) >> 8) * SIG_BINS + ((b * SIG_BINS) >> 8)]++;
+    }
+    var total = 64 * 64, out = '';
+    for (var k = 0; k < h.length; k++) {
+      var v = Math.min(255, Math.round(h[k] / total * 255 * 8));
+      out += (v < 16 ? '0' : '') + v.toString(16);
+    }
+    return out;
+  }
+
+  function sigDist(a, b) {
+    if (!a || !b || a.length !== b.length) return 1e9;
+    var s = 0;
+    for (var i = 0; i < a.length; i += 2) {
+      var x = parseInt(a.substr(i, 2), 16), y = parseInt(b.substr(i, 2), 16);
+      s += (x - y) * (x - y) / (x + y + 1e-9);
+    }
+    return s;
   }
 
   var POP = (function () {                // сколько единиц в шестнадцатеричной цифре
@@ -1175,6 +1314,8 @@
     logBox.innerHTML = '';
     var jpeg = document.getElementById('chkJpeg').checked;
 
+    if (catalogMap) assignCatalog(groups);
+
     if (roster.artists.length || roster.galleries.length) {
       var m = matchGroups(groups);
       var matched = groups.length - m.unmatchedGroups.length;
@@ -1238,7 +1379,7 @@
               log('    в печатном каталоге не найден — пропускаю', 'warn');
               return { skip: true };
             }
-            var hit = closest(hashes, rec.portrait.hash);
+            var hit = closest(hashes, rec.portrait);
             if (!hit) {
               log('    «' + rec.title + '»: портрет каталога среди файлов не найден', 'warn');
               return null;
@@ -1249,12 +1390,12 @@
             // порядок работ тоже берём из каталога
             var order = {};
             rec.works.forEach(function (w, i) {
-              var c = closest(hashes, w.hash);
+              var c = closest(hashes, w);
               if (c && c.file !== hit.file && order[c.file.relPath] === undefined) {
                 order[c.file.relPath] = i;
               }
             });
-            return { file: hit.file, order: order, title: rec.title };
+            return { file: hit.file, order: order, title: rec.title, rec: rec };
           });
 
       decide.then(function (found) {
@@ -1265,6 +1406,7 @@
           return next(gi + 1);
         }
         if (found) {
+          g.catalogRec = found.rec || null;
           avatarFile = found.file;
           log('    портрет по каталогу: ' + avatarFile.name);
         } else {
@@ -1341,10 +1483,19 @@
           var formPromise = fromRoster ? Promise.resolve(null) : readForm(g.form);
           formPromise.then(function (cells) {
             var form = fromForm(cells);
-            var name = (fromRoster && fromRoster.name) || form.name || g.name;
-            var city = (fromRoster && fromRoster.city) || form.city || 'Ростов-на-Дону';
-            var bio = (fromRoster && fromRoster.bio) || form.bio || '';
-            var links = (fromRoster && fromRoster.links.length) ? fromRoster.links : form.links;
+            // текста в анкетах может не быть вовсе — тогда берём прочитанный
+            // с печатной страницы (см. tools/catalog-pdf/)
+            var fromPdf = g.catalogRec || null;
+            var name = (fromRoster && fromRoster.name) || form.name ||
+                       (fromPdf && fromPdf.title) || g.name;
+            var city = (fromRoster && fromRoster.city) || form.city ||
+                       (fromPdf && fromPdf.city) || 'Ростов-на-Дону';
+            var bio = (fromRoster && fromRoster.bio) || form.bio ||
+                      (fromPdf && fromPdf.bio) || '';
+            var links = (fromRoster && fromRoster.links.length) ? fromRoster.links
+                      : (form.links && form.links.length) ? form.links
+                      : ((fromPdf && fromPdf.links) || []);
+            if (!fromRoster && fromPdf && fromPdf.bio) log('    текст: из печатного каталога');
             if (fromRoster) log('    текст: из общего списка («' + fromRoster.name + '»)');
             if (!name) log('    ФИО не вытащил — впишите вручную', 'warn');
             if (!bio) log('    биография пустая — впишите вручную', 'warn');
