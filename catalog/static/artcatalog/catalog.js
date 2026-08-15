@@ -615,6 +615,10 @@
 
   var WALL_TURN = 62;   // разворот полотна относительно стены, градусы
   var VIEW_DIST = 620;  // с какого расстояния камера смотрит на комнату
+  var YAW_MAX = 9;      // насколько можно повернуть взгляд вбок, градусов
+  var PITCH_MAX = 4;    // и вверх-вниз
+  var ART_FAR = 7000;   // как далеко по коридору рисуются полотна
+  var ART_BACK = 900;   // и сколько остаётся видно позади камеры
   var CHIPS_MAX = 10;    // столько фамилий ещё помещается в ряд
   var FOCUS_TURN = 0.3;  // доля разворота полотна, на которую доворачивается камера
   var FOCUS_DIST = 0.44; // дистанция подхода к полотну в долях шага
@@ -1201,8 +1205,20 @@
     // Взгляд идёт за курсором: увели вправо — смотрим вправо, вниз — вниз.
     // Положительный rotateY поворачивает камеру вправо, положительный
     // rotateX — вверх, отсюда знаки.
-    h.yaw = ((e.clientX - r.left) / r.width - 0.5) * 7;
-    h.pitch = ((e.clientY - r.top) / r.height - 0.5) * -3.2;
+    /* Поворот от положения мыши. Отклик нелинейный: у центра экрана он
+       мягкий, к краям — заметно сильнее. Так можно и заглянуть на картину
+       сбоку, и не дёргать вид при обычном движении мышью. */
+    var tx = ((e.clientX - r.left) / r.width - 0.5) * 2;      // -1 … 1
+    var ty = ((e.clientY - r.top) / r.height - 0.5) * 2;
+    var ease = function (t) {
+      var a = Math.min(1, Math.abs(t));
+      return (t < 0 ? -1 : 1) * a * a * (3 - 2 * a);          // плавно от центра
+    };
+    // у подведённой картины поворот приглушаем: иначе широкий угол уводит
+    // её из кадра, ради которого к ней и подходили
+    var k = h.focus ? 0.35 : 1;
+    h.yaw = ease(tx) * YAW_MAX * k;
+    h.pitch = ease(ty) * -PITCH_MAX * k;
     this.applyCamera();
   };
 
@@ -1401,7 +1417,7 @@
     for (var i = 0; i < h.arts.length; i++) {
       var art = h.arts[i];
       var dz = +art.getAttribute('data-z') + h.camZ;
-      var near = dz > -4200 && dz < 900;
+      var near = dz > -(h.lite ? ART_FAR * 0.6 : ART_FAR) && dz < ART_BACK;
       if (near !== art.shown) {
         art.shown = near;
         art.style.visibility = near ? '' : 'hidden';

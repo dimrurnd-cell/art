@@ -124,6 +124,30 @@
   </div>
 
   <div class="card">
+    <h2 style="font-size:18px;margin:0 0 10px">Убрать фото авторов из работ</h2>
+    <p style="color:var(--muted);font-size:14px;margin:0 0 12px">
+      Если в зале на стене висит фотография художника, а не картина — здесь это
+      чинится без пересчёта. Выберите готовый <code>artists.json</code> и папку
+      <code>img</code> рядом с ним: снимок каждой работы сверяется с портретом
+      того же участника, и совпавшие из работ убираются. Читаются только мелкие
+      превью, поэтому это быстро.
+    </p>
+    <div class="row" style="margin-top:0">
+      <label class="ghost" style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:999px;cursor:pointer">
+        1. artists.json
+        <input type="file" id="pickFixJson" accept=".json" class="hide">
+      </label>
+      <label class="ghost" style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:999px;cursor:pointer">
+        2. папка img
+        <input type="file" id="pickFixImg" webkitdirectory directory multiple class="hide">
+      </label>
+      <button id="fixGo" disabled>Проверить и скачать</button>
+      <span id="fixInfo" style="color:var(--muted);font-size:13.5px">файлы не выбраны</span>
+    </div>
+    <div class="log hide" id="fixLog"></div>
+  </div>
+
+  <div class="card">
     <h2 style="font-size:18px;margin:0 0 10px">Уже есть artists.json? Сделать из него artists.js</h2>
     <p style="color:var(--muted);font-size:14px;margin:0 0 12px">
       Нужен, если статику раздаёт сервер без заголовков CORS — тогда в блоке
@@ -1738,6 +1762,116 @@
       'window.ARTCATALOG_DATA = ', jsonText, ';\n'
     ], { type: 'application/javascript' });
   }
+
+  /* ---------- проверка уже собранного каталога ----------
+     Фотография участника попадает в работы, когда её не удалось опознать при
+     сборке: имя файла ничего не подсказало, а снимок в печатном каталоге
+     кадрирован иначе. Но в готовом каталоге портрет уже известен — это
+     avatar.webp. Сверяем с ним каждую работу: совпало, значит на стене висит
+     фото автора, а не картина. */
+
+  var pickFixJson = document.getElementById('pickFixJson');
+  var pickFixImg = document.getElementById('pickFixImg');
+  var fixGo = document.getElementById('fixGo');
+  var fixInfo = document.getElementById('fixInfo');
+  var fixLogBox = document.getElementById('fixLog');
+  var fixData = null, fixFiles = null;
+
+  function fixLog(msg, cls) {
+    fixLogBox.classList.remove('hide');
+    var line = document.createElement('div');
+    if (cls) line.className = cls;
+    line.textContent = msg;
+    fixLogBox.appendChild(line);
+    fixLogBox.scrollTop = fixLogBox.scrollHeight;
+  }
+
+  function fixReady() {
+    fixGo.disabled = !(fixData && fixFiles);
+    fixInfo.textContent =
+      (fixData ? 'художников ' + fixData.artists.length : 'нет artists.json') + ', ' +
+      (fixFiles ? 'файлов ' + Object.keys(fixFiles).length : 'нет папки img');
+  }
+
+  pickFixJson.addEventListener('change', function () {
+    var f = pickFixJson.files[0];
+    if (!f) return;
+    f.text().then(function (t) {
+      var d = JSON.parse(t);
+      if (!d.artists || !d.artists.length) throw new Error('в файле нет художников');
+      fixData = d;
+      fixReady();
+    }).catch(function (e) { fixData = null; fixInfo.textContent = 'не удалось: ' + (e && e.message || e); });
+  });
+
+  pickFixImg.addEventListener('change', function () {
+    var map = {};
+    [].slice.call(pickFixImg.files).forEach(function (f) {
+      var rel = f.webkitRelativePath || f.name;
+      // ключ — «слаг/имя файла», путь до папки img не важен
+      var parts = rel.split('/').filter(Boolean);
+      if (parts.length >= 2) map[parts[parts.length - 2] + '/' + parts[parts.length - 1]] = f;
+    });
+    fixFiles = map;
+    fixReady();
+  });
+
+  fixGo.addEventListener('click', function () {
+    fixGo.disabled = true;
+    fixLogBox.innerHTML = '';
+    var arts = fixData.artists, i = 0, removed = 0, checked = 0;
+
+    var pick = function (slug, name) {
+      return fixFiles[slug + '/' + name] || null;
+    };
+    var sigHash = function (file) {
+      if (!file) return Promise.resolve(null);
+      return loadImage(file).then(function (img) {
+        var r = { hash: hashOf(img), sig: sigOf(img) };
+        if (img.close) img.close();
+        return r;
+      }).catch(function () { return null; });
+    };
+
+    (function next() {
+      if (i >= arts.length) return finishFix();
+      var a = arts[i++];
+      var slug = a.id;
+      sigHash(pick(slug, 'avatar.webp') || pick(slug, 'avatar.jpg')).then(function (av) {
+        if (!av || !a.works || a.works.length < 2) return next();
+        var jobs = a.works.map(function (w) {
+          var fn = String(w.thumb || '').split('/').pop();
+          return sigHash(pick(slug, fn));
+        });
+        Promise.all(jobs).then(function (list) {
+          var keep = [], drop = [];
+          list.forEach(function (r, k) {
+            checked++;
+            var same = r && (hamming(r.hash, av.hash) <= MATCH_MAX ||
+                             sigDist(r.sig, av.sig) <= SIG_MAX);
+            if (same) drop.push(a.works[k]); else keep.push(a.works[k]);
+          });
+          if (drop.length && keep.length) {
+            a.works = keep;
+            removed += drop.length;
+            drop.forEach(function (w) {
+              fixLog('· ' + a.name + ': убрано «' + (w.title || 'без названия') + '» — это фото автора', 'warn');
+            });
+          }
+          next();
+        });
+      });
+    })();
+
+    function finishFix() {
+      fixLog('');
+      fixLog('Проверено работ: ' + checked + ', убрано: ' + removed, 'good');
+      var txt = JSON.stringify(fixData, null, 2);
+      download(new Blob([txt], { type: 'application/json' }), 'artists.json');
+      setTimeout(function () { download(makeArtistsJs(txt), 'artists.js'); }, 600);
+      fixGo.disabled = false;
+    }
+  });
 
   var pickJson = document.getElementById('pickJson');
   var jsonInfo = document.getElementById('jsonInfo');
