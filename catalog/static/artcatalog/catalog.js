@@ -470,30 +470,48 @@
     track.innerHTML = '';
     dots.innerHTML = '';
 
+    /* Карточки выкладываются страницами-плитками: страница занимает всю
+       ширину, внутри — сетка. Так все карточки одного размера, а листание
+       идёт разворотами, а не по одной. */
     var picked = this.picked();
+    var per = this.perView();
+    var pages = Math.ceil(picked.length / per) || 1;
+    var page = null;
     picked.forEach(function (gi, i) {
+      if (i % per === 0) {
+        page = el('div', 'artc-page');
+        track.appendChild(page);
+      }
       var a = self.artists[gi];
       var card = el('div', 'artc-card');
       card.innerHTML =
         '<button type="button" class="artc-card__inner" data-artist="' + gi + '">' +
-          '<span class="artc-card__cover">' + pictureHTML(self.url(a.works[0].thumb), 'Работа: ' + (a.works[0].title || a.name), i >= 3) + '</span>' +
+          '<span class="artc-card__cover">' + pictureHTML(self.url(a.works[0].thumb), 'Работа: ' + (a.works[0].title || a.name), i >= per) + '</span>' +
           '<span class="artc-card__meta">' +
-            '<span class="artc-card__ava">' + pictureHTML(self.url(a.avatar), a.name, i >= 3) + '</span>' +
-            '<span><span class="artc-card__name">' + esc(a.name) + '</span>' +
+            '<span class="artc-card__ava">' + pictureHTML(self.url(a.avatar), a.name, i >= per) + '</span>' +
+            '<span class="artc-card__text"><span class="artc-card__name">' + esc(a.name) + '</span>' +
             '<span class="artc-card__city">' + esc(a.city) + '</span></span>' +
           '</span>' +
         '</button>';
-      track.appendChild(card);
-
-      // точки — только пока их можно охватить взглядом
-      if (picked.length <= 24) {
-        var dot = el('button', 'artc-dot');
-        dot.type = 'button';
-        dot.setAttribute('aria-label', a.name);
-        dot.addEventListener('click', function () { self.goTo(i); });
-        dots.appendChild(dot);
-      }
+      page.appendChild(card);
     });
+    // последняя страница может быть неполной — добиваем пустыми местами,
+    // иначе одинокая карточка растягивается на всю ширину
+    if (page && picked.length % per) {
+      for (var k = picked.length % per; k < per; k++) page.appendChild(el('div', 'artc-card is-empty'));
+    }
+    // точки — по числу страниц
+    if (pages > 1 && pages <= 24) {
+      for (var pi = 0; pi < pages; pi++) {
+        (function (pn) {
+          var dot = el('button', 'artc-dot');
+          dot.type = 'button';
+          dot.setAttribute('aria-label', 'Страница ' + (pn + 1));
+          dot.addEventListener('click', function () { self.goTo(pn); });
+          dots.appendChild(dot);
+        })(pi);
+      }
+    }
 
     this.buildAbc();
     var total = (this.sections[this.section] || { list: [] }).list.length;
@@ -560,16 +578,14 @@
     return Math.max(1, parseInt(v, 10) || 1);
   };
 
+  // i — номер страницы-плитки, а не отдельной карточки
   Widget.prototype.goTo = function (i, instant) {
-    var n = this.picked().length;
+    var n = Math.ceil(this.picked().length / this.perView());
     if (!n) return;
     this.index = ((i % n) + n) % n; // зацикливание
     var track = this.wrap.querySelector('.artc-carousel__track');
-    // не оставлять пустоту справа, когда видны последние карточки
-    var maxStart = Math.max(0, n - this.perView());
-    var offset = Math.min(this.index, maxStart);
     if (instant) track.style.transition = 'none';
-    track.style.transform = 'translateX(' + (-offset * 100 / this.perView()) + '%)';
+    track.style.transform = 'translateX(' + (-this.index * 100) + '%)';
     if (instant) { void track.offsetWidth; track.style.transition = ''; }
 
     var dots = this.wrap.querySelectorAll('.artc-dot');

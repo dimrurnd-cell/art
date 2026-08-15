@@ -423,6 +423,33 @@
   var NOISE = /(^|[\s_\-])(каталог|katalog|копия|copy|img|image|photo|фото|final|итог|скан|scan)(?=$|[\s_\-])/gi;
   var NOISE2 = /(^|[\s_\-])((19|20)\d{2}|IMG[_-]?\d+|DSC[_-]?\d+|\d{4,})(?=$|[\s_\-])|\d{4,}/gi;
 
+  /* Участники кладут в папку не только работы: логотип, QR-код на визитку,
+     собственный портрет под именем «Автор» или просто своей фамилией. В зале
+     такое висит на стене как картина, поэтому в работы не берём. */
+  var FILE_JUNK = /(^|[\s_\-])(qr|куар[\-\s]?код|куаркод|qr[\-\s]?код|штрих[\-\s]?код|лого|логотип|визитка|баннер|афиша|прайс)(?=$|[\s_\-])/i;
+  var FILE_PORTRAIT = /(^|[\s_\-])(портрет|автопортрет|аватар|avatar|фото\s*автора|моё\s*фото|мое\s*фото|автор|photo)(?=$|[\s_\-])/i;
+  var FILE_FILLER = /^(холст|масло|акрил|бумага|картон|см|год|г|копия|copy|new|final|\d+|[хx\d,.\-]+)$/i;
+
+  function junkReason(fileName, artistName) {
+    var t = titleOf(fileName);
+    if (FILE_JUNK.test(t)) return 'служебное (лого, QR)';
+    if (FILE_PORTRAIT.test(t)) return 'портрет автора';
+    // название состоит только из имени участника — это его фото, не работа
+    var split = function (x) {
+      return String(x || '').toLowerCase().replace(/ё/g, 'е')
+        .split(/[\s\-_,.()«»№]+/).filter(Boolean);
+    };
+    var own = {};
+    split(artistName).forEach(function (w) { if (w.length >= 4) own[w] = 1; });
+    var tw = split(t), shared = 0, rest = 0;
+    tw.forEach(function (w) {
+      if (own[w]) shared++;
+      else if (w.length >= 4 && !FILE_FILLER.test(w)) rest++;
+    });
+    if (shared && !rest) return 'в названии только имя участника';
+    return null;
+  }
+
   function titleOf(filename) {
     var n = filename.replace(/\.[^.]+$/, '').replace(/[_\-]+/g, ' ');
     n = n.replace(NOISE, ' ').replace(NOISE2, ' ')
@@ -1516,6 +1543,24 @@
           }
         }
         workFiles = g.photos.filter(function (f) { return f !== avatarFile; });
+
+        // отсев служебных файлов; портрет бывает один, поэтому если «только
+        // имя участника» у трёх и более файлов — это работы, а не дубли
+        var reasons = workFiles.map(function (f) { return junkReason(f.name, g.name); });
+        var nameOnly = reasons.filter(function (r) { return r === 'в названии только имя участника'; }).length;
+        var dropped = [];
+        workFiles = workFiles.filter(function (f, i) {
+          var why = reasons[i];
+          if (!why) return true;
+          if (why === 'в названии только имя участника' && nameOnly >= 3) return true;
+          dropped.push(f.name + ' — ' + why);
+          return false;
+        });
+        if (dropped.length && workFiles.length) {
+          dropped.forEach(function (d) { log('    не работа, пропускаю: ' + d, 'warn'); });
+        } else if (dropped.length) {
+          workFiles = g.photos.filter(function (f) { return f !== avatarFile; });   // всё отсеялось — оставляем как есть
+        }
 
         /* Работа есть в печатном каталоге, а файла у участника нет — прислал не
            всё или снимок лежит в .tif, который браузер не открывает. Подставляем

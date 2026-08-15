@@ -92,28 +92,12 @@
           "h": 2893
         },
         {
-          "title": "Стенд М3 Титоренко портрет Феди",
-          "thumb": "img/tochka/work3-400.webp",
-          "medium": "img/tochka/work3-800.webp",
-          "full": "img/tochka/work3-1600.webp",
-          "w": 2953,
-          "h": 3689
-        },
-        {
           "title": "СТЕНД М3 титоренко белый тигр",
           "thumb": "img/tochka/work4-400.webp",
           "medium": "img/tochka/work4-800.webp",
           "full": "img/tochka/work4-1600.webp",
           "w": 1417,
           "h": 1738
-        },
-        {
-          "title": "Куаркод на контак в Макс",
-          "thumb": "img/tochka/work5-400.webp",
-          "medium": "img/tochka/work5-800.webp",
-          "full": "img/tochka/work5-1600.webp",
-          "w": 1181,
-          "h": 1715
         }
       ],
       "order": 2,
@@ -181,14 +165,6 @@
       ],
       "avatar": "img/purkua/avatar.webp",
       "works": [
-        {
-          "title": "Лого",
-          "thumb": "img/purkua/work1-400.webp",
-          "medium": "img/purkua/work1-800.webp",
-          "full": "img/purkua/work1-1600.webp",
-          "w": 827,
-          "h": 816
-        },
         {
           "title": "",
           "thumb": "img/purkua/work2-400.webp",
@@ -822,14 +798,6 @@
           "full": "img/vlasova/work1-1600.webp",
           "w": 3511,
           "h": 3000
-        },
-        {
-          "title": "Власова",
-          "thumb": "img/vlasova/work7-400.webp",
-          "medium": "img/vlasova/work7-800.webp",
-          "full": "img/vlasova/work7-1600.webp",
-          "w": 960,
-          "h": 1280
         }
       ],
       "order": 16,
@@ -931,14 +899,6 @@
           "full": "img/volvich/work4-1600.webp",
           "w": 2429,
           "h": 2053
-        },
-        {
-          "title": "Вольвич Александра",
-          "thumb": "img/volvich/work5-400.webp",
-          "medium": "img/volvich/work5-800.webp",
-          "full": "img/volvich/work5-1600.webp",
-          "w": 1406,
-          "h": 1632
         }
       ],
       "order": 18,
@@ -1382,22 +1342,6 @@
           "full": "img/dzhinaliev/work4-1600.webp",
           "w": 4548,
           "h": 6850
-        },
-        {
-          "title": "Юрий Джиналиев портрет",
-          "thumb": "img/dzhinaliev/work5-400.webp",
-          "medium": "img/dzhinaliev/work5-800.webp",
-          "full": "img/dzhinaliev/work5-1600.webp",
-          "w": 1342,
-          "h": 1342
-        },
-        {
-          "title": "Юрий Джиналиев",
-          "thumb": "img/dzhinaliev/work6-400.webp",
-          "medium": "img/dzhinaliev/work6-800.webp",
-          "full": "img/dzhinaliev/work6-1600.webp",
-          "w": 2731,
-          "h": 4096
         }
       ],
       "order": 26,
@@ -1503,14 +1447,6 @@
           "full": "img/ermolaeva/work4-1600.webp",
           "w": 2660,
           "h": 3879
-        },
-        {
-          "title": "Логотип",
-          "thumb": "img/ermolaeva/work5-400.webp",
-          "medium": "img/ermolaeva/work5-800.webp",
-          "full": "img/ermolaeva/work5-1600.webp",
-          "w": 1080,
-          "h": 2400
         }
       ],
       "order": 28,
@@ -1556,14 +1492,6 @@
           "full": "img/zhegulova/work3-1600.webp",
           "w": 2076,
           "h": 3158
-        },
-        {
-          "title": "Аватар",
-          "thumb": "img/zhegulova/work4-400.webp",
-          "medium": "img/zhegulova/work4-800.webp",
-          "full": "img/zhegulova/work4-1600.webp",
-          "w": 2326,
-          "h": 2316
         },
         {
           "title": "Физалис",
@@ -1726,14 +1654,6 @@
           "full": "img/zlatomrezova/work4-1600.webp",
           "w": 906,
           "h": 1268
-        },
-        {
-          "title": "Елена Златомрезова",
-          "thumb": "img/zlatomrezova/work5-400.webp",
-          "medium": "img/zlatomrezova/work5-800.webp",
-          "full": "img/zlatomrezova/work5-1600.webp",
-          "w": 3606,
-          "h": 3569
         }
       ],
       "order": 32,
@@ -1844,14 +1764,6 @@
           "full": "img/istomina/work4-1600.webp",
           "w": 3509,
           "h": 1737
-        },
-        {
-          "title": "Елена Истомина",
-          "thumb": "img/istomina/work5-400.webp",
-          "medium": "img/istomina/work5-800.webp",
-          "full": "img/istomina/work5-1600.webp",
-          "w": 1065,
-          "h": 1156
         }
       ],
       "order": 34,
@@ -2831,14 +2743,6 @@
           "full": "img/lyubetskaya/work4-1600.webp",
           "w": 2419,
           "h": 2419
-        },
-        {
-          "title": "Любецкая Антонина",
-          "thumb": "img/lyubetskaya/work5-400.webp",
-          "medium": "img/lyubetskaya/work5-800.webp",
-          "full": "img/lyubetskaya/work5-1600.webp",
-          "w": 1899,
-          "h": 2688
         }
       ],
       "order": 53,
@@ -2992,14 +2896,6 @@
           "full": "img/matsik/work4-1600.webp",
           "w": 1280,
           "h": 1746
-        },
-        {
-          "title": "Мацик Татьяна",
-          "thumb": "img/matsik/work5-400.webp",
-          "medium": "img/matsik/work5-800.webp",
-          "full": "img/matsik/work5-1600.webp",
-          "w": 932,
-          "h": 1976
         }
       ],
       "order": 56,
@@ -3968,14 +3864,6 @@
           "full": "img/pryadev/work5-1600.webp",
           "w": 2279,
           "h": 1519
-        },
-        {
-          "title": "В.Прядьев",
-          "thumb": "img/pryadev/work6-400.webp",
-          "medium": "img/pryadev/work6-800.webp",
-          "full": "img/pryadev/work6-1600.webp",
-          "w": 1680,
-          "h": 1120
         }
       ],
       "order": 76,
@@ -4356,14 +4244,6 @@
           "full": "img/serebryanskaya/work5-1600.webp",
           "w": 2731,
           "h": 2731
-        },
-        {
-          "title": "Серебрянская Ольга",
-          "thumb": "img/serebryanskaya/work6-400.webp",
-          "medium": "img/serebryanskaya/work6-800.webp",
-          "full": "img/serebryanskaya/work6-1600.webp",
-          "w": 1274,
-          "h": 1280
         }
       ],
       "order": 83,
@@ -4518,14 +4398,6 @@
           "full": "img/kuptsova/work2-1600.webp",
           "w": 1024,
           "h": 1536
-        },
-        {
-          "title": "ЛОГО",
-          "thumb": "img/kuptsova/work3-400.webp",
-          "medium": "img/kuptsova/work3-800.webp",
-          "full": "img/kuptsova/work3-1600.webp",
-          "w": 775,
-          "h": 774
         },
         {
           "title": "Барельеф Банановые листья",
@@ -4742,14 +4614,6 @@
           "full": "img/tatulova/work4-1600.webp",
           "w": 2560,
           "h": 1667
-        },
-        {
-          "title": "Татулова Наталья Валерьевна",
-          "thumb": "img/tatulova/work5-400.webp",
-          "medium": "img/tatulova/work5-800.webp",
-          "full": "img/tatulova/work5-1600.webp",
-          "w": 962,
-          "h": 1280
         }
       ],
       "order": 91,
@@ -4956,14 +4820,6 @@
           "full": "img/tretyakov/work3-1600.webp",
           "w": 2560,
           "h": 1553
-        },
-        {
-          "title": "Роман третьяков",
-          "thumb": "img/tretyakov/work4-400.webp",
-          "medium": "img/tretyakov/work4-800.webp",
-          "full": "img/tretyakov/work4-1600.webp",
-          "w": 1620,
-          "h": 2160
         }
       ],
       "order": 95,
@@ -5037,14 +4893,6 @@
           "full": "img/trofimova/work7-1600.webp",
           "w": 1143,
           "h": 1714
-        },
-        {
-          "title": "Трофимова Е.Ю.",
-          "thumb": "img/trofimova/work8-400.webp",
-          "medium": "img/trofimova/work8-800.webp",
-          "full": "img/trofimova/work8-1600.webp",
-          "w": 2362,
-          "h": 3543
         }
       ],
       "order": 96,
@@ -5074,14 +4922,6 @@
           "full": "img/turanova/work1-1600.webp",
           "w": 1280,
           "h": 1032
-        },
-        {
-          "title": "Татьяна Туранова (1)",
-          "thumb": "img/turanova/work2-400.webp",
-          "medium": "img/turanova/work2-800.webp",
-          "full": "img/turanova/work2-1600.webp",
-          "w": 430,
-          "h": 774
         }
       ],
       "order": 97,
@@ -5852,22 +5692,6 @@
           "full": "img/shlyapina/work9-1600.webp",
           "w": 1264,
           "h": 1024
-        },
-        {
-          "title": "Лого город сад",
-          "thumb": "img/shlyapina/work10-400.webp",
-          "medium": "img/shlyapina/work10-800.webp",
-          "full": "img/shlyapina/work10-1600.webp",
-          "w": 1280,
-          "h": 478
-        },
-        {
-          "title": "Шляпина Н.А.",
-          "thumb": "img/shlyapina/work11-400.webp",
-          "medium": "img/shlyapina/work11-800.webp",
-          "full": "img/shlyapina/work11-1600.webp",
-          "w": 3899,
-          "h": 4833
         }
       ],
       "order": 112,
@@ -6772,14 +6596,6 @@
           "full": "img/gorod/work6-1600.webp",
           "w": 1264,
           "h": 1024
-        },
-        {
-          "title": "Лого город сад",
-          "thumb": "img/gorod/work7-400.webp",
-          "medium": "img/gorod/work7-800.webp",
-          "full": "img/gorod/work7-1600.webp",
-          "w": 1280,
-          "h": 478
         }
       ],
       "order": 128,
