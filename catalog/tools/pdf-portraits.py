@@ -37,7 +37,7 @@ except ImportError:                     # старые версии ставил
         sys.exit("Нужен PyMuPDF: pip install pymupdf")
 
 try:
-    from PIL import Image
+    from PIL import Image, ImageStat
 except ImportError:
     sys.exit("Нужен Pillow: pip install Pillow")
 
@@ -97,9 +97,23 @@ def page_title(page, top_fraction=0.33):
     return best[1] if best else ""
 
 
-def page_images(page, doc, min_side=60):
+def open_small(data, box=256):
+    """Открывает картинку сразу уменьшенной. В печатном каталоге снимки по
+    300 dpi — распаковывать их целиком незачем: для отпечатка хватает
+    миниатюры, а времени и памяти это экономит на порядок."""
+    img = Image.open(io.BytesIO(data))
+    try:
+        img.draft("L", (box, box))       # быстрый путь для JPEG
+    except Exception:
+        pass
+    img.load()
+    return img
+
+
+def page_images(page, doc, min_side=60, keep_image=False):
     """Изображения страницы с координатами. Мелкие значки отбрасываем."""
     out = []
+    parea = page.rect.width * page.rect.height
     for info in page.get_images(full=True):
         xref = info[0]
         try:
@@ -112,24 +126,39 @@ def page_images(page, doc, min_side=60):
             raw = doc.extract_image(xref)
         except Exception:
             continue
+        # настоящий размер берём из описания, а не из уменьшенной копии
+        full_px = [info[2], info[3]]
         try:
-            img = Image.open(io.BytesIO(raw["image"]))
-            img.load()
+            img = open_small(raw["image"])
         except Exception:
             continue
-        if min(img.size) < min_side:                  # логотипы, линейки, иконки
+        if min(full_px) < min_side:                   # логотипы, линейки, иконки
             continue
+        h = dhash(img)
+        # разброс яркости: у подложки под текстом он около нуля, у снимка
+        # работы — десятки. Отличает заливку от изображения надёжнее размера
+        sd = ImageStat.Stat(img.convert("L")).stddev[0]
         for r in rects:
             if min(r.width, r.height) < 20:
                 continue
-            out.append({
+            # фон во всю страницу и то, что вынесено за обрез, — не работы
+            cover = (r.width * r.height) / parea if parea else 0
+            iw = max(0.0, min(r.x1, page.rect.x1) - max(r.x0, page.rect.x0))
+            ih = max(0.0, min(r.y1, page.rect.y1) - max(r.y0, page.rect.y0))
+            inside = iw * ih / max(1e-6, r.width * r.height)
+            if cover >= 0.9 or inside < 0.5:
+                continue
+            item = {
                 "xref": xref,
                 "x": round(r.x0, 1), "y": round(r.y0, 1),
                 "w_pt": round(r.width, 1), "h_pt": round(r.height, 1),
-                "px": list(img.size),
-                "hash": dhash(img),
-                "_img": img,
-            })
+                "px": full_px,
+                "hash": h,
+                "sd": round(sd, 1),
+            }
+            if keep_image:
+                item["_img"] = img
+            out.append(item)
     # порядок чтения: сверху вниз рядами, внутри ряда слева направо.
     # ряд определяем с допуском — картинки редко выровнены пиксель в пиксель
     if out:
@@ -138,7 +167,8 @@ def page_images(page, doc, min_side=60):
     return out
 
 
-def analyse(path, min_side=60, dump_dir=None, min_pt=0.0):
+def analyse(path, min_side=60, dump_dir=None, min_pt=0.0, flat_sd=14.0, titles=None,
+            merge_untitled=False):
     doc = pymupdf.open(path)
 
     raw = []
@@ -162,14 +192,17 @@ def analyse(path, min_side=60, dump_dir=None, min_pt=0.0):
     for n, (page, imgs) in enumerate(raw, 1):
         dropped = [i for i in imgs if i["hash"] in furniture]
         imgs = [i for i in imgs if i["hash"] not in furniture]
-        title = page_title(page)
+        title = (titles or {}).get(n) or page_title(page)
         if not imgs:
             pages.append({"page": n, "title": title, "portrait": None, "works": [],
                           "skipped": len(dropped), "note": "изображений не найдено"})
             continue
-        # портрет — самый левый на странице; при равном x берём верхний
-        portrait = min(imgs, key=lambda i: (round(i["x"], 0), i["y"]))
-        works = [i for i in imgs if i is not portrait]
+        # Портрет — самый левый на странице. Но заливки и подложки тоже
+        # бывают левее всех, поэтому в кандидаты берём только настоящие
+        # изображения: с разбросом яркости выше порога.
+        real = [i for i in imgs if i["sd"] >= flat_sd] or imgs
+        portrait = min(real, key=lambda i: (round(i["x"], 0), i["y"]))
+        works = [i for i in imgs if i is not portrait and i["sd"] >= flat_sd]
         if dump_dir:
             d = os.path.join(dump_dir, "%03d" % n)
             os.makedirs(d, exist_ok=True)
@@ -185,7 +218,29 @@ def analyse(path, min_side=60, dump_dir=None, min_pt=0.0):
             "skipped": len(dropped),
         })
     doc.close()
+
+    if merge_untitled:
+        pages = merge_continuations(pages)
     return pages
+
+
+def merge_continuations(pages):
+    """Художнику бывает мало одной страницы: на следующей идут ещё работы,
+    но заголовка и портрета там уже нет. Такую страницу приклеиваем к
+    предыдущей — иначе часть работ просто потеряется. Признак продолжения:
+    нет заголовка, а картинки есть."""
+    out = []
+    for p in pages:
+        cont = not p["title"] and (p.get("portrait") or p.get("works"))
+        if cont and out and out[-1]["title"]:
+            prev = out[-1]
+            if p.get("portrait"):
+                prev["works"].append(p["portrait"])      # слева тут уже работа, не портрет
+            prev["works"].extend(p.get("works", []))
+            prev.setdefault("pages", [prev["page"]]).append(p["page"])
+            continue
+        out.append(p)
+    return out
 
 
 # ---------- отчёт ----------
@@ -219,9 +274,19 @@ def main():
                     help="игнорировать картинки мельче N пикселей (логотипы), по умолчанию 60")
     ap.add_argument("--min-pt", type=float, default=0.0,
                     help="игнорировать картинки мельче N пунктов на странице (1 пункт ≈ 0.35 мм)")
+    ap.add_argument("--flat-sd", type=float, default=14.0,
+                    help="считать заливкой всё с разбросом яркости ниже N (по умолчанию 14)")
+    ap.add_argument("--titles", help="файл JSON {номер страницы: имя} — если в PDF текст переведён в кривые")
+    ap.add_argument("--merge-untitled", action="store_true",
+                    help="приклеивать страницы без заголовка к предыдущей (продолжение работ художника)")
     args = ap.parse_args()
 
-    pages = analyse(args.pdf, args.min_side, args.dump_dir, args.min_pt)
+    titles = None
+    if args.titles:
+        with open(args.titles, encoding="utf-8") as f:
+            titles = {int(k): v for k, v in json.load(f).items()}
+    pages = analyse(args.pdf, args.min_side, args.dump_dir, args.min_pt, args.flat_sd,
+                    titles, args.merge_untitled)
     report(pages)
 
     if args.json:
