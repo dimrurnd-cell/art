@@ -168,7 +168,7 @@ def page_images(page, doc, min_side=60, keep_image=False):
 
 
 def analyse(path, min_side=60, dump_dir=None, min_pt=0.0, flat_sd=14.0, titles=None,
-            merge_untitled=False):
+            merge_untitled=False, portrait_x_max=80.0):
     doc = pymupdf.open(path)
 
     raw = []
@@ -217,6 +217,11 @@ def analyse(path, min_side=60, dump_dir=None, min_pt=0.0, flat_sd=14.0, titles=N
             "works": [strip(w) for w in works],
             "skipped": len(dropped),
         })
+        # Портрет стоит в левой колонке, у самого поля. Если самое левое
+        # изображение оказалось заметно правее — портрета на странице,
+        # скорее всего, нет вовсе (участник его не прислал), и портретом
+        # ошибочно назначена работа. Такие записи помечаем.
+        pages[-1]["sure"] = portrait["x"] <= portrait_x_max
     doc.close()
 
     if merge_untitled:
@@ -260,9 +265,10 @@ def report(pages):
                                              p.get("note", "")))
             continue
         pr = p["portrait"]
-        print("  стр. %3d  %-42s  портрет %dx%d @x=%.0f  работ: %d"
+        print("  стр. %3d  %-42s  портрет %dx%d @x=%.0f  работ: %2d%s"
               % (p["page"], (p["title"] or "— БЕЗ ЗАГОЛОВКА —")[:42],
-                 pr["px"][0], pr["px"][1], pr["x"], len(p["works"])))
+                 pr["px"][0], pr["px"][1], pr["x"], len(p["works"]),
+                 "" if p.get("sure", True) else "   ПРОВЕРИТЬ: портрета может не быть"))
 
 
 def main():
@@ -279,6 +285,8 @@ def main():
     ap.add_argument("--titles", help="файл JSON {номер страницы: имя} — если в PDF текст переведён в кривые")
     ap.add_argument("--merge-untitled", action="store_true",
                     help="приклеивать страницы без заголовка к предыдущей (продолжение работ художника)")
+    ap.add_argument("--portrait-x-max", type=float, default=80.0,
+                    help="если самое левое изображение правее N пунктов, портрета на странице скорее всего нет")
     args = ap.parse_args()
 
     titles = None
@@ -286,7 +294,7 @@ def main():
         with open(args.titles, encoding="utf-8") as f:
             titles = {int(k): v for k, v in json.load(f).items()}
     pages = analyse(args.pdf, args.min_side, args.dump_dir, args.min_pt, args.flat_sd,
-                    titles, args.merge_untitled)
+                    titles, args.merge_untitled, args.portrait_x_max)
     report(pages)
 
     if args.json:
