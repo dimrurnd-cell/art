@@ -7,18 +7,6 @@
     {
       "id": "galerei",
       "title": "Галереи"
-    },
-    {
-      "id": "potapovy-sergey-i-anastasiya",
-      "title": "Потаповы Сергей и  Анастасия"
-    },
-    {
-      "id": "tvorcheskoe-obedinenie-azovart",
-      "title": "Творческое объединение АзовАрт"
-    },
-    {
-      "id": "turanova-tatyana",
-      "title": "Туранова Татьяна"
     }
   ],
   "artists": [
@@ -75,6 +63,63 @@
       "section": "art-salon"
     },
     {
+      "id": "tochka",
+      "name": "«Арт-Точка», Титоренко Анжелика",
+      "city": "Ростов-на-Дону",
+      "bio": "Член Союза Пастелистов России.\nХудожник-анималист, специализируюсь на пастельной живописи в стиле реализм.\nСоздаю детализированные портреты животных, передавая их характер и эмоции.\nПобедитель Международного конкурса «Золотая черепаха» 2023 г. в разделе «Живопись, портрет Животного». Рисуя работу, стараюсь передать самые теплые эмоции.\nИзучаю картины старых мастеров, копируя те, что откликаются в душе.\nАктивно изучаю и практикую портретный жанр, совершенствуя свою технику, стремясь к реализму. Пишу на заказ.",
+      "links": [
+        {
+          "label": "ВКонтакте",
+          "url": "https://vk.ru/titorenkoart"
+        }
+      ],
+      "avatar": "img/tochka/avatar.webp",
+      "works": [
+        {
+          "title": "Стенд м3 Титоренко Тигр Умиротворение",
+          "thumb": "img/tochka/work1-400.webp",
+          "medium": "img/tochka/work1-800.webp",
+          "full": "img/tochka/work1-1600.webp",
+          "w": 1772,
+          "h": 1406
+        },
+        {
+          "title": "Стенд М3 Титоренко портретВасилисы",
+          "thumb": "img/tochka/work2-400.webp",
+          "medium": "img/tochka/work2-800.webp",
+          "full": "img/tochka/work2-1600.webp",
+          "w": 1772,
+          "h": 2893
+        },
+        {
+          "title": "Стенд М3 Титоренко портрет Феди",
+          "thumb": "img/tochka/work3-400.webp",
+          "medium": "img/tochka/work3-800.webp",
+          "full": "img/tochka/work3-1600.webp",
+          "w": 2953,
+          "h": 3689
+        },
+        {
+          "title": "СТЕНД М3 титоренко белый тигр",
+          "thumb": "img/tochka/work4-400.webp",
+          "medium": "img/tochka/work4-800.webp",
+          "full": "img/tochka/work4-1600.webp",
+          "w": 1417,
+          "h": 1738
+        },
+        {
+          "title": "Куаркод на контак в Макс",
+          "thumb": "img/tochka/work5-400.webp",
+          "medium": "img/tochka/work5-800.webp",
+          "full": "img/tochka/work5-1600.webp",
+          "w": 1181,
+          "h": 1715
+        }
+      ],
+      "order": 2,
+      "section": "art-salon"
+    },
+    {
       "id": "aristova",
       "name": "Аристова Евгения Викторовна",
       "city": "Тула",
@@ -120,7 +165,7 @@
           "h": 3480
         }
       ],
-      "order": 2,
+      "order": 3,
       "section": "art-salon"
     },
     {
@@ -193,7 +238,7 @@
           "h": 3648
         }
       ],
-      "order": 3,
+      "order": 4,
       "section": "art-salon"
     },
     {
@@ -250,7 +295,7 @@
           "h": 640
         }
       ],
-      "order": 4,
+      "order": 5,
       "section": "art-salon"
     },
     {
@@ -297,63 +342,6 @@
           "full": "img/atmosfera/work4-1600.webp",
           "w": 1200,
           "h": 1600
-        }
-      ],
-      "order": 5,
-      "section": "art-salon"
-    },
-    {
-      "id": "tochka",
-      "name": "«Арт-Точка», Титоренко Анжелика",
-      "city": "Ростов-на-Дону",
-      "bio": "Член Союза Пастелистов России.\nХудожник-анималист, специализируюсь на пастельной живописи в стиле реализм.\nСоздаю детализированные портреты животных, передавая их характер и эмоции.\nПобедитель Международного конкурса «Золотая черепаха» 2023 г. в разделе «Живопись, портрет Животного». Рисуя работу, стараюсь передать самые теплые эмоции.\nИзучаю картины старых мастеров, копируя те, что откликаются в душе.\nАктивно изучаю и практикую портретный жанр, совершенствуя свою технику, стремясь к реализму. Пишу на заказ.",
-      "links": [
-        {
-          "label": "ВКонтакте",
-          "url": "https://vk.ru/titorenkoart"
-        }
-      ],
-      "avatar": "img/tochka/avatar.webp",
-      "works": [
-        {
-          "title": "Стенд м3 Титоренко Тигр Умиротворение",
-          "thumb": "img/tochka/work1-400.webp",
-          "medium": "img/tochka/work1-800.webp",
-          "full": "img/tochka/work1-1600.webp",
-          "w": 1772,
-          "h": 1406
-        },
-        {
-          "title": "Стенд М3 Титоренко портретВасилисы",
-          "thumb": "img/tochka/work2-400.webp",
-          "medium": "img/tochka/work2-800.webp",
-          "full": "img/tochka/work2-1600.webp",
-          "w": 1772,
-          "h": 2893
-        },
-        {
-          "title": "Стенд М3 Титоренко портрет Феди",
-          "thumb": "img/tochka/work3-400.webp",
-          "medium": "img/tochka/work3-800.webp",
-          "full": "img/tochka/work3-1600.webp",
-          "w": 2953,
-          "h": 3689
-        },
-        {
-          "title": "СТЕНД М3 титоренко белый тигр",
-          "thumb": "img/tochka/work4-400.webp",
-          "medium": "img/tochka/work4-800.webp",
-          "full": "img/tochka/work4-1600.webp",
-          "w": 1417,
-          "h": 1738
-        },
-        {
-          "title": "Куаркод на контак в Макс",
-          "thumb": "img/tochka/work5-400.webp",
-          "medium": "img/tochka/work5-800.webp",
-          "full": "img/tochka/work5-1600.webp",
-          "w": 1181,
-          "h": 1715
         }
       ],
       "order": 6,
@@ -702,6 +690,63 @@
       "section": "art-salon"
     },
     {
+      "id": "tyurina",
+      "name": "Брыль Людмила Николаевна",
+      "city": "Ростов-на-Дону",
+      "bio": "Родилась в ГДР, папа был военный. С детских лет живу в Ростове-на-Дону. Никогда серьёзно не занималась рисованием. А живопись казалась олицетворением тайных знаний. В зрелом возрасте совершенно случайно попала на мастер-класс по живописи маслом. И была покорена этой техникой. Пишу пейзажи и натюрморты, интерьерные картины. Недавно увлеклась анималистикой и написанием миниатюр. Для меня очень важно передать в картине позитивный настрой, радостные эмоции, свет. Рада, когда, глядя на мои картины, люди обретают спокойствие, гармонию и хорошее настроение. Впереди ещё много планов.",
+      "links": [
+        {
+          "label": "ВКонтакте",
+          "url": "https://vk.ru/luda_bryl"
+        }
+      ],
+      "avatar": "img/tyurina/avatar.webp",
+      "works": [
+        {
+          "title": "Эльбрус",
+          "thumb": "img/tyurina/work1-400.webp",
+          "medium": "img/tyurina/work1-800.webp",
+          "full": "img/tyurina/work1-1600.webp",
+          "w": 2291,
+          "h": 1791
+        },
+        {
+          "title": "Натюрморт",
+          "thumb": "img/tyurina/work2-400.webp",
+          "medium": "img/tyurina/work2-800.webp",
+          "full": "img/tyurina/work2-1600.webp",
+          "w": 890,
+          "h": 1199
+        },
+        {
+          "title": "Рассвет на Дону",
+          "thumb": "img/tyurina/work3-400.webp",
+          "medium": "img/tyurina/work3-800.webp",
+          "full": "img/tyurina/work3-1600.webp",
+          "w": 1280,
+          "h": 1018
+        },
+        {
+          "title": "Магнолии",
+          "thumb": "img/tyurina/work4-400.webp",
+          "medium": "img/tyurina/work4-800.webp",
+          "full": "img/tyurina/work4-1600.webp",
+          "w": 1233,
+          "h": 1220
+        },
+        {
+          "title": "Художника",
+          "thumb": "img/tyurina/work5-400.webp",
+          "medium": "img/tyurina/work5-800.webp",
+          "full": "img/tyurina/work5-1600.webp",
+          "w": 720,
+          "h": 848
+        }
+      ],
+      "order": 14,
+      "section": "art-salon"
+    },
+    {
       "id": "bordaeva",
       "name": "Бордаева Оксана Юрьевна",
       "city": "Ростов-на-Дону",
@@ -759,7 +804,7 @@
           "h": 893
         }
       ],
-      "order": 14,
+      "order": 15,
       "section": "art-salon"
     },
     {
@@ -787,7 +832,7 @@
           "h": 1280
         }
       ],
-      "order": 15,
+      "order": 16,
       "section": "art-salon"
     },
     {
@@ -839,7 +884,7 @@
           "h": 3545
         }
       ],
-      "order": 16,
+      "order": 17,
       "section": "art-salon"
     },
     {
@@ -896,7 +941,7 @@
           "h": 1632
         }
       ],
-      "order": 17,
+      "order": 18,
       "section": "art-salon"
     },
     {
@@ -945,7 +990,7 @@
           "h": 3836
         }
       ],
-      "order": 18,
+      "order": 19,
       "section": "art-salon"
     },
     {
@@ -994,7 +1039,56 @@
           "h": 3777
         }
       ],
-      "order": 19,
+      "order": 20,
+      "section": "art-salon"
+    },
+    {
+      "id": "kuydina",
+      "name": "Граделия, Куйдина Ксения Сергеевна",
+      "city": "Ростов-на-Дону",
+      "bio": "Иллюстратор, живописец, график. Родом из Забайкальского края, окончила Забайкальское краевое училище искусств.\n\nВ картинах стремлюсь создавать фантазийные миры, наполненные спокойствием и мечтами. Работаю в разных художественных техниках, создаю иллюстрации для книг, рисую портреты на заказ.",
+      "links": [
+        {
+          "label": "Сайт",
+          "url": "https://taplink.cc/gradeliya"
+        }
+      ],
+      "avatar": "img/kuydina/avatar.webp",
+      "works": [
+        {
+          "title": "",
+          "thumb": "img/kuydina/work1-400.webp",
+          "medium": "img/kuydina/work1-800.webp",
+          "full": "img/kuydina/work1-1600.webp",
+          "w": 2230,
+          "h": 2298
+        },
+        {
+          "title": "",
+          "thumb": "img/kuydina/work2-400.webp",
+          "medium": "img/kuydina/work2-800.webp",
+          "full": "img/kuydina/work2-1600.webp",
+          "w": 2386,
+          "h": 3451
+        },
+        {
+          "title": "",
+          "thumb": "img/kuydina/work3-400.webp",
+          "medium": "img/kuydina/work3-800.webp",
+          "full": "img/kuydina/work3-1600.webp",
+          "w": 2759,
+          "h": 3511
+        },
+        {
+          "title": "",
+          "thumb": "img/kuydina/work4-400.webp",
+          "medium": "img/kuydina/work4-800.webp",
+          "full": "img/kuydina/work4-1600.webp",
+          "w": 2672,
+          "h": 2784
+        }
+      ],
+      "order": 21,
       "section": "art-salon"
     },
     {
@@ -1051,7 +1145,7 @@
           "h": 1280
         }
       ],
-      "order": 20,
+      "order": 22,
       "section": "art-salon"
     },
     {
@@ -1132,7 +1226,7 @@
           "h": 1161
         }
       ],
-      "order": 21,
+      "order": 23,
       "section": "art-salon"
     },
     {
@@ -1197,7 +1291,7 @@
           "h": 3088
         }
       ],
-      "order": 22,
+      "order": 24,
       "section": "art-salon"
     },
     {
@@ -1241,35 +1335,7 @@
           "h": 3605
         }
       ],
-      "order": 23,
-      "section": "art-salon"
-    },
-    {
-      "id": "denisova2",
-      "name": "Студия «Ли-Дизайн», Денисова Лидия Михайловна",
-      "city": "Шахты",
-      "bio": "Дизайнер, декоратор, художник, нумеролог. Окончила Ростовский художественно-строительный колледж и Южно-Российский гуманитарный институт (факультет графического дизайна). Более 10 лет работала в рекламе, с 2013 г. занимается декором для праздников.\n\nВ 2017 г. провела персональную выставку «Через призму сознания» в Шахтах. С 2022 г. изучает эзотерику и нумерологию, что повлияло на её творчество. В написании картин, видит способ самовыражения и раскрытия своего творческого потенциала.",
-      "links": [],
-      "avatar": "img/denisova2/avatar.webp",
-      "works": [
-        {
-          "title": "Вселенная вадрат",
-          "thumb": "img/denisova2/work1-400.webp",
-          "medium": "img/denisova2/work1-800.webp",
-          "full": "img/denisova2/work1-1600.webp",
-          "w": 3408,
-          "h": 3592
-        },
-        {
-          "title": "Безликая квадрат",
-          "thumb": "img/denisova2/work2-400.webp",
-          "medium": "img/denisova2/work2-800.webp",
-          "full": "img/denisova2/work2-1600.webp",
-          "w": 3408,
-          "h": 3880
-        }
-      ],
-      "order": 24,
+      "order": 25,
       "section": "art-salon"
     },
     {
@@ -1332,66 +1398,6 @@
           "full": "img/dzhinaliev/work6-1600.webp",
           "w": 2731,
           "h": 4096
-        }
-      ],
-      "order": 25,
-      "section": "art-salon"
-    },
-    {
-      "id": "donskaya",
-      "name": "МБУ ДО ДДТ, Детская художественно-прикладная школа «Донская лазурь»",
-      "city": "Ростов-на-Дону",
-      "bio": "ул. 339 Стрелковой дивизии, 12 б.\n\nНе каждый ребенок станет великим художником, но каждый научится любить искусство, видеть и ценить прекрасное, вносить частицу своего творчества в окружающий мир.\nОбучение в школе позволяет детям получить дополнительное образование в сфере изобразительного и декоративно-прикладного творчества.\n\nМы рады каждому ребенку в возрасте от 6 до 17 лет.\nНаши воспитанники принимают участие в районных, городских, областных, международных и всероссийских выставках и конкурсах. Являемся постоянными участниками выставки «Арт-Ростов».",
-      "links": [],
-      "avatar": "img/donskaya/avatar.webp",
-      "works": [
-        {
-          "title": "Павлин, Атанесова София",
-          "thumb": "img/donskaya/work1-400.webp",
-          "medium": "img/donskaya/work1-800.webp",
-          "full": "img/donskaya/work1-1600.webp",
-          "w": 918,
-          "h": 1280
-        },
-        {
-          "title": "Натюрморт, Ус Алиса",
-          "thumb": "img/donskaya/work2-400.webp",
-          "medium": "img/donskaya/work2-800.webp",
-          "full": "img/donskaya/work2-1600.webp",
-          "w": 1003,
-          "h": 1280
-        },
-        {
-          "title": "Маяк, Погромский Марк",
-          "thumb": "img/donskaya/work3-400.webp",
-          "medium": "img/donskaya/work3-800.webp",
-          "full": "img/donskaya/work3-1600.webp",
-          "w": 1018,
-          "h": 1280
-        },
-        {
-          "title": "Домик в горах, Захаров Егор",
-          "thumb": "img/donskaya/work4-400.webp",
-          "medium": "img/donskaya/work4-800.webp",
-          "full": "img/donskaya/work4-1600.webp",
-          "w": 960,
-          "h": 1280
-        },
-        {
-          "title": "Лада, Кузьменко Максим",
-          "thumb": "img/donskaya/work5-400.webp",
-          "medium": "img/donskaya/work5-800.webp",
-          "full": "img/donskaya/work5-1600.webp",
-          "w": 960,
-          "h": 1280
-        },
-        {
-          "title": "Лиса Иванова Алина",
-          "thumb": "img/donskaya/work6-400.webp",
-          "medium": "img/donskaya/work6-800.webp",
-          "full": "img/donskaya/work6-1600.webp",
-          "w": 794,
-          "h": 990
         }
       ],
       "order": 26,
@@ -1791,63 +1797,6 @@
       "section": "art-salon"
     },
     {
-      "id": "imanova",
-      "name": "Студия японской живописи Суми-э «Tanoshii sekai» (Радостный мир)",
-      "city": "Ростов-на-Дону",
-      "bio": "Их пятеро. По разным причинам пришли они в студию Суми-Э. И остались на несколько лет. По традиции страны Восходящего солнца, в конце обучения получили японские творческие имена от своего учителя Екатерины Жегуловой. И теперь отмечают выпуск дебютной выставкой «Арт-Ростов» 2026.\n\nНаргиз 暁華 (Акика): С детства я искала себя в искусстве, пробовала разные материалы, осваивала техники, но никак не могла найти свой стиль, свой материал. И путь. До прихода в студию.\n\nОлег 六華 (Рикка): Работаю в экономической сфере. Художественного образования не имею, но решил попробовать себя в Суми-Э, вдохновившись трудами Ёдзи Синкавы.\n\nАнастасия 南華 (Нанка): Много лет назад меня привлекла культура Азии, её глубокая философия и утончённая красота. Я искала свою страсть и призвание. И наконец-то нашла «свое» искусство и «своего» Учителя. А живопись Суми-Э стала способом выразить внутренний мир, успокоить разум и обрести душевное равновесие.\n\nМария 水華 (Сейка): Со школьных лет увлекаюсь азиатской культурой. Во время учебы в университете выпала возможность глубже и на более профессиональном уровне окунуться в увлечения детства с помощью уже знакомой мне кисти и туши, с которой только предстояло познакомиться. Тушь, вода, рисовая бумага позволили мне перенести мысли из мира воображения в реальность.\n\nСергей 豊華 (Ютака): преподаю в художественном училище им. М.Б. Грекова. Пришел в студию за компанию, но остался на годы. И не жалею.",
-      "links": [
-        {
-          "label": "ВКонтакте",
-          "url": "https://vk.com/sumie_rnd"
-        }
-      ],
-      "avatar": "img/imanova/avatar.webp",
-      "works": [
-        {
-          "title": "Сергей",
-          "thumb": "img/imanova/work1-400.webp",
-          "medium": "img/imanova/work1-800.webp",
-          "full": "img/imanova/work1-1600.webp",
-          "w": 2560,
-          "h": 2543
-        },
-        {
-          "title": "Олег",
-          "thumb": "img/imanova/work2-400.webp",
-          "medium": "img/imanova/work2-800.webp",
-          "full": "img/imanova/work2-1600.webp",
-          "w": 1791,
-          "h": 1654
-        },
-        {
-          "title": "Наргиз",
-          "thumb": "img/imanova/work3-400.webp",
-          "medium": "img/imanova/work3-800.webp",
-          "full": "img/imanova/work3-1600.webp",
-          "w": 856,
-          "h": 1779
-        },
-        {
-          "title": "Маша",
-          "thumb": "img/imanova/work4-400.webp",
-          "medium": "img/imanova/work4-800.webp",
-          "full": "img/imanova/work4-1600.webp",
-          "w": 2560,
-          "h": 1920
-        },
-        {
-          "title": "Настя",
-          "thumb": "img/imanova/work5-400.webp",
-          "medium": "img/imanova/work5-800.webp",
-          "full": "img/imanova/work5-1600.webp",
-          "w": 1080,
-          "h": 1920
-        }
-      ],
-      "order": 34,
-      "section": "art-salon"
-    },
-    {
       "id": "istomina",
       "name": "Истомина Елена",
       "city": "Таганрог",
@@ -1905,7 +1854,7 @@
           "h": 1156
         }
       ],
-      "order": 35,
+      "order": 34,
       "section": "art-salon"
     },
     {
@@ -1947,6 +1896,63 @@
           "full": "img/kalinina/work4-1600.webp",
           "w": 1280,
           "h": 1021
+        }
+      ],
+      "order": 35,
+      "section": "art-salon"
+    },
+    {
+      "id": "peregrimova",
+      "name": "Картины с посланием, Перегримова Ольга",
+      "city": "Краснодар",
+      "bio": "Акрил и текстурная паста.\nМолодой художник, мастер сакральной геометрии. Создаю энерго-картины с посланиями на позитивное развитие. Каждая картина несет энергию позитивных изменений. Изменения происходят как в состоянии ее владельца из минуса в плюс, так и происходит гармонизация пространства, где картина находится. Это Изобилие, Любовь, Гармония, Баланс, Масштаб, Бесконечное Богатство Вселенной, Спокойствие, Энергия, Мир, Свет, Расширение и это еще не весь список возможных посланий.",
+      "links": [
+        {
+          "label": "ВКонтакте",
+          "url": "https://vk.com/im/channels/-232011229"
+        }
+      ],
+      "avatar": "img/peregrimova/avatar.webp",
+      "works": [
+        {
+          "title": "",
+          "thumb": "img/peregrimova/work1-400.webp",
+          "medium": "img/peregrimova/work1-800.webp",
+          "full": "img/peregrimova/work1-1600.webp",
+          "w": 643,
+          "h": 633
+        },
+        {
+          "title": "",
+          "thumb": "img/peregrimova/work2-400.webp",
+          "medium": "img/peregrimova/work2-800.webp",
+          "full": "img/peregrimova/work2-1600.webp",
+          "w": 635,
+          "h": 634
+        },
+        {
+          "title": "",
+          "thumb": "img/peregrimova/work3-400.webp",
+          "medium": "img/peregrimova/work3-800.webp",
+          "full": "img/peregrimova/work3-1600.webp",
+          "w": 640,
+          "h": 634
+        },
+        {
+          "title": "",
+          "thumb": "img/peregrimova/work4-400.webp",
+          "medium": "img/peregrimova/work4-800.webp",
+          "full": "img/peregrimova/work4-1600.webp",
+          "w": 629,
+          "h": 632
+        },
+        {
+          "title": "",
+          "thumb": "img/peregrimova/work5-400.webp",
+          "medium": "img/peregrimova/work5-800.webp",
+          "full": "img/peregrimova/work5-1600.webp",
+          "w": 1536,
+          "h": 2048
         }
       ],
       "order": 36,
@@ -2059,58 +2065,6 @@
       "section": "art-salon"
     },
     {
-      "id": "kobozev",
-      "name": "Кобозев Сергей Анатольевич",
-      "city": "Ростов-на-Дону",
-      "bio": "Я не профессиональный художник, но рисование всегда было частью моей жизни. С детства увлекался этим искусством и продолжал развивать свои навыки. Более 10 лет занимался аэрографией параллельно с живописью, создавая уникальные работы и экспериментируя с техниками.",
-      "links": [],
-      "avatar": "img/kobozev/avatar.webp",
-      "works": [
-        {
-          "title": "MG",
-          "thumb": "img/kobozev/work1-400.webp",
-          "medium": "img/kobozev/work1-800.webp",
-          "full": "img/kobozev/work1-1600.webp",
-          "w": 3744,
-          "h": 5616
-        },
-        {
-          "title": "Энерго проэкт (11)",
-          "thumb": "img/kobozev/work2-400.webp",
-          "medium": "img/kobozev/work2-800.webp",
-          "full": "img/kobozev/work2-1600.webp",
-          "w": 3744,
-          "h": 5616
-        },
-        {
-          "title": "MG",
-          "thumb": "img/kobozev/work3-400.webp",
-          "medium": "img/kobozev/work3-800.webp",
-          "full": "img/kobozev/work3-1600.webp",
-          "w": 3744,
-          "h": 5616
-        },
-        {
-          "title": "MG 5.1",
-          "thumb": "img/kobozev/work4-400.webp",
-          "medium": "img/kobozev/work4-800.webp",
-          "full": "img/kobozev/work4-1600.webp",
-          "w": 3252,
-          "h": 2713
-        },
-        {
-          "title": "",
-          "thumb": "img/kobozev/work5-400.webp",
-          "medium": "img/kobozev/work5-800.webp",
-          "full": "img/kobozev/work5-1600.webp",
-          "w": 1280,
-          "h": 1270
-        }
-      ],
-      "order": 39,
-      "section": "art-salon"
-    },
-    {
       "id": "kovaleva",
       "name": "Ковалева Ирина Алексеевна",
       "city": "Ростов-на-Дону",
@@ -2158,6 +2112,58 @@
           "full": "img/kovaleva/work4-1600.webp",
           "w": 302,
           "h": 395
+        }
+      ],
+      "order": 39,
+      "section": "art-salon"
+    },
+    {
+      "id": "kobozev",
+      "name": "Кобозев Сергей Анатольевич",
+      "city": "Ростов-на-Дону",
+      "bio": "Я не профессиональный художник, но рисование всегда было частью моей жизни. С детства увлекался этим искусством и продолжал развивать свои навыки. Более 10 лет занимался аэрографией параллельно с живописью, создавая уникальные работы и экспериментируя с техниками.",
+      "links": [],
+      "avatar": "img/kobozev/avatar.webp",
+      "works": [
+        {
+          "title": "MG",
+          "thumb": "img/kobozev/work1-400.webp",
+          "medium": "img/kobozev/work1-800.webp",
+          "full": "img/kobozev/work1-1600.webp",
+          "w": 3744,
+          "h": 5616
+        },
+        {
+          "title": "Энерго проэкт (11)",
+          "thumb": "img/kobozev/work2-400.webp",
+          "medium": "img/kobozev/work2-800.webp",
+          "full": "img/kobozev/work2-1600.webp",
+          "w": 3744,
+          "h": 5616
+        },
+        {
+          "title": "MG",
+          "thumb": "img/kobozev/work3-400.webp",
+          "medium": "img/kobozev/work3-800.webp",
+          "full": "img/kobozev/work3-1600.webp",
+          "w": 3744,
+          "h": 5616
+        },
+        {
+          "title": "MG 5.1",
+          "thumb": "img/kobozev/work4-400.webp",
+          "medium": "img/kobozev/work4-800.webp",
+          "full": "img/kobozev/work4-1600.webp",
+          "w": 3252,
+          "h": 2713
+        },
+        {
+          "title": "",
+          "thumb": "img/kobozev/work5-400.webp",
+          "medium": "img/kobozev/work5-800.webp",
+          "full": "img/kobozev/work5-1600.webp",
+          "w": 1280,
+          "h": 1270
         }
       ],
       "order": 40,
@@ -2273,55 +2279,6 @@
       "section": "art-salon"
     },
     {
-      "id": "komova",
-      "name": "Лилия Комова",
-      "city": "Ленинградская",
-      "bio": "Краснодарский край\n\nВ основе творчества - любовь к природе и эксперимент с материалами. Мой уникальный стиль соединяет современное искусство и анимализм через микс-медиа арт, живопись, невероятный декор. Это искусство на грани скульптуры и живописи, где через слои материалов и вставки света создается эффект внутреннего сияния. Каждая деталь играет и отражает, вызывая вдохновение и радость.",
-      "links": [
-        {
-          "label": "ВКонтакте",
-          "url": "https://vk.com/liliyaliart"
-        }
-      ],
-      "avatar": "img/komova/avatar.webp",
-      "works": [
-        {
-          "title": "(3)",
-          "thumb": "img/komova/work1-400.webp",
-          "medium": "img/komova/work1-800.webp",
-          "full": "img/komova/work1-1600.webp",
-          "w": 2033,
-          "h": 2735
-        },
-        {
-          "title": "(1)",
-          "thumb": "img/komova/work2-400.webp",
-          "medium": "img/komova/work2-800.webp",
-          "full": "img/komova/work2-1600.webp",
-          "w": 1972,
-          "h": 2836
-        },
-        {
-          "title": "",
-          "thumb": "img/komova/work3-400.webp",
-          "medium": "img/komova/work3-800.webp",
-          "full": "img/komova/work3-1600.webp",
-          "w": 1953,
-          "h": 2793
-        },
-        {
-          "title": "(1)",
-          "thumb": "img/komova/work4-400.webp",
-          "medium": "img/komova/work4-800.webp",
-          "full": "img/komova/work4-1600.webp",
-          "w": 1760,
-          "h": 2842
-        }
-      ],
-      "order": 43,
-      "section": "art-salon"
-    },
-    {
       "id": "koporushkina",
       "name": "Копорушкин Николай Олегович",
       "city": "Ростов-на-Дону",
@@ -2368,6 +2325,55 @@
           "full": "img/koporushkina/work5-1600.webp",
           "w": 959,
           "h": 1280
+        }
+      ],
+      "order": 43,
+      "section": "art-salon"
+    },
+    {
+      "id": "komova",
+      "name": "Лилия Комова",
+      "city": "Ленинградская",
+      "bio": "Краснодарский край\n\nВ основе творчества - любовь к природе и эксперимент с материалами. Мой уникальный стиль соединяет современное искусство и анимализм через микс-медиа арт, живопись, невероятный декор. Это искусство на грани скульптуры и живописи, где через слои материалов и вставки света создается эффект внутреннего сияния. Каждая деталь играет и отражает, вызывая вдохновение и радость.",
+      "links": [
+        {
+          "label": "ВКонтакте",
+          "url": "https://vk.com/liliyaliart"
+        }
+      ],
+      "avatar": "img/komova/avatar.webp",
+      "works": [
+        {
+          "title": "(3)",
+          "thumb": "img/komova/work1-400.webp",
+          "medium": "img/komova/work1-800.webp",
+          "full": "img/komova/work1-1600.webp",
+          "w": 2033,
+          "h": 2735
+        },
+        {
+          "title": "(1)",
+          "thumb": "img/komova/work2-400.webp",
+          "medium": "img/komova/work2-800.webp",
+          "full": "img/komova/work2-1600.webp",
+          "w": 1972,
+          "h": 2836
+        },
+        {
+          "title": "",
+          "thumb": "img/komova/work3-400.webp",
+          "medium": "img/komova/work3-800.webp",
+          "full": "img/komova/work3-1600.webp",
+          "w": 1953,
+          "h": 2793
+        },
+        {
+          "title": "(1)",
+          "thumb": "img/komova/work4-400.webp",
+          "medium": "img/komova/work4-800.webp",
+          "full": "img/komova/work4-1600.webp",
+          "w": 1760,
+          "h": 2842
         }
       ],
       "order": 44,
@@ -2435,44 +2441,41 @@
       "section": "art-salon"
     },
     {
-      "id": "kochura",
-      "name": "«АРТ КАЛИНА» творческое сообщество",
-      "city": "Ростов-на-Дону",
-      "bio": "",
-      "links": [],
-      "avatar": "img/kochura/avatar.webp",
+      "id": "kurzanova",
+      "name": "Курзанова Ольга Семеновна",
+      "city": "Москва",
+      "bio": "Художник стремящийся найти новые ходы.\n\nРодилась в 1975 в Москве.\n\nЧлен Творческого Союза художников России.\n\nЧлен Московского Художественного Фонда.\n\nЖивет и работает в Москве.\nС 2013 ведет активную творческую деятельность, являясь участником многочисленных групповых выставок. Вдохновением художника является сама жизнь, в ярких ее проявлениях. Черно-белые изображения выполняют основные задачи этого художника, усиливают восприятие зрителя и не отвлекают от сути произведения.\n\nЖенщина-творец — это многогранный мир. Её стиль - самовыражение художника, передача чувств, образов, впечатления, энергии, где-то он с долей иронии, лирика души.\n\nКартины художника находятся в собрании Государственного Дарвиновского музея, в собрании Историко - краеведческого музея г. Дорогобуж, Россия.\n\nИкона принята в дар, Храм святого мученика и Чудотворца Трифона в Напрудном, г. Москва.\n\nТак же картины находятся в частных коллекциях в России, Армении, Таджикистане, США, Европы, Австралии.",
+      "links": [
+        {
+          "label": "Сайт",
+          "url": "https://k-olga.com"
+        }
+      ],
+      "avatar": "img/kurzanova/avatar.webp",
       "works": [
         {
-          "title": "Кочура Инна",
-          "thumb": "img/kochura/work1-400.webp",
-          "medium": "img/kochura/work1-800.webp",
-          "full": "img/kochura/work1-1600.webp",
-          "w": 630,
-          "h": 784
+          "title": "",
+          "thumb": "img/kurzanova/work1-400.webp",
+          "medium": "img/kurzanova/work1-800.webp",
+          "full": "img/kurzanova/work1-1600.webp",
+          "w": 2977,
+          "h": 3000
         },
         {
-          "title": "Петлай Лилия",
-          "thumb": "img/kochura/work2-400.webp",
-          "medium": "img/kochura/work2-800.webp",
-          "full": "img/kochura/work2-1600.webp",
-          "w": 880,
-          "h": 1109
-        },
-        {
-          "title": "Беляускене Наталия",
-          "thumb": "img/kochura/work3-400.webp",
-          "medium": "img/kochura/work3-800.webp",
-          "full": "img/kochura/work3-1600.webp",
-          "w": 634,
-          "h": 1280
-        },
-        {
-          "title": "Калинина Анна",
-          "thumb": "img/kochura/work4-400.webp",
-          "medium": "img/kochura/work4-800.webp",
-          "full": "img/kochura/work4-1600.webp",
+          "title": "",
+          "thumb": "img/kurzanova/work2-400.webp",
+          "medium": "img/kurzanova/work2-800.webp",
+          "full": "img/kurzanova/work2-1600.webp",
           "w": 999,
-          "h": 1024
+          "h": 1000
+        },
+        {
+          "title": "",
+          "thumb": "img/kurzanova/work3-400.webp",
+          "medium": "img/kurzanova/work3-800.webp",
+          "full": "img/kurzanova/work3-1600.webp",
+          "w": 3452,
+          "h": 3750
         }
       ],
       "order": 46,
@@ -2539,153 +2542,6 @@
       "section": "art-salon"
     },
     {
-      "id": "kuydina",
-      "name": "Граделия, Куйдина Ксения Сергеевна",
-      "city": "Ростов-на-Дону",
-      "bio": "Иллюстратор, живописец, график. Родом из Забайкальского края, окончила Забайкальское краевое училище искусств.\n\nВ картинах стремлюсь создавать фантазийные миры, наполненные спокойствием и мечтами. Работаю в разных художественных техниках, создаю иллюстрации для книг, рисую портреты на заказ.",
-      "links": [
-        {
-          "label": "Сайт",
-          "url": "https://taplink.cc/gradeliya"
-        }
-      ],
-      "avatar": "img/kuydina/avatar.webp",
-      "works": [
-        {
-          "title": "",
-          "thumb": "img/kuydina/work1-400.webp",
-          "medium": "img/kuydina/work1-800.webp",
-          "full": "img/kuydina/work1-1600.webp",
-          "w": 2230,
-          "h": 2298
-        },
-        {
-          "title": "",
-          "thumb": "img/kuydina/work2-400.webp",
-          "medium": "img/kuydina/work2-800.webp",
-          "full": "img/kuydina/work2-1600.webp",
-          "w": 2386,
-          "h": 3451
-        },
-        {
-          "title": "",
-          "thumb": "img/kuydina/work3-400.webp",
-          "medium": "img/kuydina/work3-800.webp",
-          "full": "img/kuydina/work3-1600.webp",
-          "w": 2759,
-          "h": 3511
-        },
-        {
-          "title": "",
-          "thumb": "img/kuydina/work4-400.webp",
-          "medium": "img/kuydina/work4-800.webp",
-          "full": "img/kuydina/work4-1600.webp",
-          "w": 2672,
-          "h": 2784
-        }
-      ],
-      "order": 48,
-      "section": "art-salon"
-    },
-    {
-      "id": "kuptsova",
-      "name": "Студия творческих идей Татьяны Купцовой, Купцова Татьяна Ивановна",
-      "city": "Ростов-на-Дону",
-      "bio": "Художник-декоратор. Окончила курсы дизайнера в 2000 г.\n\nС 2001 г. работала в рекламе (вывески, брошюры, афиши).\n\nС 2015 г. профессионально занимаюсь росписью стен, барельефами, созданием декоративных элементов для интерьеров, объемно-текстурными картинами, панно, оформлением зеркал, изделий из стеклопластика, изготовлением уникальной керамики ручной работы, декором для витрин, фотозон.",
-      "links": [
-        {
-          "label": "ВКонтакте",
-          "url": "https://vk.com/tatianakuptcovastud"
-        }
-      ],
-      "avatar": "img/kuptsova/avatar.webp",
-      "works": [
-        {
-          "title": "Бра жираф",
-          "thumb": "img/kuptsova/work1-400.webp",
-          "medium": "img/kuptsova/work1-800.webp",
-          "full": "img/kuptsova/work1-1600.webp",
-          "w": 1024,
-          "h": 1536
-        },
-        {
-          "title": "Зеркало донской сфинскс",
-          "thumb": "img/kuptsova/work2-400.webp",
-          "medium": "img/kuptsova/work2-800.webp",
-          "full": "img/kuptsova/work2-1600.webp",
-          "w": 1024,
-          "h": 1536
-        },
-        {
-          "title": "ЛОГО",
-          "thumb": "img/kuptsova/work3-400.webp",
-          "medium": "img/kuptsova/work3-800.webp",
-          "full": "img/kuptsova/work3-1600.webp",
-          "w": 775,
-          "h": 774
-        },
-        {
-          "title": "Барельеф Банановые листья",
-          "thumb": "img/kuptsova/work4-400.webp",
-          "medium": "img/kuptsova/work4-800.webp",
-          "full": "img/kuptsova/work4-1600.webp",
-          "w": 1016,
-          "h": 999
-        },
-        {
-          "title": "Декорация в витрину сувенирной продукции дона",
-          "thumb": "img/kuptsova/work5-400.webp",
-          "medium": "img/kuptsova/work5-800.webp",
-          "full": "img/kuptsova/work5-1600.webp",
-          "w": 1737,
-          "h": 2505
-        }
-      ],
-      "order": 49,
-      "section": "art-salon"
-    },
-    {
-      "id": "kurzanova",
-      "name": "Курзанова Ольга Семеновна",
-      "city": "Москва",
-      "bio": "Художник стремящийся найти новые ходы.\n\nРодилась в 1975 в Москве.\n\nЧлен Творческого Союза художников России.\n\nЧлен Московского Художественного Фонда.\n\nЖивет и работает в Москве.\nС 2013 ведет активную творческую деятельность, являясь участником многочисленных групповых выставок. Вдохновением художника является сама жизнь, в ярких ее проявлениях. Черно-белые изображения выполняют основные задачи этого художника, усиливают восприятие зрителя и не отвлекают от сути произведения.\n\nЖенщина-творец — это многогранный мир. Её стиль - самовыражение художника, передача чувств, образов, впечатления, энергии, где-то он с долей иронии, лирика души.\n\nКартины художника находятся в собрании Государственного Дарвиновского музея, в собрании Историко - краеведческого музея г. Дорогобуж, Россия.\n\nИкона принята в дар, Храм святого мученика и Чудотворца Трифона в Напрудном, г. Москва.\n\nТак же картины находятся в частных коллекциях в России, Армении, Таджикистане, США, Европы, Австралии.",
-      "links": [
-        {
-          "label": "Сайт",
-          "url": "https://k-olga.com"
-        }
-      ],
-      "avatar": "img/kurzanova/avatar.webp",
-      "works": [
-        {
-          "title": "",
-          "thumb": "img/kurzanova/work1-400.webp",
-          "medium": "img/kurzanova/work1-800.webp",
-          "full": "img/kurzanova/work1-1600.webp",
-          "w": 2977,
-          "h": 3000
-        },
-        {
-          "title": "",
-          "thumb": "img/kurzanova/work2-400.webp",
-          "medium": "img/kurzanova/work2-800.webp",
-          "full": "img/kurzanova/work2-1600.webp",
-          "w": 999,
-          "h": 1000
-        },
-        {
-          "title": "",
-          "thumb": "img/kurzanova/work3-400.webp",
-          "medium": "img/kurzanova/work3-800.webp",
-          "full": "img/kurzanova/work3-1600.webp",
-          "w": 3452,
-          "h": 3750
-        }
-      ],
-      "order": 50,
-      "section": "art-salon"
-    },
-    {
       "id": "kucherov",
       "name": "Кучеров Марк Артурович",
       "city": "Ростов-на-Дону",
@@ -2723,7 +2579,7 @@
           "h": 3000
         }
       ],
-      "order": 51,
+      "order": 48,
       "section": "art-salon"
     },
     {
@@ -2772,7 +2628,7 @@
           "h": 2845
         }
       ],
-      "order": 52,
+      "order": 49,
       "section": "art-salon"
     },
     {
@@ -2824,7 +2680,7 @@
           "h": 1280
         }
       ],
-      "order": 53,
+      "order": 50,
       "section": "art-salon"
     },
     {
@@ -2868,51 +2724,7 @@
           "h": 2933
         }
       ],
-      "order": 54,
-      "section": "art-salon"
-    },
-    {
-      "id": "lebedev",
-      "name": "Мастерская миниатюрной живописи Евгения и Евгении Лебедевых",
-      "city": "Нижний Новгород",
-      "bio": "Мастерская миниатюрной живописи Евгения и Евгении Лебедевых основана в 1992 г. Мастерская выпускает картины в технике лаковой миниатюры любой сложности, любых сюжетов, реплики известных работ, либо авторские композиции. В изготовлении работ применяются только высококачественные современные материалы, обеспечивающие качество и долговечность.\n\nГлавное в каждой картине – живопись. Ее отличие от станковой живописи – практически полное отсутствие мазков, сочность красок, многослойность. Технология лессировки придает живописи теплый внутренний свет. Такая работа очень кропотлива, и может длиться месяцами. Живопись оформляется в деревянный багет и паспарту, таким образом, на свет появляется произведение искусства – картина в технике лаковой миниатюры.\n\nДополнительно, по желанию заказчика, картина может быть представлена в подарочной упаковке любой сложности. Это важно, когда картину используют в качестве элитного подарка.\n\nМастерская миниатюрной живописи Евгения и Евгении Лебедевых - постоянный участник выставочных проектов различной направленности. Это и арт-выставки, антикварные салоны в Москве и Санкт-Петербурге, проекты, связанные с оружием, охотой, ювелирным искусством, ДПИ.",
-      "links": [],
-      "avatar": "img/lebedev/avatar.webp",
-      "works": [
-        {
-          "title": "Морской пейзаж (1)",
-          "thumb": "img/lebedev/work1-400.webp",
-          "medium": "img/lebedev/work1-800.webp",
-          "full": "img/lebedev/work1-1600.webp",
-          "w": 3096,
-          "h": 2796
-        },
-        {
-          "title": "Знамя победы",
-          "thumb": "img/lebedev/work2-400.webp",
-          "medium": "img/lebedev/work2-800.webp",
-          "full": "img/lebedev/work2-1600.webp",
-          "w": 3024,
-          "h": 3324
-        },
-        {
-          "title": "Венецианский пейзаж в голубом паспарту",
-          "thumb": "img/lebedev/work3-400.webp",
-          "medium": "img/lebedev/work3-800.webp",
-          "full": "img/lebedev/work3-1600.webp",
-          "w": 3232,
-          "h": 4040
-        },
-        {
-          "title": "Венецианский пейзаж в красном паспарту",
-          "thumb": "img/lebedev/work4-400.webp",
-          "medium": "img/lebedev/work4-800.webp",
-          "full": "img/lebedev/work4-1600.webp",
-          "w": 2944,
-          "h": 3632
-        }
-      ],
-      "order": 55,
+      "order": 51,
       "section": "art-salon"
     },
     {
@@ -2972,7 +2784,64 @@
           "h": 2400
         }
       ],
-      "order": 56,
+      "order": 52,
+      "section": "art-salon"
+    },
+    {
+      "id": "lyubetskaya",
+      "name": "Любецкая Антонина Анатольевна",
+      "city": "Ростов-на-Дону",
+      "bio": "Родилась в г. Новочеркасск.\n\nЧлен ТСХР.\n\nРаботает в технике масло, холст. В жанрах анималистика, натюрморт, пейзаж.\n\nУчастник выставок в г. Ростов-на-Дону, «Арт-Ростов» (с 2019г. по 2025 г); в г. Москве «Ладья. Весенняя фантазия-2022», «Ладья. Зимняя сказка- 2022», «Ладья. Зимняя сказка- 2023»; выставка членов ТСХР «Котовасия» выставочный зал «Авангард» в г. Ростов-на-Дону в 2025 г., выставка в музее им. Дурова в г. Таганроге «На арене - ФАРС» в 2025 г.\n\nКартины находятся в частных коллекциях по всей России и за рубежом (Нидерланды, США, Австралия, Израиль и др.)",
+      "links": [
+        {
+          "label": "Сайт",
+          "url": "https://livemaster.ru/antoninka"
+        }
+      ],
+      "avatar": "img/lyubetskaya/avatar.webp",
+      "works": [
+        {
+          "title": "",
+          "thumb": "img/lyubetskaya/work1-400.webp",
+          "medium": "img/lyubetskaya/work1-800.webp",
+          "full": "img/lyubetskaya/work1-1600.webp",
+          "w": 2835,
+          "h": 3464
+        },
+        {
+          "title": "",
+          "thumb": "img/lyubetskaya/work2-400.webp",
+          "medium": "img/lyubetskaya/work2-800.webp",
+          "full": "img/lyubetskaya/work2-1600.webp",
+          "w": 3758,
+          "h": 2684
+        },
+        {
+          "title": "",
+          "thumb": "img/lyubetskaya/work3-400.webp",
+          "medium": "img/lyubetskaya/work3-800.webp",
+          "full": "img/lyubetskaya/work3-1600.webp",
+          "w": 2316,
+          "h": 3242
+        },
+        {
+          "title": "",
+          "thumb": "img/lyubetskaya/work4-400.webp",
+          "medium": "img/lyubetskaya/work4-800.webp",
+          "full": "img/lyubetskaya/work4-1600.webp",
+          "w": 2419,
+          "h": 2419
+        },
+        {
+          "title": "Любецкая Антонина",
+          "thumb": "img/lyubetskaya/work5-400.webp",
+          "medium": "img/lyubetskaya/work5-800.webp",
+          "full": "img/lyubetskaya/work5-1600.webp",
+          "w": 1899,
+          "h": 2688
+        }
+      ],
+      "order": 53,
       "section": "art-salon"
     },
     {
@@ -3037,64 +2906,51 @@
           "h": 640
         }
       ],
-      "order": 57,
+      "order": 54,
       "section": "art-salon"
     },
     {
-      "id": "lyubetskaya",
-      "name": "Любецкая Антонина Анатольевна",
-      "city": "Ростов-на-Дону",
-      "bio": "Родилась в г. Новочеркасск.\n\nЧлен ТСХР.\n\nРаботает в технике масло, холст. В жанрах анималистика, натюрморт, пейзаж.\n\nУчастник выставок в г. Ростов-на-Дону, «Арт-Ростов» (с 2019г. по 2025 г); в г. Москве «Ладья. Весенняя фантазия-2022», «Ладья. Зимняя сказка- 2022», «Ладья. Зимняя сказка- 2023»; выставка членов ТСХР «Котовасия» выставочный зал «Авангард» в г. Ростов-на-Дону в 2025 г., выставка в музее им. Дурова в г. Таганроге «На арене - ФАРС» в 2025 г.\n\nКартины находятся в частных коллекциях по всей России и за рубежом (Нидерланды, США, Австралия, Израиль и др.)",
-      "links": [
-        {
-          "label": "Сайт",
-          "url": "https://livemaster.ru/antoninka"
-        }
-      ],
-      "avatar": "img/lyubetskaya/avatar.webp",
+      "id": "lebedev",
+      "name": "Мастерская миниатюрной живописи Евгения и Евгении Лебедевых",
+      "city": "Нижний Новгород",
+      "bio": "Мастерская миниатюрной живописи Евгения и Евгении Лебедевых основана в 1992 г. Мастерская выпускает картины в технике лаковой миниатюры любой сложности, любых сюжетов, реплики известных работ, либо авторские композиции. В изготовлении работ применяются только высококачественные современные материалы, обеспечивающие качество и долговечность.\n\nГлавное в каждой картине – живопись. Ее отличие от станковой живописи – практически полное отсутствие мазков, сочность красок, многослойность. Технология лессировки придает живописи теплый внутренний свет. Такая работа очень кропотлива, и может длиться месяцами. Живопись оформляется в деревянный багет и паспарту, таким образом, на свет появляется произведение искусства – картина в технике лаковой миниатюры.\n\nДополнительно, по желанию заказчика, картина может быть представлена в подарочной упаковке любой сложности. Это важно, когда картину используют в качестве элитного подарка.\n\nМастерская миниатюрной живописи Евгения и Евгении Лебедевых - постоянный участник выставочных проектов различной направленности. Это и арт-выставки, антикварные салоны в Москве и Санкт-Петербурге, проекты, связанные с оружием, охотой, ювелирным искусством, ДПИ.",
+      "links": [],
+      "avatar": "img/lebedev/avatar.webp",
       "works": [
         {
-          "title": "",
-          "thumb": "img/lyubetskaya/work1-400.webp",
-          "medium": "img/lyubetskaya/work1-800.webp",
-          "full": "img/lyubetskaya/work1-1600.webp",
-          "w": 2835,
-          "h": 3464
+          "title": "Морской пейзаж (1)",
+          "thumb": "img/lebedev/work1-400.webp",
+          "medium": "img/lebedev/work1-800.webp",
+          "full": "img/lebedev/work1-1600.webp",
+          "w": 3096,
+          "h": 2796
         },
         {
-          "title": "",
-          "thumb": "img/lyubetskaya/work2-400.webp",
-          "medium": "img/lyubetskaya/work2-800.webp",
-          "full": "img/lyubetskaya/work2-1600.webp",
-          "w": 3758,
-          "h": 2684
+          "title": "Знамя победы",
+          "thumb": "img/lebedev/work2-400.webp",
+          "medium": "img/lebedev/work2-800.webp",
+          "full": "img/lebedev/work2-1600.webp",
+          "w": 3024,
+          "h": 3324
         },
         {
-          "title": "",
-          "thumb": "img/lyubetskaya/work3-400.webp",
-          "medium": "img/lyubetskaya/work3-800.webp",
-          "full": "img/lyubetskaya/work3-1600.webp",
-          "w": 2316,
-          "h": 3242
+          "title": "Венецианский пейзаж в голубом паспарту",
+          "thumb": "img/lebedev/work3-400.webp",
+          "medium": "img/lebedev/work3-800.webp",
+          "full": "img/lebedev/work3-1600.webp",
+          "w": 3232,
+          "h": 4040
         },
         {
-          "title": "",
-          "thumb": "img/lyubetskaya/work4-400.webp",
-          "medium": "img/lyubetskaya/work4-800.webp",
-          "full": "img/lyubetskaya/work4-1600.webp",
-          "w": 2419,
-          "h": 2419
-        },
-        {
-          "title": "Любецкая Антонина",
-          "thumb": "img/lyubetskaya/work5-400.webp",
-          "medium": "img/lyubetskaya/work5-800.webp",
-          "full": "img/lyubetskaya/work5-1600.webp",
-          "w": 1899,
-          "h": 2688
+          "title": "Венецианский пейзаж в красном паспарту",
+          "thumb": "img/lebedev/work4-400.webp",
+          "medium": "img/lebedev/work4-800.webp",
+          "full": "img/lebedev/work4-1600.webp",
+          "w": 2944,
+          "h": 3632
         }
       ],
-      "order": 58,
+      "order": 55,
       "section": "art-salon"
     },
     {
@@ -3146,56 +3002,67 @@
           "h": 1976
         }
       ],
-      "order": 59,
+      "order": 56,
       "section": "art-salon"
     },
     {
-      "id": "minaeva",
-      "name": "Шестернина Анастасия Валерьевна",
-      "city": "Коломна",
-      "bio": "Анастасия Шестернина родилась 28 апреля 1990 года в г. Новый Уренгой, сейчас живёт в г. Коломна. Художник-самоучка. Член СРХ. С 2017 г. полностью погрузилась в творческую профессию. Работала руководителем студии ИЗО во Дворце Культуры г. Озёры.\n\n7 лет пишет картины и портреты на заказ. Более 300 работ Анастасии находятся не только в России, но и в Германии и Франции. Сейчас отдает предпочтение авторскому творчеству.\n\nВыставки\nВыставка картин в Озёрском краеведческом музее им. А.П. Дорониной в 2023г. Озёры., МО\nВыставка картин в Историко-художественном музее, 2025г, Луховицы, МО.",
-      "links": [
-        {
-          "label": "ВКонтакте",
-          "url": "https://vk.ru/a_she_art"
-        }
-      ],
-      "avatar": "img/minaeva/avatar.webp",
+      "id": "donskaya",
+      "name": "МБУ ДО ДДТ, Детская художественно-прикладная школа «Донская лазурь»",
+      "city": "Ростов-на-Дону",
+      "bio": "ул. 339 Стрелковой дивизии, 12 б.\n\nНе каждый ребенок станет великим художником, но каждый научится любить искусство, видеть и ценить прекрасное, вносить частицу своего творчества в окружающий мир.\nОбучение в школе позволяет детям получить дополнительное образование в сфере изобразительного и декоративно-прикладного творчества.\n\nМы рады каждому ребенку в возрасте от 6 до 17 лет.\nНаши воспитанники принимают участие в районных, городских, областных, международных и всероссийских выставках и конкурсах. Являемся постоянными участниками выставки «Арт-Ростов».",
+      "links": [],
+      "avatar": "img/donskaya/avatar.webp",
       "works": [
         {
-          "title": "",
-          "thumb": "img/minaeva/work1-400.webp",
-          "medium": "img/minaeva/work1-800.webp",
-          "full": "img/minaeva/work1-1600.webp",
-          "w": 419,
-          "h": 640
+          "title": "Павлин, Атанесова София",
+          "thumb": "img/donskaya/work1-400.webp",
+          "medium": "img/donskaya/work1-800.webp",
+          "full": "img/donskaya/work1-1600.webp",
+          "w": 918,
+          "h": 1280
         },
         {
-          "title": "",
-          "thumb": "img/minaeva/work2-400.webp",
-          "medium": "img/minaeva/work2-800.webp",
-          "full": "img/minaeva/work2-1600.webp",
-          "w": 419,
-          "h": 640
+          "title": "Натюрморт, Ус Алиса",
+          "thumb": "img/donskaya/work2-400.webp",
+          "medium": "img/donskaya/work2-800.webp",
+          "full": "img/donskaya/work2-1600.webp",
+          "w": 1003,
+          "h": 1280
         },
         {
-          "title": "",
-          "thumb": "img/minaeva/work3-400.webp",
-          "medium": "img/minaeva/work3-800.webp",
-          "full": "img/minaeva/work3-1600.webp",
-          "w": 424,
-          "h": 640
+          "title": "Маяк, Погромский Марк",
+          "thumb": "img/donskaya/work3-400.webp",
+          "medium": "img/donskaya/work3-800.webp",
+          "full": "img/donskaya/work3-1600.webp",
+          "w": 1018,
+          "h": 1280
         },
         {
-          "title": "",
-          "thumb": "img/minaeva/work4-400.webp",
-          "medium": "img/minaeva/work4-800.webp",
-          "full": "img/minaeva/work4-1600.webp",
-          "w": 428,
-          "h": 640
+          "title": "Домик в горах, Захаров Егор",
+          "thumb": "img/donskaya/work4-400.webp",
+          "medium": "img/donskaya/work4-800.webp",
+          "full": "img/donskaya/work4-1600.webp",
+          "w": 960,
+          "h": 1280
+        },
+        {
+          "title": "Лада, Кузьменко Максим",
+          "thumb": "img/donskaya/work5-400.webp",
+          "medium": "img/donskaya/work5-800.webp",
+          "full": "img/donskaya/work5-1600.webp",
+          "w": 960,
+          "h": 1280
+        },
+        {
+          "title": "Лиса Иванова Алина",
+          "thumb": "img/donskaya/work6-400.webp",
+          "medium": "img/donskaya/work6-800.webp",
+          "full": "img/donskaya/work6-1600.webp",
+          "w": 794,
+          "h": 990
         }
       ],
-      "order": 60,
+      "order": 57,
       "section": "art-salon"
     },
     {
@@ -3247,7 +3114,7 @@
           "h": 1599
         }
       ],
-      "order": 61,
+      "order": 58,
       "section": "art-salon"
     },
     {
@@ -3291,7 +3158,7 @@
           "h": 1440
         }
       ],
-      "order": 62,
+      "order": 59,
       "section": "art-salon"
     },
     {
@@ -3343,7 +3210,7 @@
           "h": 2160
         }
       ],
-      "order": 63,
+      "order": 60,
       "section": "art-salon"
     },
     {
@@ -3376,60 +3243,7 @@
           "h": 2207
         }
       ],
-      "order": 64,
-      "section": "art-salon"
-    },
-    {
-      "id": "nikonova",
-      "name": "Творческая мастерская, Никонова Елена Леонидовна",
-      "city": "Ростов-на-Дону",
-      "bio": "Родилась в Ростовской области. Мой путь в творчестве начался с 7 лет. Сначала я сама рисовала животных, в основном лошадей, затем стала посещать художественную школу. После школы поступила в Ростовское художественное училище им. М. Б. Грекова по классу \"живописи и композиции\", где моим преподавателем был Михайлов Г. П. После училища преподавала в детской художественной школе г. Ростов-на-Дону. Затем был перерыв в творчестве по семейным обстоятельствам. Но я вновь вернулась к живописи, пишу в основном своих любимых животных и пейзажи. Мои работы были напечатаны в сборниках творческого объединения \"Ёрш\" г. Санкт-Петербург: \"Фантазия карандаша и слова\" и \"Улица ИЗО\".\n\nУчаствовала в выставках «Арт-Ростов» с 2023 по 2025 года и выставке посвященной Российско-китайской дружбе в г. Таганрог. Так же помимо рисования занимаюсь вязанием и решила соединить эти два направления. Создаю вязаные шкатулки, на которых крышка является картиной в миниатюре, написанная мною. Такие изделия выставлены мною на продажу в лавке \"Ремесло в руках\" г. Ростов-на-Дону.",
-      "links": [
-        {
-          "label": "Сайт",
-          "url": "https://livemaster.ru/elnm"
-        },
-        {
-          "label": "ВКонтакте",
-          "url": "https://vk.com/id710341248"
-        }
-      ],
-      "avatar": "img/nikonova/avatar.webp",
-      "works": [
-        {
-          "title": "",
-          "thumb": "img/nikonova/work1-400.webp",
-          "medium": "img/nikonova/work1-800.webp",
-          "full": "img/nikonova/work1-1600.webp",
-          "w": 1290,
-          "h": 2520
-        },
-        {
-          "title": "",
-          "thumb": "img/nikonova/work2-400.webp",
-          "medium": "img/nikonova/work2-800.webp",
-          "full": "img/nikonova/work2-1600.webp",
-          "w": 1980,
-          "h": 1557
-        },
-        {
-          "title": "",
-          "thumb": "img/nikonova/work3-400.webp",
-          "medium": "img/nikonova/work3-800.webp",
-          "full": "img/nikonova/work3-1600.webp",
-          "w": 3450,
-          "h": 1976
-        },
-        {
-          "title": "",
-          "thumb": "img/nikonova/work4-400.webp",
-          "medium": "img/nikonova/work4-800.webp",
-          "full": "img/nikonova/work4-1600.webp",
-          "w": 1986,
-          "h": 1914
-        }
-      ],
-      "order": 65,
+      "order": 61,
       "section": "art-salon"
     },
     {
@@ -3465,14 +3279,14 @@
           "h": 904
         }
       ],
-      "order": 66,
+      "order": 62,
       "section": "art-salon"
     },
     {
       "id": "novikov2",
       "name": "Художественная мастерская «Экспозиция»",
       "city": "Ростов-на-Дону",
-      "bio": "",
+      "bio": "Приглашаем посетить нашу галерею на пр. Кировском, 55. Художественная галерея существует 15 лет на арт-рынке Ростова-на-Дону. За это время было проведено более 100 выставок. Мы экспонируем работы известных художников Дона, а также отечественных мастеров живописи, графики, прикладного творчества. Отдаем предпочтение советской школе живописи. Последнее время наша экспозиция пополнилась современной живописью в разнообразной стилистике мастеров мирового уровня и различных художественных направлений.",
       "links": [],
       "avatar": "img/novikov2/avatar.webp",
       "works": [
@@ -3517,7 +3331,7 @@
           "h": 3452
         }
       ],
-      "order": 67,
+      "order": 63,
       "section": "art-salon"
     },
     {
@@ -3561,7 +3375,7 @@
           "h": 2574
         }
       ],
-      "order": 68,
+      "order": 64,
       "section": "art-salon"
     },
     {
@@ -3605,7 +3419,7 @@
           "h": 1152
         }
       ],
-      "order": 69,
+      "order": 65,
       "section": "art-salon"
     },
     {
@@ -3641,7 +3455,7 @@
           "h": 607
         }
       ],
-      "order": 70,
+      "order": 66,
       "section": "art-salon"
     },
     {
@@ -3693,7 +3507,7 @@
           "h": 2560
         }
       ],
-      "order": 71,
+      "order": 67,
       "section": "art-salon"
     },
     {
@@ -3746,7 +3560,7 @@
           "h": 937
         }
       ],
-      "order": 72,
+      "order": 68,
       "section": "art-salon"
     },
     {
@@ -3798,108 +3612,7 @@
           "h": 941
         }
       ],
-      "order": 73,
-      "section": "art-salon"
-    },
-    {
-      "id": "peregrimova",
-      "name": "Картины с посланием, Перегримова Ольга",
-      "city": "Краснодар",
-      "bio": "Акрил и текстурная паста.\nМолодой художник, мастер сакральной геометрии. Создаю энерго-картины с посланиями на позитивное развитие. Каждая картина несет энергию позитивных изменений. Изменения происходят как в состоянии ее владельца из минуса в плюс, так и происходит гармонизация пространства, где картина находится. Это Изобилие, Любовь, Гармония, Баланс, Масштаб, Бесконечное Богатство Вселенной, Спокойствие, Энергия, Мир, Свет, Расширение и это еще не весь список возможных посланий.",
-      "links": [
-        {
-          "label": "ВКонтакте",
-          "url": "https://vk.com/im/channels/-232011229"
-        }
-      ],
-      "avatar": "img/peregrimova/avatar.webp",
-      "works": [
-        {
-          "title": "",
-          "thumb": "img/peregrimova/work1-400.webp",
-          "medium": "img/peregrimova/work1-800.webp",
-          "full": "img/peregrimova/work1-1600.webp",
-          "w": 643,
-          "h": 633
-        },
-        {
-          "title": "",
-          "thumb": "img/peregrimova/work2-400.webp",
-          "medium": "img/peregrimova/work2-800.webp",
-          "full": "img/peregrimova/work2-1600.webp",
-          "w": 635,
-          "h": 634
-        },
-        {
-          "title": "",
-          "thumb": "img/peregrimova/work3-400.webp",
-          "medium": "img/peregrimova/work3-800.webp",
-          "full": "img/peregrimova/work3-1600.webp",
-          "w": 640,
-          "h": 634
-        },
-        {
-          "title": "",
-          "thumb": "img/peregrimova/work4-400.webp",
-          "medium": "img/peregrimova/work4-800.webp",
-          "full": "img/peregrimova/work4-1600.webp",
-          "w": 629,
-          "h": 632
-        },
-        {
-          "title": "",
-          "thumb": "img/peregrimova/work5-400.webp",
-          "medium": "img/peregrimova/work5-800.webp",
-          "full": "img/peregrimova/work5-1600.webp",
-          "w": 1536,
-          "h": 2048
-        }
-      ],
-      "order": 74,
-      "section": "art-salon"
-    },
-    {
-      "id": "petrishina",
-      "name": "Студия «Колорит»",
-      "city": "Ростов-на-Дону",
-      "bio": "",
-      "links": [],
-      "avatar": "img/petrishina/avatar.webp",
-      "works": [
-        {
-          "title": "Розы",
-          "thumb": "img/petrishina/work1-400.webp",
-          "medium": "img/petrishina/work1-800.webp",
-          "full": "img/petrishina/work1-1600.webp",
-          "w": 2497,
-          "h": 3614
-        },
-        {
-          "title": "",
-          "thumb": "img/petrishina/work2-400.webp",
-          "medium": "img/petrishina/work2-800.webp",
-          "full": "img/petrishina/work2-1600.webp",
-          "w": 3309,
-          "h": 2680
-        },
-        {
-          "title": "(1)",
-          "thumb": "img/petrishina/work3-400.webp",
-          "medium": "img/petrishina/work3-800.webp",
-          "full": "img/petrishina/work3-1600.webp",
-          "w": 2262,
-          "h": 3108
-        },
-        {
-          "title": "",
-          "thumb": "img/petrishina/work4-400.webp",
-          "medium": "img/petrishina/work4-800.webp",
-          "full": "img/petrishina/work4-1600.webp",
-          "w": 2592,
-          "h": 1936
-        }
-      ],
-      "order": 75,
+      "order": 69,
       "section": "art-salon"
     },
     {
@@ -3972,7 +3685,7 @@
           "h": 5040
         }
       ],
-      "order": 76,
+      "order": 70,
       "section": "art-salon"
     },
     {
@@ -4008,7 +3721,7 @@
           "h": 463
         }
       ],
-      "order": 77,
+      "order": 71,
       "section": "art-salon"
     },
     {
@@ -4073,51 +3786,87 @@
           "h": 1280
         }
       ],
-      "order": 78,
+      "order": 72,
       "section": "art-salon"
     },
     {
-      "id": "prikolotina",
-      "name": "Художественная студия «ЗЕВС арт», Приколотина Екатерина Леонидовна",
-      "city": "Шахты",
-      "bio": "ул. Шевченко 141, оф. 12\n\nМоя живопись - отражение внутреннего мира через глубокую связь с душой. Это своего рода зеркало, передающее чувства, эмоции, мысли. Через краски я показываю свою точку зрения на мир и создаю пространство для размышлений. Искусство живописи позволяет мне выразить то, что не передать словами.",
+      "id": "potapov",
+      "name": "Потапов Сергей Борисович",
+      "city": "Ростов-на-Дону",
+      "bio": "Родился 5 декабря 1969 г. в г. Ростов-на-Дону. В 1988 г. окончил Ростовское художественное училище им. М.Б. Грекова (мастерская художника В.И. Мамонтова). На колористическое развитие художника повлиял знаменитый акварелист и живописец, воспевший просторы Танаиса В.П. Буримов.\n\nЧлен Союза художников России с 1995 г.\n\nУчастник более 60 областных, зональных, межрегиональных, всероссийских и международных выставок и конкурсов, из них 30 персональных, в т.ч. в ЦДХ в Москве, в городах России, Дании, Польши, Чехии, Словакии, ОАЭ, США, Англии и Германии.",
       "links": [],
-      "avatar": "img/prikolotina/avatar.webp",
+      "avatar": "img/potapov/avatar.webp",
       "works": [
         {
           "title": "",
-          "thumb": "img/prikolotina/work1-400.webp",
-          "medium": "img/prikolotina/work1-800.webp",
-          "full": "img/prikolotina/work1-1600.webp",
-          "w": 4222,
-          "h": 5742
+          "thumb": "img/potapov/work1-400.webp",
+          "medium": "img/potapov/work1-800.webp",
+          "full": "img/potapov/work1-1600.webp",
+          "w": 3090,
+          "h": 4158
         },
         {
           "title": "",
-          "thumb": "img/prikolotina/work2-400.webp",
-          "medium": "img/prikolotina/work2-800.webp",
-          "full": "img/prikolotina/work2-1600.webp",
-          "w": 4786,
-          "h": 5694
+          "thumb": "img/potapov/work2-400.webp",
+          "medium": "img/potapov/work2-800.webp",
+          "full": "img/potapov/work2-1600.webp",
+          "w": 4132,
+          "h": 2736
         },
         {
           "title": "",
-          "thumb": "img/prikolotina/work3-400.webp",
-          "medium": "img/prikolotina/work3-800.webp",
-          "full": "img/prikolotina/work3-1600.webp",
-          "w": 1662,
-          "h": 2231
+          "thumb": "img/potapov/work3-400.webp",
+          "medium": "img/potapov/work3-800.webp",
+          "full": "img/potapov/work3-1600.webp",
+          "w": 2940,
+          "h": 3834
         },
         {
-          "title": ".JPG",
-          "thumb": "img/prikolotina/work4-400.webp",
-          "medium": "img/prikolotina/work4-800.webp",
-          "full": "img/prikolotina/work4-1600.webp",
-          "w": 581,
-          "h": 776
+          "title": "",
+          "thumb": "img/potapov/work4-400.webp",
+          "medium": "img/potapov/work4-800.webp",
+          "full": "img/potapov/work4-1600.webp",
+          "w": 4076,
+          "h": 3244
         }
       ],
-      "order": 79,
+      "order": 73,
+      "section": "art-salon"
+    },
+    {
+      "id": "potapova",
+      "name": "Потапова Анастасия Сергеевна",
+      "city": "Ростов-на-Дону",
+      "bio": "Родилась 30 мая 2002 г. в г. Ростов-на-Дону. В 2018 г. поступила в Ростовское художественное училище имени М. Б. Грекова, по специальности «Графический дизайнер». В 2022 г. окончила училище с красным дипломом. С 2022 по 2024 гг. работала по специальности в дизайнерской студии и в сфере полиграфии. С 2024 г. член Творческого Союза Художников России (ТСХР) и Международной Федерации Художников, секция «Живопись».\n\nРаботаю в направлении: натюрморт, пейзаж, жанровые и анималистические композиции. Участница областных, межрегиональных, всероссийских, международных выставок и конкурсов.\n\nПредставляю четвертое поколение династии художников и архитекторов Потаповых.\n\nМое кредо: «Каждый день — это новое начало, возможность создать что-то прекрасное».",
+      "links": [],
+      "avatar": "img/potapova/avatar.webp",
+      "works": [
+        {
+          "title": "Краски осени 60х80 х.м 24г",
+          "thumb": "img/potapova/work1-400.webp",
+          "medium": "img/potapova/work1-800.webp",
+          "full": "img/potapova/work1-1600.webp",
+          "w": 9449,
+          "h": 7087
+        },
+        {
+          "title": "",
+          "thumb": "img/potapova/work2-400.webp",
+          "medium": "img/potapova/work2-800.webp",
+          "full": "img/potapova/work2-1600.webp",
+          "w": 3380,
+          "h": 3264
+        },
+        {
+          "title": "Свет лета 70х90 х.м 25г (2)",
+          "thumb": "img/potapova/work3-400.webp",
+          "medium": "img/potapova/work3-800.webp",
+          "full": "img/potapova/work3-1600.webp",
+          "w": 5315,
+          "h": 4134
+        }
+      ],
+      "order": 74,
       "section": "art-salon"
     },
     {
@@ -4169,7 +3918,7 @@
           "h": 699
         }
       ],
-      "order": 80,
+      "order": 75,
       "section": "art-salon"
     },
     {
@@ -4229,7 +3978,7 @@
           "h": 1120
         }
       ],
-      "order": 81,
+      "order": 76,
       "section": "art-salon"
     },
     {
@@ -4281,7 +4030,52 @@
           "h": 2796
         }
       ],
-      "order": 82,
+      "order": 77,
+      "section": "art-salon"
+    },
+    {
+      "id": "rozhkova",
+      "name": "Рожкова Наталья Георгиевна",
+      "city": "Санкт-Петербург",
+      "bio": "Художник, работающий в технике Mixed Media. Объединяя традиционные методы живописи и флористику, создает произведения, вдохновленные принципами гармонии и единства мира.\n\nКонцепция творчества «Гармония в Единстве», выраженная мягкими оттенками и плавными формами, цветочными элементами. Её картины — это размышления о вечных ценностях и гармонии.\n\nЧлен Союза русских художников и Европейской ассоциации культуры.",
+      "links": [
+        {
+          "label": "ВКонтакте",
+          "url": "https://vk.com/rpnart.flower"
+        },
+        {
+          "label": "ВКонтакте",
+          "url": "https://vk.com/ronart.flowers"
+        }
+      ],
+      "avatar": "img/rozhkova/avatar.webp",
+      "works": [
+        {
+          "title": "Три сестры (пуговки)",
+          "thumb": "img/rozhkova/work1-400.webp",
+          "medium": "img/rozhkova/work1-800.webp",
+          "full": "img/rozhkova/work1-1600.webp",
+          "w": 1232,
+          "h": 1280
+        },
+        {
+          "title": "Прошлое. 50х70см, mixmedia art. г",
+          "thumb": "img/rozhkova/work2-400.webp",
+          "medium": "img/rozhkova/work2-800.webp",
+          "full": "img/rozhkova/work2-1600.webp",
+          "w": 960,
+          "h": 1280
+        },
+        {
+          "title": "Путешествие по жизни...",
+          "thumb": "img/rozhkova/work3-400.webp",
+          "medium": "img/rozhkova/work3-800.webp",
+          "full": "img/rozhkova/work3-1600.webp",
+          "w": 1280,
+          "h": 887
+        }
+      ],
+      "order": 78,
       "section": "art-salon"
     },
     {
@@ -4333,7 +4127,64 @@
           "h": 3459
         }
       ],
-      "order": 83,
+      "order": 79,
+      "section": "art-salon"
+    },
+    {
+      "id": "sakhnova",
+      "name": "Сахнова Ольга Александровна",
+      "city": "Батайск",
+      "bio": "Член союза русских художников.\n\nНесмотря на то, что основная профессия связана со сферой энергетики, всё свободное время я посвящаю творчеству.\n\nЯ люблю писать простые, будничные вещи, чтобы показать, что даже в самом невзрачном на вид предмете есть красота, гармония, энергия, будь то керамическая чашка, старая коряга на берегу реки или улитка, ползущая по стеклянной банке. Мне кажется, что именно такие моменты жизни стоит художникам фиксировать на холстах, чтобы наполнять нашу жизнь красотой и позитивной энергией.\n\nРаботы находятся в частных коллекциях России и Белоруссии.",
+      "links": [
+        {
+          "label": "ВКонтакте",
+          "url": "https://vk.com/sahnova_olga"
+        }
+      ],
+      "avatar": "img/sakhnova/avatar.webp",
+      "works": [
+        {
+          "title": "Пикник на лесной полянке",
+          "thumb": "img/sakhnova/work1-400.webp",
+          "medium": "img/sakhnova/work1-800.webp",
+          "full": "img/sakhnova/work1-1600.webp",
+          "w": 2441,
+          "h": 2992
+        },
+        {
+          "title": "На левом берегу реки",
+          "thumb": "img/sakhnova/work2-400.webp",
+          "medium": "img/sakhnova/work2-800.webp",
+          "full": "img/sakhnova/work2-1600.webp",
+          "w": 2643,
+          "h": 3314
+        },
+        {
+          "title": "Старая коряга",
+          "thumb": "img/sakhnova/work3-400.webp",
+          "medium": "img/sakhnova/work3-800.webp",
+          "full": "img/sakhnova/work3-1600.webp",
+          "w": 963,
+          "h": 1345
+        },
+        {
+          "title": "Ромашки в банке",
+          "thumb": "img/sakhnova/work4-400.webp",
+          "medium": "img/sakhnova/work4-800.webp",
+          "full": "img/sakhnova/work4-1600.webp",
+          "w": 1691,
+          "h": 2320
+        },
+        {
+          "title": "Мост в тумане",
+          "thumb": "img/sakhnova/work5-400.webp",
+          "medium": "img/sakhnova/work5-800.webp",
+          "full": "img/sakhnova/work5-1600.webp",
+          "w": 2453,
+          "h": 3488
+        }
+      ],
+      "order": 80,
       "section": "art-salon"
     },
     {
@@ -4394,64 +4245,7 @@
           "h": 1280
         }
       ],
-      "order": 84,
-      "section": "art-salon"
-    },
-    {
-      "id": "sakhnova",
-      "name": "Сахнова Ольга Александровна",
-      "city": "Батайск",
-      "bio": "Член союза русских художников.\n\nНесмотря на то, что основная профессия связана со сферой энергетики, всё свободное время я посвящаю творчеству.\n\nЯ люблю писать простые, будничные вещи, чтобы показать, что даже в самом невзрачном на вид предмете есть красота, гармония, энергия, будь то керамическая чашка, старая коряга на берегу реки или улитка, ползущая по стеклянной банке. Мне кажется, что именно такие моменты жизни стоит художникам фиксировать на холстах, чтобы наполнять нашу жизнь красотой и позитивной энергией.\n\nРаботы находятся в частных коллекциях России и Белоруссии.",
-      "links": [
-        {
-          "label": "ВКонтакте",
-          "url": "https://vk.com/sahnova_olga"
-        }
-      ],
-      "avatar": "img/sakhnova/avatar.webp",
-      "works": [
-        {
-          "title": "Пикник на лесной полянке",
-          "thumb": "img/sakhnova/work1-400.webp",
-          "medium": "img/sakhnova/work1-800.webp",
-          "full": "img/sakhnova/work1-1600.webp",
-          "w": 2441,
-          "h": 2992
-        },
-        {
-          "title": "На левом берегу реки",
-          "thumb": "img/sakhnova/work2-400.webp",
-          "medium": "img/sakhnova/work2-800.webp",
-          "full": "img/sakhnova/work2-1600.webp",
-          "w": 2643,
-          "h": 3314
-        },
-        {
-          "title": "Старая коряга",
-          "thumb": "img/sakhnova/work3-400.webp",
-          "medium": "img/sakhnova/work3-800.webp",
-          "full": "img/sakhnova/work3-1600.webp",
-          "w": 963,
-          "h": 1345
-        },
-        {
-          "title": "Ромашки в банке",
-          "thumb": "img/sakhnova/work4-400.webp",
-          "medium": "img/sakhnova/work4-800.webp",
-          "full": "img/sakhnova/work4-1600.webp",
-          "w": 1691,
-          "h": 2320
-        },
-        {
-          "title": "Мост в тумане",
-          "thumb": "img/sakhnova/work5-400.webp",
-          "medium": "img/sakhnova/work5-800.webp",
-          "full": "img/sakhnova/work5-1600.webp",
-          "w": 2453,
-          "h": 3488
-        }
-      ],
-      "order": 85,
+      "order": 81,
       "section": "art-salon"
     },
     {
@@ -4512,7 +4306,7 @@
           "h": 1600
         }
       ],
-      "order": 86,
+      "order": 82,
       "section": "art-salon"
     },
     {
@@ -4572,7 +4366,7 @@
           "h": 1280
         }
       ],
-      "order": 87,
+      "order": 83,
       "section": "art-salon"
     },
     {
@@ -4619,6 +4413,192 @@
           "full": "img/solodkiy/work4-1600.webp",
           "w": 2658,
           "h": 3986
+        }
+      ],
+      "order": 84,
+      "section": "art-salon"
+    },
+    {
+      "id": "petrishina",
+      "name": "Студия «Колорит»",
+      "city": "Ростов-на-Дону",
+      "bio": "Студия изобразительного искусства была образована в 1961 г. во Дворце культуры завода «Ростсельмаш» под руководством известного ростовского художника Келлера П.С. Работы студийцев экспонировались на городских, областных и всесоюзных выставках народного творчества в 70-90-х годах прошлого века в Москве и за рубежом: в Болгарии, Германии, Греции. Более 10 лет студия «Колорит» экспонирует свои работы в Донской государственной публичной библиотеке, а с 2012 г. в «ДонЭкспоцентре».\n\nУчебная программа студии основана на реалистических традициях изобразительного искусства.\n\nС 1976 г. и по настоящее время студией руководит художник Красненко Валентина Ивановна. Добро пожаловать в нашу студию!",
+      "links": [],
+      "avatar": "img/petrishina/avatar.webp",
+      "works": [
+        {
+          "title": "Розы",
+          "thumb": "img/petrishina/work1-400.webp",
+          "medium": "img/petrishina/work1-800.webp",
+          "full": "img/petrishina/work1-1600.webp",
+          "w": 2497,
+          "h": 3614
+        },
+        {
+          "title": "",
+          "thumb": "img/petrishina/work2-400.webp",
+          "medium": "img/petrishina/work2-800.webp",
+          "full": "img/petrishina/work2-1600.webp",
+          "w": 3309,
+          "h": 2680
+        },
+        {
+          "title": "(1)",
+          "thumb": "img/petrishina/work3-400.webp",
+          "medium": "img/petrishina/work3-800.webp",
+          "full": "img/petrishina/work3-1600.webp",
+          "w": 2262,
+          "h": 3108
+        },
+        {
+          "title": "",
+          "thumb": "img/petrishina/work4-400.webp",
+          "medium": "img/petrishina/work4-800.webp",
+          "full": "img/petrishina/work4-1600.webp",
+          "w": 2592,
+          "h": 1936
+        }
+      ],
+      "order": 85,
+      "section": "art-salon"
+    },
+    {
+      "id": "denisova2",
+      "name": "Студия «Ли-Дизайн», Денисова Лидия Михайловна",
+      "city": "Шахты",
+      "bio": "Дизайнер, декоратор, художник, нумеролог. Окончила Ростовский художественно-строительный колледж и Южно-Российский гуманитарный институт (факультет графического дизайна). Более 10 лет работала в рекламе, с 2013 г. занимается декором для праздников.\n\nВ 2017 г. провела персональную выставку «Через призму сознания» в Шахтах. С 2022 г. изучает эзотерику и нумерологию, что повлияло на её творчество. В написании картин, видит способ самовыражения и раскрытия своего творческого потенциала.",
+      "links": [],
+      "avatar": "img/denisova2/avatar.webp",
+      "works": [
+        {
+          "title": "Вселенная вадрат",
+          "thumb": "img/denisova2/work1-400.webp",
+          "medium": "img/denisova2/work1-800.webp",
+          "full": "img/denisova2/work1-1600.webp",
+          "w": 3408,
+          "h": 3592
+        },
+        {
+          "title": "Безликая квадрат",
+          "thumb": "img/denisova2/work2-400.webp",
+          "medium": "img/denisova2/work2-800.webp",
+          "full": "img/denisova2/work2-1600.webp",
+          "w": 3408,
+          "h": 3880
+        }
+      ],
+      "order": 86,
+      "section": "art-salon"
+    },
+    {
+      "id": "kuptsova",
+      "name": "Студия творческих идей Татьяны Купцовой, Купцова Татьяна Ивановна",
+      "city": "Ростов-на-Дону",
+      "bio": "Художник-декоратор. Окончила курсы дизайнера в 2000 г.\n\nС 2001 г. работала в рекламе (вывески, брошюры, афиши).\n\nС 2015 г. профессионально занимаюсь росписью стен, барельефами, созданием декоративных элементов для интерьеров, объемно-текстурными картинами, панно, оформлением зеркал, изделий из стеклопластика, изготовлением уникальной керамики ручной работы, декором для витрин, фотозон.",
+      "links": [
+        {
+          "label": "ВКонтакте",
+          "url": "https://vk.com/tatianakuptcovastud"
+        }
+      ],
+      "avatar": "img/kuptsova/avatar.webp",
+      "works": [
+        {
+          "title": "Бра жираф",
+          "thumb": "img/kuptsova/work1-400.webp",
+          "medium": "img/kuptsova/work1-800.webp",
+          "full": "img/kuptsova/work1-1600.webp",
+          "w": 1024,
+          "h": 1536
+        },
+        {
+          "title": "Зеркало донской сфинскс",
+          "thumb": "img/kuptsova/work2-400.webp",
+          "medium": "img/kuptsova/work2-800.webp",
+          "full": "img/kuptsova/work2-1600.webp",
+          "w": 1024,
+          "h": 1536
+        },
+        {
+          "title": "ЛОГО",
+          "thumb": "img/kuptsova/work3-400.webp",
+          "medium": "img/kuptsova/work3-800.webp",
+          "full": "img/kuptsova/work3-1600.webp",
+          "w": 775,
+          "h": 774
+        },
+        {
+          "title": "Барельеф Банановые листья",
+          "thumb": "img/kuptsova/work4-400.webp",
+          "medium": "img/kuptsova/work4-800.webp",
+          "full": "img/kuptsova/work4-1600.webp",
+          "w": 1016,
+          "h": 999
+        },
+        {
+          "title": "Декорация в витрину сувенирной продукции дона",
+          "thumb": "img/kuptsova/work5-400.webp",
+          "medium": "img/kuptsova/work5-800.webp",
+          "full": "img/kuptsova/work5-1600.webp",
+          "w": 1737,
+          "h": 2505
+        }
+      ],
+      "order": 87,
+      "section": "art-salon"
+    },
+    {
+      "id": "imanova",
+      "name": "Студия японской живописи Суми-э «Tanoshii sekai» (Радостный мир)",
+      "city": "Ростов-на-Дону",
+      "bio": "Их пятеро. По разным причинам пришли они в студию Суми-Э. И остались на несколько лет. По традиции страны Восходящего солнца, в конце обучения получили японские творческие имена от своего учителя Екатерины Жегуловой. И теперь отмечают выпуск дебютной выставкой «Арт-Ростов» 2026.\n\nНаргиз 暁華 (Акика): С детства я искала себя в искусстве, пробовала разные материалы, осваивала техники, но никак не могла найти свой стиль, свой материал. И путь. До прихода в студию.\n\nОлег 六華 (Рикка): Работаю в экономической сфере. Художественного образования не имею, но решил попробовать себя в Суми-Э, вдохновившись трудами Ёдзи Синкавы.\n\nАнастасия 南華 (Нанка): Много лет назад меня привлекла культура Азии, её глубокая философия и утончённая красота. Я искала свою страсть и призвание. И наконец-то нашла «свое» искусство и «своего» Учителя. А живопись Суми-Э стала способом выразить внутренний мир, успокоить разум и обрести душевное равновесие.\n\nМария 水華 (Сейка): Со школьных лет увлекаюсь азиатской культурой. Во время учебы в университете выпала возможность глубже и на более профессиональном уровне окунуться в увлечения детства с помощью уже знакомой мне кисти и туши, с которой только предстояло познакомиться. Тушь, вода, рисовая бумага позволили мне перенести мысли из мира воображения в реальность.\n\nСергей 豊華 (Ютака): преподаю в художественном училище им. М.Б. Грекова. Пришел в студию за компанию, но остался на годы. И не жалею.",
+      "links": [
+        {
+          "label": "ВКонтакте",
+          "url": "https://vk.com/sumie_rnd"
+        }
+      ],
+      "avatar": "img/imanova/avatar.webp",
+      "works": [
+        {
+          "title": "Сергей",
+          "thumb": "img/imanova/work1-400.webp",
+          "medium": "img/imanova/work1-800.webp",
+          "full": "img/imanova/work1-1600.webp",
+          "w": 2560,
+          "h": 2543
+        },
+        {
+          "title": "Олег",
+          "thumb": "img/imanova/work2-400.webp",
+          "medium": "img/imanova/work2-800.webp",
+          "full": "img/imanova/work2-1600.webp",
+          "w": 1791,
+          "h": 1654
+        },
+        {
+          "title": "Наргиз",
+          "thumb": "img/imanova/work3-400.webp",
+          "medium": "img/imanova/work3-800.webp",
+          "full": "img/imanova/work3-1600.webp",
+          "w": 856,
+          "h": 1779
+        },
+        {
+          "title": "Маша",
+          "thumb": "img/imanova/work4-400.webp",
+          "medium": "img/imanova/work4-800.webp",
+          "full": "img/imanova/work4-1600.webp",
+          "w": 2560,
+          "h": 1920
+        },
+        {
+          "title": "Настя",
+          "thumb": "img/imanova/work5-400.webp",
+          "medium": "img/imanova/work5-800.webp",
+          "full": "img/imanova/work5-1600.webp",
+          "w": 1080,
+          "h": 1920
         }
       ],
       "order": 88,
@@ -4776,6 +4756,59 @@
       "section": "art-salon"
     },
     {
+      "id": "nikonova",
+      "name": "Творческая мастерская, Никонова Елена Леонидовна",
+      "city": "Ростов-на-Дону",
+      "bio": "Родилась в Ростовской области. Мой путь в творчестве начался с 7 лет. Сначала я сама рисовала животных, в основном лошадей, затем стала посещать художественную школу. После школы поступила в Ростовское художественное училище им. М. Б. Грекова по классу \"живописи и композиции\", где моим преподавателем был Михайлов Г. П. После училища преподавала в детской художественной школе г. Ростов-на-Дону. Затем был перерыв в творчестве по семейным обстоятельствам. Но я вновь вернулась к живописи, пишу в основном своих любимых животных и пейзажи. Мои работы были напечатаны в сборниках творческого объединения \"Ёрш\" г. Санкт-Петербург: \"Фантазия карандаша и слова\" и \"Улица ИЗО\".\n\nУчаствовала в выставках «Арт-Ростов» с 2023 по 2025 года и выставке посвященной Российско-китайской дружбе в г. Таганрог. Так же помимо рисования занимаюсь вязанием и решила соединить эти два направления. Создаю вязаные шкатулки, на которых крышка является картиной в миниатюре, написанная мною. Такие изделия выставлены мною на продажу в лавке \"Ремесло в руках\" г. Ростов-на-Дону.",
+      "links": [
+        {
+          "label": "Сайт",
+          "url": "https://livemaster.ru/elnm"
+        },
+        {
+          "label": "ВКонтакте",
+          "url": "https://vk.com/id710341248"
+        }
+      ],
+      "avatar": "img/nikonova/avatar.webp",
+      "works": [
+        {
+          "title": "",
+          "thumb": "img/nikonova/work1-400.webp",
+          "medium": "img/nikonova/work1-800.webp",
+          "full": "img/nikonova/work1-1600.webp",
+          "w": 1290,
+          "h": 2520
+        },
+        {
+          "title": "",
+          "thumb": "img/nikonova/work2-400.webp",
+          "medium": "img/nikonova/work2-800.webp",
+          "full": "img/nikonova/work2-1600.webp",
+          "w": 1980,
+          "h": 1557
+        },
+        {
+          "title": "",
+          "thumb": "img/nikonova/work3-400.webp",
+          "medium": "img/nikonova/work3-800.webp",
+          "full": "img/nikonova/work3-1600.webp",
+          "w": 3450,
+          "h": 1976
+        },
+        {
+          "title": "",
+          "thumb": "img/nikonova/work4-400.webp",
+          "medium": "img/nikonova/work4-800.webp",
+          "full": "img/nikonova/work4-1600.webp",
+          "w": 1986,
+          "h": 1914
+        }
+      ],
+      "order": 92,
+      "section": "art-salon"
+    },
+    {
       "id": "telelyukhina",
       "name": "Телелюхина Ольга Валерьевна",
       "city": "Ростов-на-Дону",
@@ -4816,7 +4849,7 @@
           "h": 1249
         }
       ],
-      "order": 92,
+      "order": 93,
       "section": "art-salon"
     },
     {
@@ -4884,7 +4917,7 @@
           "h": 1183
         }
       ],
-      "order": 93,
+      "order": 94,
       "section": "art-salon"
     },
     {
@@ -4933,7 +4966,7 @@
           "h": 2160
         }
       ],
-      "order": 94,
+      "order": 95,
       "section": "art-salon"
     },
     {
@@ -5014,47 +5047,6 @@
           "h": 3543
         }
       ],
-      "order": 95,
-      "section": "art-salon"
-    },
-    {
-      "id": "tur",
-      "name": "Наталья Тур",
-      "city": "Санкт-Петербург",
-      "bio": "Родилась на севере России (г. Мончегорск) в семье учителей, там же начала обучаться рисунку и живописи, затем переехала в г. Санкт-Петербург.\n\nОбразование\n\nХудожественное училище им.В.Серова в г. Санкт-Петербург\n\n2001 - Санкт-Петербургская Академия Художеств (отделение станковой живописи, мастерская С. Кичко)\n\nВыставочные проекты\n1999 - выставка на пл. Бастилии (Париж)\n2004 - участник выставки Art-New-York (США)\n2014 - персональная выставка в Союзе Художников (Санкт-Петербург)\n2014 - выставочное турне по РФ (Уренгой-Алма-Аты, Москва-Краснодар)\n2017 - персональная выставка в Союзе Художников (Санкт-Петербург)\n2023 - выставка “Игрушки и время” в Палате Ремёсел (Санкт-Петербург)\n2024 - участник выставки Art-Мир (Нижний Новгород)\n2025 - участник выставки Art-Мир (Нижний Новгород)\n\nС 2005 г. - член Союза Художников России\nС 2006 г. - владелица галереи в Санкт-Петербурге\nПроводит передвижные выставки в России (Пермь, Екатеринбург, Новосибирск)\nРаботы находятся в частных собраниях в России, Франции, Великобритании, Голландии, США\nДиапазон творчества - натюрморты, пейзажи, портреты, жанровые композиции.",
-      "links": [
-        {
-          "label": "Сайт",
-          "url": "https://natashatour.com"
-        }
-      ],
-      "avatar": "img/tur/avatar.webp",
-      "works": [
-        {
-          "title": "FN3B",
-          "thumb": "img/tur/work1-400.webp",
-          "medium": "img/tur/work1-800.webp",
-          "full": "img/tur/work1-1600.webp",
-          "w": 3992,
-          "h": 2806
-        },
-        {
-          "title": "100 NEW Бабье лето",
-          "thumb": "img/tur/work2-400.webp",
-          "medium": "img/tur/work2-800.webp",
-          "full": "img/tur/work2-1600.webp",
-          "w": 10236,
-          "h": 6811
-        },
-        {
-          "title": "",
-          "thumb": "img/tur/work5-400.webp",
-          "medium": "img/tur/work5-800.webp",
-          "full": "img/tur/work5-1600.webp",
-          "w": 2000,
-          "h": 1333
-        }
-      ],
       "order": 96,
       "section": "art-salon"
     },
@@ -5096,52 +5088,41 @@
       "section": "art-salon"
     },
     {
-      "id": "tyurina",
-      "name": "Брыль Людмила Николаевна",
-      "city": "Ростов-на-Дону",
-      "bio": "",
-      "links": [],
-      "avatar": "img/tyurina/avatar.webp",
+      "id": "tur",
+      "name": "Наталья Тур",
+      "city": "Санкт-Петербург",
+      "bio": "Родилась на севере России (г. Мончегорск) в семье учителей, там же начала обучаться рисунку и живописи, затем переехала в г. Санкт-Петербург.\n\nОбразование\n\nХудожественное училище им.В.Серова в г. Санкт-Петербург\n\n2001 - Санкт-Петербургская Академия Художеств (отделение станковой живописи, мастерская С. Кичко)\n\nВыставочные проекты\n1999 - выставка на пл. Бастилии (Париж)\n2004 - участник выставки Art-New-York (США)\n2014 - персональная выставка в Союзе Художников (Санкт-Петербург)\n2014 - выставочное турне по РФ (Уренгой-Алма-Аты, Москва-Краснодар)\n2017 - персональная выставка в Союзе Художников (Санкт-Петербург)\n2023 - выставка “Игрушки и время” в Палате Ремёсел (Санкт-Петербург)\n2024 - участник выставки Art-Мир (Нижний Новгород)\n2025 - участник выставки Art-Мир (Нижний Новгород)\n\nС 2005 г. - член Союза Художников России\nС 2006 г. - владелица галереи в Санкт-Петербурге\nПроводит передвижные выставки в России (Пермь, Екатеринбург, Новосибирск)\nРаботы находятся в частных собраниях в России, Франции, Великобритании, Голландии, США\nДиапазон творчества - натюрморты, пейзажи, портреты, жанровые композиции.",
+      "links": [
+        {
+          "label": "Сайт",
+          "url": "https://natashatour.com"
+        }
+      ],
+      "avatar": "img/tur/avatar.webp",
       "works": [
         {
-          "title": "Эльбрус",
-          "thumb": "img/tyurina/work1-400.webp",
-          "medium": "img/tyurina/work1-800.webp",
-          "full": "img/tyurina/work1-1600.webp",
-          "w": 2291,
-          "h": 1791
+          "title": "FN3B",
+          "thumb": "img/tur/work1-400.webp",
+          "medium": "img/tur/work1-800.webp",
+          "full": "img/tur/work1-1600.webp",
+          "w": 3992,
+          "h": 2806
         },
         {
-          "title": "Натюрморт",
-          "thumb": "img/tyurina/work2-400.webp",
-          "medium": "img/tyurina/work2-800.webp",
-          "full": "img/tyurina/work2-1600.webp",
-          "w": 890,
-          "h": 1199
+          "title": "100 NEW Бабье лето",
+          "thumb": "img/tur/work2-400.webp",
+          "medium": "img/tur/work2-800.webp",
+          "full": "img/tur/work2-1600.webp",
+          "w": 10236,
+          "h": 6811
         },
         {
-          "title": "Рассвет на Дону",
-          "thumb": "img/tyurina/work3-400.webp",
-          "medium": "img/tyurina/work3-800.webp",
-          "full": "img/tyurina/work3-1600.webp",
-          "w": 1280,
-          "h": 1018
-        },
-        {
-          "title": "Магнолии",
-          "thumb": "img/tyurina/work4-400.webp",
-          "medium": "img/tyurina/work4-800.webp",
-          "full": "img/tyurina/work4-1600.webp",
-          "w": 1233,
-          "h": 1220
-        },
-        {
-          "title": "Художника",
-          "thumb": "img/tyurina/work5-400.webp",
-          "medium": "img/tyurina/work5-800.webp",
-          "full": "img/tyurina/work5-1600.webp",
-          "w": 720,
-          "h": 848
+          "title": "",
+          "thumb": "img/tur/work5-400.webp",
+          "medium": "img/tur/work5-800.webp",
+          "full": "img/tur/work5-1600.webp",
+          "w": 2000,
+          "h": 1333
         }
       ],
       "order": 98,
@@ -5468,6 +5449,50 @@
       "section": "art-salon"
     },
     {
+      "id": "prikolotina",
+      "name": "Художественная студия «ЗЕВС арт», Приколотина Екатерина Леонидовна",
+      "city": "Шахты",
+      "bio": "ул. Шевченко 141, оф. 12\n\nМоя живопись - отражение внутреннего мира через глубокую связь с душой. Это своего рода зеркало, передающее чувства, эмоции, мысли. Через краски я показываю свою точку зрения на мир и создаю пространство для размышлений. Искусство живописи позволяет мне выразить то, что не передать словами.",
+      "links": [],
+      "avatar": "img/prikolotina/avatar.webp",
+      "works": [
+        {
+          "title": "",
+          "thumb": "img/prikolotina/work1-400.webp",
+          "medium": "img/prikolotina/work1-800.webp",
+          "full": "img/prikolotina/work1-1600.webp",
+          "w": 4222,
+          "h": 5742
+        },
+        {
+          "title": "",
+          "thumb": "img/prikolotina/work2-400.webp",
+          "medium": "img/prikolotina/work2-800.webp",
+          "full": "img/prikolotina/work2-1600.webp",
+          "w": 4786,
+          "h": 5694
+        },
+        {
+          "title": "",
+          "thumb": "img/prikolotina/work3-400.webp",
+          "medium": "img/prikolotina/work3-800.webp",
+          "full": "img/prikolotina/work3-1600.webp",
+          "w": 1662,
+          "h": 2231
+        },
+        {
+          "title": ".JPG",
+          "thumb": "img/prikolotina/work4-400.webp",
+          "medium": "img/prikolotina/work4-800.webp",
+          "full": "img/prikolotina/work4-1600.webp",
+          "w": 581,
+          "h": 776
+        }
+      ],
+      "order": 105,
+      "section": "art-salon"
+    },
+    {
       "id": "tsygankov",
       "name": "Цыганков Олег",
       "city": "Ростов-на-Дону",
@@ -5500,7 +5525,7 @@
           "h": 1280
         }
       ],
-      "order": 105,
+      "order": 106,
       "section": "art-salon"
     },
     {
@@ -5544,7 +5569,7 @@
           "h": 2817
         }
       ],
-      "order": 106,
+      "order": 107,
       "section": "art-salon"
     },
     {
@@ -5597,7 +5622,7 @@
           "h": 1200
         }
       ],
-      "order": 107,
+      "order": 108,
       "section": "art-salon"
     },
     {
@@ -5646,7 +5671,56 @@
           "h": 960
         }
       ],
-      "order": 108,
+      "order": 109,
+      "section": "art-salon"
+    },
+    {
+      "id": "minaeva",
+      "name": "Шестернина Анастасия Валерьевна",
+      "city": "Коломна",
+      "bio": "Анастасия Шестернина родилась 28 апреля 1990 года в г. Новый Уренгой, сейчас живёт в г. Коломна. Художник-самоучка. Член СРХ. С 2017 г. полностью погрузилась в творческую профессию. Работала руководителем студии ИЗО во Дворце Культуры г. Озёры.\n\n7 лет пишет картины и портреты на заказ. Более 300 работ Анастасии находятся не только в России, но и в Германии и Франции. Сейчас отдает предпочтение авторскому творчеству.\n\nВыставки\nВыставка картин в Озёрском краеведческом музее им. А.П. Дорониной в 2023г. Озёры., МО\nВыставка картин в Историко-художественном музее, 2025г, Луховицы, МО.",
+      "links": [
+        {
+          "label": "ВКонтакте",
+          "url": "https://vk.ru/a_she_art"
+        }
+      ],
+      "avatar": "img/minaeva/avatar.webp",
+      "works": [
+        {
+          "title": "",
+          "thumb": "img/minaeva/work1-400.webp",
+          "medium": "img/minaeva/work1-800.webp",
+          "full": "img/minaeva/work1-1600.webp",
+          "w": 419,
+          "h": 640
+        },
+        {
+          "title": "",
+          "thumb": "img/minaeva/work2-400.webp",
+          "medium": "img/minaeva/work2-800.webp",
+          "full": "img/minaeva/work2-1600.webp",
+          "w": 419,
+          "h": 640
+        },
+        {
+          "title": "",
+          "thumb": "img/minaeva/work3-400.webp",
+          "medium": "img/minaeva/work3-800.webp",
+          "full": "img/minaeva/work3-1600.webp",
+          "w": 424,
+          "h": 640
+        },
+        {
+          "title": "",
+          "thumb": "img/minaeva/work4-400.webp",
+          "medium": "img/minaeva/work4-800.webp",
+          "full": "img/minaeva/work4-1600.webp",
+          "w": 428,
+          "h": 640
+        }
+      ],
+      "order": 110,
       "section": "art-salon"
     },
     {
@@ -5691,7 +5765,7 @@
           "h": 6313
         }
       ],
-      "order": 109,
+      "order": 111,
       "section": "art-salon"
     },
     {
@@ -5796,7 +5870,7 @@
           "h": 4833
         }
       ],
-      "order": 110,
+      "order": 112,
       "section": "art-salon"
     },
     {
@@ -5845,7 +5919,7 @@
           "h": 1611
         }
       ],
-      "order": 111,
+      "order": 113,
       "section": "art-salon"
     },
     {
@@ -5913,7 +5987,7 @@
           "h": 488
         }
       ],
-      "order": 112,
+      "order": 114,
       "section": "art-salon"
     },
     {
@@ -5962,7 +6036,7 @@
           "h": 5548
         }
       ],
-      "order": 113,
+      "order": 115,
       "section": "art-salon"
     },
     {
@@ -6019,7 +6093,7 @@
           "h": 672
         }
       ],
-      "order": 114,
+      "order": 116,
       "section": "galerei"
     },
     {
@@ -6071,7 +6145,7 @@
           "h": 1843
         }
       ],
-      "order": 115,
+      "order": 117,
       "section": "galerei"
     },
     {
@@ -6120,286 +6194,73 @@
           "h": 2560
         }
       ],
-      "order": 116,
-      "section": "galerei"
-    },
-    {
-      "id": "m",
-      "name": "М-ГАЛЕРЕЯ",
-      "city": "Ростов-на-Дону",
-      "bio": "",
-      "links": [],
-      "avatar": "img/m/avatar.webp",
-      "works": [
-        {
-          "title": "",
-          "thumb": "img/m/work1-400.webp",
-          "medium": "img/m/work1-800.webp",
-          "full": "img/m/work1-1600.webp",
-          "w": 1206,
-          "h": 1280
-        },
-        {
-          "title": "",
-          "thumb": "img/m/work2-400.webp",
-          "medium": "img/m/work2-800.webp",
-          "full": "img/m/work2-1600.webp",
-          "w": 630,
-          "h": 768
-        },
-        {
-          "title": "",
-          "thumb": "img/m/work3-400.webp",
-          "medium": "img/m/work3-800.webp",
-          "full": "img/m/work3-1600.webp",
-          "w": 1280,
-          "h": 1076
-        },
-        {
-          "title": "FullSizeRender",
-          "thumb": "img/m/work4-400.webp",
-          "medium": "img/m/work4-800.webp",
-          "full": "img/m/work4-1600.webp",
-          "w": 426,
-          "h": 385
-        }
-      ],
-      "order": 117,
-      "section": "galerei"
-    },
-    {
-      "id": "goluboy",
-      "name": "«Голубой Горох» творческая группировка",
-      "city": "Республика Крым",
-      "bio": "На весеннем пленэре в апреле 2025-го года, который проходил в живописных местах Крыма. Родилась Творческая Группировка «Голубой горох». Основателями данной группы стали художники: Суксин Сергей, Пашков Дмитрий, Андрей Орлов, Наталья Любчик, Лаврищева Яна, Васильева Ирина, и Латышева Юлия. «Голубой горох» — это отсылка к творчеству художников Голубой Розы. Цветом данной группировки было решено выбрать именно королевский голубой, т.к. именно он чаще всего используется в картинах художников и ассоциируется с южным небом. Форма гороха - сфера, шар. Это геометрическое тело, которое не меняется в перспективе, несет идеальную сбалансированность и в то же время находится в движении. Горох собран в стручок и это имеет отсылку к единению в творчестве и пониманию мира в целом.",
-      "links": [
-        {
-          "label": "Telegram",
-          "url": "https://t.me/goluboy_goroh"
-        }
-      ],
-      "avatar": "img/goluboy/avatar.webp",
-      "works": [
-        {
-          "title": "",
-          "thumb": "img/goluboy/work1-400.webp",
-          "medium": "img/goluboy/work1-800.webp",
-          "full": "img/goluboy/work1-1600.webp",
-          "w": 1280,
-          "h": 1280
-        },
-        {
-          "title": "",
-          "thumb": "img/goluboy/work2-400.webp",
-          "medium": "img/goluboy/work2-800.webp",
-          "full": "img/goluboy/work2-1600.webp",
-          "w": 1280,
-          "h": 1279
-        },
-        {
-          "title": "",
-          "thumb": "img/goluboy/work3-400.webp",
-          "medium": "img/goluboy/work3-800.webp",
-          "full": "img/goluboy/work3-1600.webp",
-          "w": 1280,
-          "h": 1260
-        },
-        {
-          "title": "",
-          "thumb": "img/goluboy/work4-400.webp",
-          "medium": "img/goluboy/work4-800.webp",
-          "full": "img/goluboy/work4-1600.webp",
-          "w": 2624,
-          "h": 2679
-        },
-        {
-          "title": "",
-          "thumb": "img/goluboy/work5-400.webp",
-          "medium": "img/goluboy/work5-800.webp",
-          "full": "img/goluboy/work5-1600.webp",
-          "w": 960,
-          "h": 1280
-        },
-        {
-          "title": "",
-          "thumb": "img/goluboy/work6-400.webp",
-          "medium": "img/goluboy/work6-800.webp",
-          "full": "img/goluboy/work6-1600.webp",
-          "w": 2776,
-          "h": 2794
-        },
-        {
-          "title": "",
-          "thumb": "img/goluboy/work7-400.webp",
-          "medium": "img/goluboy/work7-800.webp",
-          "full": "img/goluboy/work7-1600.webp",
-          "w": 1904,
-          "h": 2925
-        },
-        {
-          "title": "",
-          "thumb": "img/goluboy/work8-400.webp",
-          "medium": "img/goluboy/work8-800.webp",
-          "full": "img/goluboy/work8-1600.webp",
-          "w": 1056,
-          "h": 1280
-        }
-      ],
       "order": 118,
       "section": "galerei"
     },
     {
-      "id": "gorod",
-      "name": "«Город — Сад» творческое объединение",
+      "id": "stroganova",
+      "name": "Творческое объединение «АзовАрт»",
       "city": "Ростов-на-Дону",
-      "bio": "Выставка, организованная группой талантливых ростовских художников, представляет собой уникальное художественное пространство, в котором сплетаются разнообразные смыслы и идеи, исследующие взаимосвязь между природой и городской средой.\n\nОсновными темами являются цветы, птицы и городская архитектура — образы, которые, на первый взгляд, могут показаться обыденными, но через призму искусства раскрываются в новом свете.\n\nКаждый художник привносит в экспозицию свою индивидуальность, демонстрируя свое мастерство в использовании различных техник и материалов.\nЗдесь можно увидеть как классические живописные работы, так и современные техники, каждая из которых создает особую атмосферу.\n\nЦветочные композиции передают красоту и хрупкость природы, а образы птиц символизируют свободу и мечты, в то время как городская архитектура отражает сложность и постоянство вне времени.\n\nАвторы: Галина Чикова, Жилина Маргарита, Козлова Елена, Носко Лилия, Попова Анастасия, Склярова Наталья, Текнеджян Александра, Хатламаджиева Ольга, Шляпина Наталия",
+      "bio": "Строганова Ольга Юрьевна\n\nХудожник Строганова Ольга Юрьевна активный участник творческих и профессиональных объединений, действительный член Евразийского Художественного Союза, профессионального Союза Художников России, член ТО художников и мастеров народных искусств АРТ-АЛЛЕЯ Краснодарский край, член ТСХ АзовАРТ.\n\nБольшое количество живописных и графических работ, маслом, темперой, акварелью, акрилом нашли своих приобретателей, как в России, так и за рубежом. Работы оригинальны и узнаваемы, их объединяет линия, динамика, уникальный авторский стиль. Выставки пользуются интересом зрителей и неизменно оставляют приятное послевкусие и отзывы.\n\nВ прикладных работах большое разнообразие от небольших расписных игрушек до масштабных шелковых витражей и ширм. Особого внимания заслуживает серия акварельных работ, ботанических рисунков, птиц и животных созданных как проект для поддержания экологического движения и сохранения природы.",
       "links": [
         {
-          "label": "Сайт",
-          "url": "https://tasha-veeva.ru/gorod-sad"
+          "label": "ВКонтакте",
+          "url": "https://vk.com/ostroganova"
         }
       ],
-      "avatar": "img/gorod/avatar.webp",
+      "avatar": "img/stroganova/avatar.webp",
       "works": [
         {
-          "title": "Город сад",
-          "thumb": "img/gorod/work1-400.webp",
-          "medium": "img/gorod/work1-800.webp",
-          "full": "img/gorod/work1-1600.webp",
-          "w": 1280,
-          "h": 854
+          "title": "Роза",
+          "thumb": "img/stroganova/work1-400.webp",
+          "medium": "img/stroganova/work1-800.webp",
+          "full": "img/stroganova/work1-1600.webp",
+          "w": 2008,
+          "h": 2008
         },
         {
-          "title": "Город сад",
-          "thumb": "img/gorod/work2-400.webp",
-          "medium": "img/gorod/work2-800.webp",
-          "full": "img/gorod/work2-1600.webp",
-          "w": 964,
-          "h": 1280
+          "title": "А",
+          "thumb": "img/stroganova/work2-400.webp",
+          "medium": "img/stroganova/work2-800.webp",
+          "full": "img/stroganova/work2-1600.webp",
+          "w": 3341,
+          "h": 3298
         },
         {
-          "title": "Город сад",
-          "thumb": "img/gorod/work3-400.webp",
-          "medium": "img/gorod/work3-800.webp",
-          "full": "img/gorod/work3-1600.webp",
-          "w": 864,
-          "h": 1280
+          "title": "",
+          "thumb": "img/stroganova/work3-400.webp",
+          "medium": "img/stroganova/work3-800.webp",
+          "full": "img/stroganova/work3-1600.webp",
+          "w": 4160,
+          "h": 3120
         },
         {
-          "title": "Город сад",
-          "thumb": "img/gorod/work4-400.webp",
-          "medium": "img/gorod/work4-800.webp",
-          "full": "img/gorod/work4-1600.webp",
-          "w": 960,
-          "h": 1280
+          "title": "",
+          "thumb": "img/stroganova/work4-400.webp",
+          "medium": "img/stroganova/work4-800.webp",
+          "full": "img/stroganova/work4-1600.webp",
+          "w": 3072,
+          "h": 4080
         },
         {
-          "title": "Город сад",
-          "thumb": "img/gorod/work5-400.webp",
-          "medium": "img/gorod/work5-800.webp",
-          "full": "img/gorod/work5-1600.webp",
-          "w": 1023,
-          "h": 1280
+          "title": "",
+          "thumb": "img/stroganova/work5-400.webp",
+          "medium": "img/stroganova/work5-800.webp",
+          "full": "img/stroganova/work5-1600.webp",
+          "w": 4080,
+          "h": 3072
         },
         {
-          "title": "Город сад",
-          "thumb": "img/gorod/work6-400.webp",
-          "medium": "img/gorod/work6-800.webp",
-          "full": "img/gorod/work6-1600.webp",
-          "w": 1264,
-          "h": 1024
-        },
-        {
-          "title": "Лого город сад",
-          "thumb": "img/gorod/work7-400.webp",
-          "medium": "img/gorod/work7-800.webp",
-          "full": "img/gorod/work7-1600.webp",
-          "w": 1280,
-          "h": 478
+          "title": "Ольга",
+          "thumb": "img/stroganova/work6-400.webp",
+          "medium": "img/stroganova/work6-800.webp",
+          "full": "img/stroganova/work6-1600.webp",
+          "w": 3543,
+          "h": 5906
         }
       ],
       "order": 119,
       "section": "galerei"
-    },
-    {
-      "id": "potapov",
-      "name": "Потапов Сергей Борисович",
-      "city": "Ростов-на-Дону",
-      "bio": "Родился 5 декабря 1969 г. в г. Ростов-на-Дону. В 1988 г. окончил Ростовское художественное училище им. М.Б. Грекова (мастерская художника В.И. Мамонтова). На колористическое развитие художника повлиял знаменитый акварелист и живописец, воспевший просторы Танаиса В.П. Буримов.\n\nЧлен Союза художников России с 1995 г.\n\nУчастник более 60 областных, зональных, межрегиональных, всероссийских и международных выставок и конкурсов, из них 30 персональных, в т.ч. в ЦДХ в Москве, в городах России, Дании, Польши, Чехии, Словакии, ОАЭ, США, Англии и Германии.",
-      "links": [],
-      "avatar": "img/potapov/avatar.webp",
-      "works": [
-        {
-          "title": "",
-          "thumb": "img/potapov/work1-400.webp",
-          "medium": "img/potapov/work1-800.webp",
-          "full": "img/potapov/work1-1600.webp",
-          "w": 3090,
-          "h": 4158
-        },
-        {
-          "title": "",
-          "thumb": "img/potapov/work2-400.webp",
-          "medium": "img/potapov/work2-800.webp",
-          "full": "img/potapov/work2-1600.webp",
-          "w": 4132,
-          "h": 2736
-        },
-        {
-          "title": "",
-          "thumb": "img/potapov/work3-400.webp",
-          "medium": "img/potapov/work3-800.webp",
-          "full": "img/potapov/work3-1600.webp",
-          "w": 2940,
-          "h": 3834
-        },
-        {
-          "title": "",
-          "thumb": "img/potapov/work4-400.webp",
-          "medium": "img/potapov/work4-800.webp",
-          "full": "img/potapov/work4-1600.webp",
-          "w": 4076,
-          "h": 3244
-        }
-      ],
-      "order": 120,
-      "section": "potapovy-sergey-i-anastasiya"
-    },
-    {
-      "id": "potapova",
-      "name": "Потапова Анастасия Сергеевна",
-      "city": "Ростов-на-Дону",
-      "bio": "Родилась 30 мая 2002 г. в г. Ростов-на-Дону. В 2018 г. поступила в Ростовское художественное училище имени М. Б. Грекова, по специальности «Графический дизайнер». В 2022 г. окончила училище с красным дипломом. С 2022 по 2024 гг. работала по специальности в дизайнерской студии и в сфере полиграфии. С 2024 г. член Творческого Союза Художников России (ТСХР) и Международной Федерации Художников, секция «Живопись».\n\nРаботаю в направлении: натюрморт, пейзаж, жанровые и анималистические композиции. Участница областных, межрегиональных, всероссийских, международных выставок и конкурсов.\n\nПредставляю четвертое поколение династии художников и архитекторов Потаповых.\n\nМое кредо: «Каждый день — это новое начало, возможность создать что-то прекрасное».",
-      "links": [],
-      "avatar": "img/potapova/avatar.webp",
-      "works": [
-        {
-          "title": "Краски осени 60х80 х.м 24г",
-          "thumb": "img/potapova/work1-400.webp",
-          "medium": "img/potapova/work1-800.webp",
-          "full": "img/potapova/work1-1600.webp",
-          "w": 9449,
-          "h": 7087
-        },
-        {
-          "title": "",
-          "thumb": "img/potapova/work2-400.webp",
-          "medium": "img/potapova/work2-800.webp",
-          "full": "img/potapova/work2-1600.webp",
-          "w": 3380,
-          "h": 3264
-        },
-        {
-          "title": "Свет лета 70х90 х.м 25г (2)",
-          "thumb": "img/potapova/work3-400.webp",
-          "medium": "img/potapova/work3-800.webp",
-          "full": "img/potapova/work3-1600.webp",
-          "w": 5315,
-          "h": 4134
-        }
-      ],
-      "order": 121,
-      "section": "potapovy-sergey-i-anastasiya"
     },
     {
       "id": "avakumova",
@@ -6450,8 +6311,8 @@
           "h": 1280
         }
       ],
-      "order": 122,
-      "section": "tvorcheskoe-obedinenie-azovart"
+      "order": 120,
+      "section": "galerei"
     },
     {
       "id": "gupal",
@@ -6502,8 +6363,8 @@
           "h": 2560
         }
       ],
-      "order": 123,
-      "section": "tvorcheskoe-obedinenie-azovart"
+      "order": 121,
+      "section": "galerei"
     },
     {
       "id": "kovaleva2",
@@ -6554,8 +6415,8 @@
           "h": 810
         }
       ],
-      "order": 124,
-      "section": "tvorcheskoe-obedinenie-azovart"
+      "order": 122,
+      "section": "galerei"
     },
     {
       "id": "krotenko",
@@ -6598,8 +6459,8 @@
           "h": 1101
         }
       ],
-      "order": 125,
-      "section": "tvorcheskoe-obedinenie-azovart"
+      "order": 123,
+      "section": "galerei"
     },
     {
       "id": "maer",
@@ -6634,8 +6495,8 @@
           "h": 3742
         }
       ],
-      "order": 126,
-      "section": "tvorcheskoe-obedinenie-azovart"
+      "order": 124,
+      "section": "galerei"
     },
     {
       "id": "mechuk",
@@ -6718,118 +6579,260 @@
           "h": 1259
         }
       ],
-      "order": 127,
-      "section": "tvorcheskoe-obedinenie-azovart"
+      "order": 125,
+      "section": "galerei"
     },
     {
-      "id": "stroganova",
-      "name": "Творческое объединение «АзовАрт»",
-      "city": "Ростов-на-Дону",
-      "bio": "Строганова Ольга Юрьевна\n\nХудожник Строганова Ольга Юрьевна активный участник творческих и профессиональных объединений, действительный член Евразийского Художественного Союза, профессионального Союза Художников России, член ТО художников и мастеров народных искусств АРТ-АЛЛЕЯ Краснодарский край, член ТСХ АзовАРТ.\n\nБольшое количество живописных и графических работ, маслом, темперой, акварелью, акрилом нашли своих приобретателей, как в России, так и за рубежом. Работы оригинальны и узнаваемы, их объединяет линия, динамика, уникальный авторский стиль. Выставки пользуются интересом зрителей и неизменно оставляют приятное послевкусие и отзывы.\n\nВ прикладных работах большое разнообразие от небольших расписных игрушек до масштабных шелковых витражей и ширм. Особого внимания заслуживает серия акварельных работ, ботанических рисунков, птиц и животных созданных как проект для поддержания экологического движения и сохранения природы.",
+      "id": "goluboy",
+      "name": "«Голубой Горох» творческая группировка",
+      "city": "Республика Крым",
+      "bio": "На весеннем пленэре в апреле 2025-го года, который проходил в живописных местах Крыма. Родилась Творческая Группировка «Голубой горох». Основателями данной группы стали художники: Суксин Сергей, Пашков Дмитрий, Андрей Орлов, Наталья Любчик, Лаврищева Яна, Васильева Ирина, и Латышева Юлия. «Голубой горох» — это отсылка к творчеству художников Голубой Розы. Цветом данной группировки было решено выбрать именно королевский голубой, т.к. именно он чаще всего используется в картинах художников и ассоциируется с южным небом. Форма гороха - сфера, шар. Это геометрическое тело, которое не меняется в перспективе, несет идеальную сбалансированность и в то же время находится в движении. Горох собран в стручок и это имеет отсылку к единению в творчестве и пониманию мира в целом.",
       "links": [
         {
-          "label": "ВКонтакте",
-          "url": "https://vk.com/ostroganova"
+          "label": "Telegram",
+          "url": "https://t.me/goluboy_goroh"
         }
       ],
-      "avatar": "img/stroganova/avatar.webp",
+      "avatar": "img/goluboy/avatar.webp",
       "works": [
         {
-          "title": "Роза",
-          "thumb": "img/stroganova/work1-400.webp",
-          "medium": "img/stroganova/work1-800.webp",
-          "full": "img/stroganova/work1-1600.webp",
-          "w": 2008,
-          "h": 2008
-        },
-        {
-          "title": "А",
-          "thumb": "img/stroganova/work2-400.webp",
-          "medium": "img/stroganova/work2-800.webp",
-          "full": "img/stroganova/work2-1600.webp",
-          "w": 3341,
-          "h": 3298
-        },
-        {
           "title": "",
-          "thumb": "img/stroganova/work3-400.webp",
-          "medium": "img/stroganova/work3-800.webp",
-          "full": "img/stroganova/work3-1600.webp",
-          "w": 4160,
-          "h": 3120
-        },
-        {
-          "title": "",
-          "thumb": "img/stroganova/work4-400.webp",
-          "medium": "img/stroganova/work4-800.webp",
-          "full": "img/stroganova/work4-1600.webp",
-          "w": 3072,
-          "h": 4080
-        },
-        {
-          "title": "",
-          "thumb": "img/stroganova/work5-400.webp",
-          "medium": "img/stroganova/work5-800.webp",
-          "full": "img/stroganova/work5-1600.webp",
-          "w": 4080,
-          "h": 3072
-        },
-        {
-          "title": "Ольга",
-          "thumb": "img/stroganova/work6-400.webp",
-          "medium": "img/stroganova/work6-800.webp",
-          "full": "img/stroganova/work6-1600.webp",
-          "w": 3543,
-          "h": 5906
-        }
-      ],
-      "order": 128,
-      "section": "tvorcheskoe-obedinenie-azovart"
-    },
-    {
-      "id": "rozhkova",
-      "name": "Рожкова Наталья Георгиевна",
-      "city": "Санкт-Петербург",
-      "bio": "Художник, работающий в технике Mixed Media. Объединяя традиционные методы живописи и флористику, создает произведения, вдохновленные принципами гармонии и единства мира.\n\nКонцепция творчества «Гармония в Единстве», выраженная мягкими оттенками и плавными формами, цветочными элементами. Её картины — это размышления о вечных ценностях и гармонии.\n\nЧлен Союза русских художников и Европейской ассоциации культуры.",
-      "links": [
-        {
-          "label": "ВКонтакте",
-          "url": "https://vk.com/rpnart.flower"
-        },
-        {
-          "label": "ВКонтакте",
-          "url": "https://vk.com/ronart.flowers"
-        }
-      ],
-      "avatar": "img/rozhkova/avatar.webp",
-      "works": [
-        {
-          "title": "Три сестры (пуговки)",
-          "thumb": "img/rozhkova/work1-400.webp",
-          "medium": "img/rozhkova/work1-800.webp",
-          "full": "img/rozhkova/work1-1600.webp",
-          "w": 1232,
+          "thumb": "img/goluboy/work1-400.webp",
+          "medium": "img/goluboy/work1-800.webp",
+          "full": "img/goluboy/work1-1600.webp",
+          "w": 1280,
           "h": 1280
         },
         {
-          "title": "Прошлое. 50х70см, mixmedia art. г",
-          "thumb": "img/rozhkova/work2-400.webp",
-          "medium": "img/rozhkova/work2-800.webp",
-          "full": "img/rozhkova/work2-1600.webp",
+          "title": "",
+          "thumb": "img/goluboy/work2-400.webp",
+          "medium": "img/goluboy/work2-800.webp",
+          "full": "img/goluboy/work2-1600.webp",
+          "w": 1280,
+          "h": 1279
+        },
+        {
+          "title": "",
+          "thumb": "img/goluboy/work3-400.webp",
+          "medium": "img/goluboy/work3-800.webp",
+          "full": "img/goluboy/work3-1600.webp",
+          "w": 1280,
+          "h": 1260
+        },
+        {
+          "title": "",
+          "thumb": "img/goluboy/work4-400.webp",
+          "medium": "img/goluboy/work4-800.webp",
+          "full": "img/goluboy/work4-1600.webp",
+          "w": 2624,
+          "h": 2679
+        },
+        {
+          "title": "",
+          "thumb": "img/goluboy/work5-400.webp",
+          "medium": "img/goluboy/work5-800.webp",
+          "full": "img/goluboy/work5-1600.webp",
           "w": 960,
           "h": 1280
         },
         {
-          "title": "Путешествие по жизни...",
-          "thumb": "img/rozhkova/work3-400.webp",
-          "medium": "img/rozhkova/work3-800.webp",
-          "full": "img/rozhkova/work3-1600.webp",
+          "title": "",
+          "thumb": "img/goluboy/work6-400.webp",
+          "medium": "img/goluboy/work6-800.webp",
+          "full": "img/goluboy/work6-1600.webp",
+          "w": 2776,
+          "h": 2794
+        },
+        {
+          "title": "",
+          "thumb": "img/goluboy/work7-400.webp",
+          "medium": "img/goluboy/work7-800.webp",
+          "full": "img/goluboy/work7-1600.webp",
+          "w": 1904,
+          "h": 2925
+        },
+        {
+          "title": "",
+          "thumb": "img/goluboy/work8-400.webp",
+          "medium": "img/goluboy/work8-800.webp",
+          "full": "img/goluboy/work8-1600.webp",
+          "w": 1056,
+          "h": 1280
+        }
+      ],
+      "order": 126,
+      "section": "galerei"
+    },
+    {
+      "id": "kochura",
+      "name": "«АРТ КАЛИНА» творческое сообщество",
+      "city": "Сочи",
+      "bio": "Творческое сообщество художников «АРТ КАЛИНА» создано в 2024г. в городе Сочи. Это креативное объединение художников-единомышленников из разных городов, способствующее культурному развитию и социальному взаимодействию.\n\nУчастники: Калинина Анна, Кочура Инна, Прохорова Инна, Петлай Лилия, Беляускене Наталия.",
+      "links": [
+        {
+          "label": "ВКонтакте",
+          "url": "https://vk.com/kalina_russian"
+        }
+      ],
+      "avatar": "img/kochura/avatar.webp",
+      "works": [
+        {
+          "title": "Кочура Инна",
+          "thumb": "img/kochura/work1-400.webp",
+          "medium": "img/kochura/work1-800.webp",
+          "full": "img/kochura/work1-1600.webp",
+          "w": 630,
+          "h": 784
+        },
+        {
+          "title": "Петлай Лилия",
+          "thumb": "img/kochura/work2-400.webp",
+          "medium": "img/kochura/work2-800.webp",
+          "full": "img/kochura/work2-1600.webp",
+          "w": 880,
+          "h": 1109
+        },
+        {
+          "title": "Беляускене Наталия",
+          "thumb": "img/kochura/work3-400.webp",
+          "medium": "img/kochura/work3-800.webp",
+          "full": "img/kochura/work3-1600.webp",
+          "w": 634,
+          "h": 1280
+        },
+        {
+          "title": "Калинина Анна",
+          "thumb": "img/kochura/work4-400.webp",
+          "medium": "img/kochura/work4-800.webp",
+          "full": "img/kochura/work4-1600.webp",
+          "w": 999,
+          "h": 1024
+        }
+      ],
+      "order": 127,
+      "section": "galerei"
+    },
+    {
+      "id": "gorod",
+      "name": "«Город — Сад» творческое объединение",
+      "city": "Ростов-на-Дону",
+      "bio": "Выставка, организованная группой талантливых ростовских художников, представляет собой уникальное художественное пространство, в котором сплетаются разнообразные смыслы и идеи, исследующие взаимосвязь между природой и городской средой.\n\nОсновными темами являются цветы, птицы и городская архитектура — образы, которые, на первый взгляд, могут показаться обыденными, но через призму искусства раскрываются в новом свете.\n\nКаждый художник привносит в экспозицию свою индивидуальность, демонстрируя свое мастерство в использовании различных техник и материалов.\nЗдесь можно увидеть как классические живописные работы, так и современные техники, каждая из которых создает особую атмосферу.\n\nЦветочные композиции передают красоту и хрупкость природы, а образы птиц символизируют свободу и мечты, в то время как городская архитектура отражает сложность и постоянство вне времени.\n\nАвторы: Галина Чикова, Жилина Маргарита, Козлова Елена, Носко Лилия, Попова Анастасия, Склярова Наталья, Текнеджян Александра, Хатламаджиева Ольга, Шляпина Наталия",
+      "links": [
+        {
+          "label": "Сайт",
+          "url": "https://tasha-veeva.ru/gorod-sad"
+        }
+      ],
+      "avatar": "img/gorod/avatar.webp",
+      "works": [
+        {
+          "title": "Город сад",
+          "thumb": "img/gorod/work1-400.webp",
+          "medium": "img/gorod/work1-800.webp",
+          "full": "img/gorod/work1-1600.webp",
           "w": 1280,
-          "h": 887
+          "h": 854
+        },
+        {
+          "title": "Город сад",
+          "thumb": "img/gorod/work2-400.webp",
+          "medium": "img/gorod/work2-800.webp",
+          "full": "img/gorod/work2-1600.webp",
+          "w": 964,
+          "h": 1280
+        },
+        {
+          "title": "Город сад",
+          "thumb": "img/gorod/work3-400.webp",
+          "medium": "img/gorod/work3-800.webp",
+          "full": "img/gorod/work3-1600.webp",
+          "w": 864,
+          "h": 1280
+        },
+        {
+          "title": "Город сад",
+          "thumb": "img/gorod/work4-400.webp",
+          "medium": "img/gorod/work4-800.webp",
+          "full": "img/gorod/work4-1600.webp",
+          "w": 960,
+          "h": 1280
+        },
+        {
+          "title": "Город сад",
+          "thumb": "img/gorod/work5-400.webp",
+          "medium": "img/gorod/work5-800.webp",
+          "full": "img/gorod/work5-1600.webp",
+          "w": 1023,
+          "h": 1280
+        },
+        {
+          "title": "Город сад",
+          "thumb": "img/gorod/work6-400.webp",
+          "medium": "img/gorod/work6-800.webp",
+          "full": "img/gorod/work6-1600.webp",
+          "w": 1264,
+          "h": 1024
+        },
+        {
+          "title": "Лого город сад",
+          "thumb": "img/gorod/work7-400.webp",
+          "medium": "img/gorod/work7-800.webp",
+          "full": "img/gorod/work7-1600.webp",
+          "w": 1280,
+          "h": 478
+        }
+      ],
+      "order": 128,
+      "section": "galerei"
+    },
+    {
+      "id": "m",
+      "name": "М-ГАЛЕРЕЯ",
+      "city": "Ростов-на-Дону",
+      "bio": "М-галерея — ведущая галерея современного искусства на Юге России. Основана в 2008 году. С 2012 года выставочный зал расположен по адресу: г. Ростов-на-Дону, ул. Пушкинская, 59.\nПриоритетное направление — искусство XX века. Ярко представлена южная школа живописи, а также работы международно известных авторов.",
+      "links": [
+        {
+          "label": "Сайт",
+          "url": "https://m-gallery.ru"
+        }
+      ],
+      "avatar": "img/m/avatar.webp",
+      "works": [
+        {
+          "title": "",
+          "thumb": "img/m/work1-400.webp",
+          "medium": "img/m/work1-800.webp",
+          "full": "img/m/work1-1600.webp",
+          "w": 1206,
+          "h": 1280
+        },
+        {
+          "title": "",
+          "thumb": "img/m/work2-400.webp",
+          "medium": "img/m/work2-800.webp",
+          "full": "img/m/work2-1600.webp",
+          "w": 630,
+          "h": 768
+        },
+        {
+          "title": "",
+          "thumb": "img/m/work3-400.webp",
+          "medium": "img/m/work3-800.webp",
+          "full": "img/m/work3-1600.webp",
+          "w": 1280,
+          "h": 1076
+        },
+        {
+          "title": "FullSizeRender",
+          "thumb": "img/m/work4-400.webp",
+          "medium": "img/m/work4-800.webp",
+          "full": "img/m/work4-1600.webp",
+          "w": 426,
+          "h": 385
         }
       ],
       "order": 129,
-      "section": "turanova-tatyana"
+      "section": "galerei"
     }
   ]
 }
