@@ -90,6 +90,17 @@
       </div>
     </div>
 
+    <div class="row" style="margin-top:20px;flex-direction:column;align-items:stretch;gap:8px">
+      <div style="font-weight:600">Карта печатного каталога — чтобы верно найти портрет (необязательно)</div>
+      <div class="row" style="margin-top:0">
+        <label class="ghost" style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:999px;cursor:pointer">
+          Выбрать: catalog-map.json
+          <input type="file" id="pickMap" accept=".json" class="hide">
+        </label>
+        <span id="mapInfo" style="color:var(--muted);font-size:13.5px">файл не выбран</span>
+      </div>
+    </div>
+
     <div class="row">
       <label><input type="checkbox" id="chkJpeg" checked> делать запасные JPEG</label>
     </div>
@@ -114,6 +125,14 @@
       <li><code>artists.json</code> положите туда же, рядом с <code>catalog.js</code>.</li>
       <li>Откройте страницу с каталогом и обновите её через <code>Ctrl+Shift+R</code>.</li>
     </ol>
+    <p style="color:var(--muted);font-size:14px;margin:12px 0 0">
+      <b>Карта каталога.</b> Если выбрать <code>catalog-map.json</code>, портрет
+      определяется не по имени файла, а по печатному каталогу: там портрет стоит
+      левее всех прочих изображений страницы, и снимок опознаётся по отпечатку
+      даже после пересжатия. Оттуда же берётся порядок работ. Участники, которых
+      в печатном каталоге нет, пропускаются — в журнале они перечислены отдельно.
+      Без этого файла всё работает по-старому, по именам файлов.
+    </p>
     <p style="color:var(--muted);font-size:14px;margin:12px 0 0">
       Если выбраны общие списки — текст о художнике или галерее берётся оттуда:
       каждая запись общего списка ищется по совпадению слов с именем папки
@@ -161,6 +180,26 @@
   });
   pickGalleries.addEventListener('change', function () {
     loadRoster(pickGalleries.files[0], 'galleries', rosterGalleriesInfo);
+  });
+
+  var pickMap = document.getElementById('pickMap');
+  var mapInfo = document.getElementById('mapInfo');
+  var catalogMap = null;                 // разбор печатного каталога, см. tools/catalog-pdf/
+
+  pickMap.addEventListener('change', function () {
+    var f = pickMap.files[0];
+    if (!f) return;
+    mapInfo.textContent = 'читаю…';
+    f.text().then(function (txt) {
+      var m = JSON.parse(txt);
+      if (!m || !m.pages || !m.pages.length) throw new Error('в файле нет записей');
+      catalogMap = m;
+      catalogMap.pages.forEach(function (p) { p._words = sigWords(p.title); });
+      mapInfo.textContent = f.name + ' — записей: ' + m.pages.length;
+    }).catch(function (e) {
+      catalogMap = null;
+      mapInfo.textContent = 'не удалось прочитать: ' + (e && e.message || e);
+    });
   });
 
   function loadRoster(file, kind, infoEl) {
@@ -891,6 +930,73 @@
     return data;
   }
 
+  /* ---------- поиск портрета по печатному каталогу ----------
+     В каталоге портрет стоит левее всех прочих изображений страницы — это и
+     есть достоверный ответ на вопрос «где автор, а где его работа». Здесь мы
+     считаем отпечатки файлов папки и сверяем их с отпечатками из карты. */
+
+  var MATCH_MAX = 14;      // дальше этого — уже не тот же снимок
+  var MATCH_GAP = 4;       // насколько ближе должен быть победитель, чтобы ему верить
+
+  function hashPhotos(photos, onProgress) {
+    var out = [];
+    return photos.reduce(function (chain, f) {
+      return chain.then(function () {
+        return loadImage(f).then(function (img) {
+          out.push({ file: f, hash: hashOf(img) });
+          if (img.close) img.close();
+        }).catch(function () {
+          out.push({ file: f, hash: null });
+        }).then(function () { if (onProgress) onProgress(); });
+      });
+    }, Promise.resolve()).then(function () { return out; });
+  }
+
+  // какая запись каталога описывает эту папку: сперва по имени, а если имя
+  // не сошлось — по тому, сколько снимков папки нашлось на странице
+  function findRecord(group, hashes) {
+    if (!catalogMap) return null;
+    var fw = sigWords(group.name);
+    var byName = null, bestName = 0;
+    catalogMap.pages.forEach(function (p) {
+      var s = matchScore(fw, p._words);
+      if (s > bestName) { bestName = s; byName = p; }
+    });
+    var live = hashes.filter(function (h) { return h.hash; });
+    function votes(p) {
+      var imgs = [p.portrait].concat(p.works);
+      var n = 0;
+      live.forEach(function (h) {
+        for (var i = 0; i < imgs.length; i++) {
+          if (hamming(h.hash, imgs[i].hash) <= MATCH_MAX) { n++; break; }
+        }
+      });
+      return n;
+    }
+    if (byName) {
+      var vn = votes(byName);
+      if (vn > 0) return { rec: byName, votes: vn };
+    }
+    var best = null, bestVotes = 0;
+    catalogMap.pages.forEach(function (p) {
+      var v = votes(p);
+      if (v > bestVotes) { bestVotes = v; best = p; }
+    });
+    if (best && bestVotes >= 2) return { rec: best, votes: bestVotes };
+    // ни один снимок папки не встречается в каталоге: участника там нет
+    return { rec: byName, votes: 0 };
+  }
+
+  // ближайший файл к заданному отпечатку; null, если уверенности нет
+  function closest(hashes, hash) {
+    var list = hashes.filter(function (h) { return h.hash; })
+      .map(function (h) { return { h: h, d: hamming(h.hash, hash) }; })
+      .sort(function (a, b) { return a.d - b.d; });
+    if (!list.length || list[0].d > MATCH_MAX) return null;
+    if (list.length > 1 && list[1].d - list[0].d < MATCH_GAP) return null;
+    return list[0].h;
+  }
+
   /* ---------- изображения ---------- */
 
   function loadImage(file) {
@@ -907,6 +1013,75 @@
       img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('не открылось')); };
       img.src = url;
     });
+  }
+
+  /* ---------- отпечаток снимка (dHash), совместимый с tools/pdf-portraits.py ----------
+     Нужен, чтобы узнать снимок из печатного каталога среди файлов участника.
+     Тонкость: canvas, ужимая картинку с 3000 пикселей до 9 за один шаг, берёт
+     почти точечные отсчёты, и отпечаток расходится с эталоном на десятки бит.
+     Поэтому уменьшаем постепенно — вдвое за раз, — а последний шаг делаем
+     усреднением по площади вручную. Проверено на снимках каталога: своё
+     совпадение отстоит на 2–9 бит, чужое — на 19 и больше. */
+
+  var HW = 9, HH = 8, HSS = 4;
+
+  function hashOf(img) {
+    var w = img.width || img.naturalWidth, h = img.height || img.naturalHeight;
+    var tw = HW * HSS, th = HH * HSS;
+    var c = document.createElement('canvas');
+    var g = c.getContext('2d');
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = 'high';
+    var src = img;
+    while (w > tw * 2 && h > th * 2) {
+      var nw = Math.max(tw, w >> 1), nh = Math.max(th, h >> 1);
+      var tmp = document.createElement('canvas');
+      tmp.width = nw; tmp.height = nh;
+      var tg = tmp.getContext('2d');
+      tg.imageSmoothingEnabled = true;
+      tg.imageSmoothingQuality = 'high';
+      tg.drawImage(src, 0, 0, nw, nh);
+      src = tmp; w = nw; h = nh;
+    }
+    c.width = tw; c.height = th;
+    g.drawImage(src, 0, 0, tw, th);
+    var d = g.getImageData(0, 0, tw, th).data;
+    var lum = [];
+    for (var y = 0; y < HH; y++) {
+      for (var x = 0; x < HW; x++) {
+        var s = 0;
+        for (var dy = 0; dy < HSS; dy++) {
+          for (var dx = 0; dx < HSS; dx++) {
+            var i = ((y * HSS + dy) * tw + (x * HSS + dx)) * 4;
+            s += (d[i] * 299 + d[i + 1] * 587 + d[i + 2] * 114) / 1000;
+          }
+        }
+        lum.push(s / (HSS * HSS));
+      }
+    }
+    var bits = [];
+    for (var yy = 0; yy < HH; yy++)
+      for (var xx = 0; xx < HW - 1; xx++)
+        bits.push(lum[yy * HW + xx] < lum[yy * HW + xx + 1] ? 1 : 0);
+    var out = '';
+    for (var k = 0; k < bits.length; k += 4)
+      out += parseInt(bits.slice(k, k + 4).join(''), 2).toString(16);
+    return out;
+  }
+
+  var POP = (function () {                // сколько единиц в шестнадцатеричной цифре
+    var t = {};
+    for (var i = 0; i < 16; i++) t[i.toString(16)] = (i.toString(2).match(/1/g) || []).length;
+    return t;
+  })();
+
+  function hamming(a, b) {
+    if (!a || !b || a.length !== b.length) return 999;
+    var n = 0;
+    for (var i = 0; i < a.length; i++) {
+      n += POP[(parseInt(a[i], 16) ^ parseInt(b[i], 16)).toString(16)];
+    }
+    return n;
   }
 
   function resize(img, max, square) {
@@ -1021,7 +1196,7 @@
     var sections = [];
     var seenSlug = {}, seenSec = {};
     var totalPhotos = groups.reduce(function (s, g) { return s + g.photos.length; }, 0);
-    var done = 0, skipped = [];
+    var done = 0, skipped = [], skippedArtists = [];
 
     (function next(gi) {
       if (gi >= groups.length) return finish();
@@ -1043,17 +1218,72 @@
       // («Тестов портрет.jpg») или прямое указание, что это автор.
       var words = g.name.split(/\s+/).filter(function (w) { return w.length >= 4; })
         .map(function (w) { return w.toLowerCase(); });
-      var avatarFile = g.photos.filter(function (f) {
+      var avatarFile = null;
+      var byName = g.photos.filter(function (f) {
         var n = f.name.toLowerCase();
         return words.some(function (w) { return n.indexOf(w) > -1; }) ||
                /портрет|автор|о себе|photo|avatar/.test(n);
       })[0];
-      if (!avatarFile) {
-        avatarFile = g.photos[0];
-        log('    портрет не опознан, взял ' + avatarFile.name + ' — проверьте', 'warn');
-      }
-      var workFiles = g.photos.filter(function (f) { return f !== avatarFile; });
-      var works = [];
+      var workFiles, works = [];
+
+      // сперва пробуем печатный каталог — он знает точно; имя файла остаётся
+      // запасным вариантом для тех, кого в каталоге нет
+      var decide = !catalogMap ? Promise.resolve(null)
+        : hashPhotos(g.photos).then(function (hashes) {
+            var found = findRecord(g, hashes);
+            var rec = found && found.rec;
+            // В каталог идут только те, кто есть в печатной версии: ни один
+            // снимок папки там не встретился — участника пропускаем.
+            if (!found || !found.votes) {
+              log('    в печатном каталоге не найден — пропускаю', 'warn');
+              return { skip: true };
+            }
+            var hit = closest(hashes, rec.portrait.hash);
+            if (!hit) {
+              log('    «' + rec.title + '»: портрет каталога среди файлов не найден', 'warn');
+              return null;
+            }
+            if (rec.sure === false) {
+              log('    «' + rec.title + '»: на странице каталога портрета нет — проверьте', 'warn');
+            }
+            // порядок работ тоже берём из каталога
+            var order = {};
+            rec.works.forEach(function (w, i) {
+              var c = closest(hashes, w.hash);
+              if (c && c.file !== hit.file && order[c.file.relPath] === undefined) {
+                order[c.file.relPath] = i;
+              }
+            });
+            return { file: hit.file, order: order, title: rec.title };
+          });
+
+      decide.then(function (found) {
+        if (found && found.skip) {
+          skippedArtists.push(g.name);
+          done += g.photos.length;
+          bar.style.width = (done / totalPhotos * 100).toFixed(1) + '%';
+          return next(gi + 1);
+        }
+        if (found) {
+          avatarFile = found.file;
+          log('    портрет по каталогу: ' + avatarFile.name);
+        } else {
+          avatarFile = byName || g.photos[0];
+          if (!byName) log('    портрет не опознан, взял ' + avatarFile.name + ' — проверьте', 'warn');
+        }
+        workFiles = g.photos.filter(function (f) { return f !== avatarFile; });
+        if (found && found.order) {
+          var ord = found.order;
+          workFiles.sort(function (a, b) {
+            var x = ord[a.relPath], y = ord[b.relPath];
+            if (x === undefined && y === undefined) return a.name.localeCompare(b.name, 'ru');
+            if (x === undefined) return 1;
+            if (y === undefined) return -1;
+            return x - y;
+          });
+        }
+        startGroup();
+      });
 
       var step = function (list, i, isAvatar, after) {
         if (i >= list.length) return after();
@@ -1104,7 +1334,8 @@
         });
       };
 
-      step([avatarFile], 0, true, function () {
+      function startGroup() {
+        step([avatarFile], 0, true, function () {
         step(workFiles, 0, false, function () {
           var fromRoster = g.rosterMatch;
           var formPromise = fromRoster ? Promise.resolve(null) : readForm(g.form);
@@ -1136,7 +1367,8 @@
             next(gi + 1);
           });
         });
-      });
+        });
+      }
     })(0);
 
     function finish() {
@@ -1150,6 +1382,10 @@
       log('Готово: ' + artists.length + ' художников, ' +
           artists.reduce(function (s, a) { return s + a.works.length; }, 0) + ' работ, архив ' + mb + ' МБ', 'good');
       if (skipped.length) log('Не удалось открыть файлов: ' + skipped.length + ' — см. выше', 'warn');
+      if (skippedArtists.length) {
+        log('Пропущено (нет в печатном каталоге): ' + skippedArtists.length, 'warn');
+        skippedArtists.forEach(function (n) { log('   · ' + n, 'warn'); });
+      }
       save.classList.remove('hide');
       saveJson.classList.remove('hide');
       go.disabled = false;
