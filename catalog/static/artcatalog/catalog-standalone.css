@@ -719,76 +719,6 @@
   box-shadow: 0 -6px 14px rgba(40, 30, 12, .18);
 }
 
-/* --- продолжение коридора вдаль ---
-   Те же четыре плоскости, но вчетверо мельче и растянутые обратно
-   через scale(4) в transform. Браузер растрирует плоскость по её
-   собственному размеру, а не по тому, сколько она занимает на экране,
-   поэтому дальняя часть обходится вчетверо дешевле ближней. Все размеры
-   здесь тоже делятся на четыре — иначе плинтус, карниз и разметка пола
-   растянулись бы вместе с плоскостью и разошлись со стыком.
-   Множитель задан в js (FAR_K); правится в паре. */
-.artc-far { --fk: 4; }
-.artc-floor.artc-far,
-.artc-ceil.artc-far {
-  width: calc(var(--hw) * 2 / var(--fk));
-  height: calc(var(--far-seg, 0px) / var(--fk));
-}
-.artc-wall.artc-far {
-  width: calc(var(--far-seg, 0px) / var(--fk));
-  height: calc(var(--hh) * 2 / var(--fk));
-  /* мелкое зерно штукатурки вдали не читается: его шаг задан в пикселях и
-     от растяжения стал бы вчетверо крупнее, чем на ближней стене. Оставляем
-     одну заливку — она задана долями высоты и совпадает со стыком точно */
-  background: linear-gradient(to bottom, #C9B98F 0%, #EFE3C3 20%, #E9DCBC 76%, #B7A578 100%);
-}
-/* Сумрак вдали. Стены зеркальны друг другу (rotateY(90) и rotateY(-90)),
-   поэтому «вдаль» у них смотрит в разные стороны — направления разные. */
-.artc-wall--l.artc-far {
-  background-image:
-    linear-gradient(to right, rgba(26, 21, 12, 0) 30%, rgba(26, 21, 12, .5) 66%, rgba(26, 21, 12, .97) 94%),
-    linear-gradient(to bottom, #C9B98F 0%, #EFE3C3 20%, #E9DCBC 76%, #B7A578 100%);
-}
-.artc-wall--r.artc-far {
-  background-image:
-    linear-gradient(to left, rgba(26, 21, 12, 0) 30%, rgba(26, 21, 12, .5) 66%, rgba(26, 21, 12, .97) 94%),
-    linear-gradient(to bottom, #C9B98F 0%, #EFE3C3 20%, #E9DCBC 76%, #B7A578 100%);
-}
-.artc-wall.artc-far::before { height: calc(26px / var(--fk)); }
-.artc-wall.artc-far::after { height: calc(34px / var(--fk)); }
-.artc-floor.artc-far {
-  /* та же заливка, но без разметки досок: её шаг задан в пикселях и от
-     растяжения стал бы вчетверо крупнее ближней части.
-     Первым слоем — сумрак вдали: коридор уходит в темноту и обрыв
-     нарисованного куска не читается как стена поперёк прохода */
-  background:
-    linear-gradient(to top, rgba(26, 21, 12, 0) 30%, rgba(26, 21, 12, .5) 66%, rgba(26, 21, 12, .97) 94%),
-    linear-gradient(to right,
-      rgba(20, 12, 4, .16) 0 14%,
-      rgba(255, 244, 214, .10) 40%,
-      rgba(255, 244, 214, .10) 60%,
-      rgba(20, 12, 4, .16) 86% 100%),
-    linear-gradient(to bottom, #4C3F2C 0%, #7A6647 46%, #8E7A56 100%);
-}
-.artc-ceil.artc-far {
-  /* потолок перевёрнут относительно пола — и «вдаль» у него другая сторона */
-  background:
-    linear-gradient(to bottom, rgba(26, 21, 12, 0) 30%, rgba(26, 21, 12, .5) 66%, rgba(26, 21, 12, .97) 94%),
-    linear-gradient(to right,
-      #5A5142 0 34%,
-      rgba(255, 251, 236, .92) 34% 38%,
-      #63594A 38% 62%,
-      rgba(255, 251, 236, .92) 62% 66%,
-      #5A5142 66%);
-}
-
-/* заглушка в конце нарисованного куска — см. hallUpdate */
-.artc-fog {
-  width: calc(var(--hw) * 2);
-  height: calc(var(--hh) * 2);
-  background: radial-gradient(120% 120% at 50% 50%, #241C10 0%, #1A150C 100%);
-  pointer-events: none;
-}
-
 /* --- дальняя стена с логотипом --- */
 .artc-end {
   width: calc(var(--hw) * 2);
@@ -1391,16 +1321,7 @@
 .artc-stage.is-lite .artc-art__frame { box-shadow: 0 14px 24px rgba(0, 0, 0, .45); }
 .artc-stage.is-lite .artc-art__frame::after { display: none; }
 .artc-stage.is-lite .artc-object { filter: none; }
-/* Стены облегчённого режима остаются без заливки: фон сцены подобран под
-   их цвет, и разницы не видно. У дальних оставляем один слой — сумрак,
-   иначе конец нарисованного куска снова стал бы светлым пятном. */
 .artc-stage.is-lite .artc-wall { background-image: none; }
-.artc-stage.is-lite .artc-wall--l.artc-far {
-  background-image: linear-gradient(to right, rgba(26, 21, 12, 0) 30%, rgba(26, 21, 12, .5) 66%, rgba(26, 21, 12, .97) 94%);
-}
-.artc-stage.is-lite .artc-wall--r.artc-far {
-  background-image: linear-gradient(to left, rgba(26, 21, 12, 0) 30%, rgba(26, 21, 12, .5) 66%, rgba(26, 21, 12, .97) 94%);
-}
 .artc-stage.is-lite .artc-pad--fwd span { animation: none; opacity: .85; }
 
 /* ============================================================
