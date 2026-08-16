@@ -130,7 +130,10 @@
       чинится без пересчёта. Выберите готовый <code>artists.json</code> и папку
       <code>img</code> рядом с ним: снимок каждой работы сверяется с портретом
       того же участника, и совпавшие из работ убираются. Читаются только мелкие
-      превью, поэтому это быстро.
+      превью, поэтому это быстро.<br>
+      Если вдобавок выбрать <code>catalog-map.json</code> (поле выше), проверка
+      станет строже: в печатном каталоге напечатано ровно столько работ, сколько
+      их у участника, и всё лишнее сверх этого отсекается.
     </p>
     <div class="row" style="margin-top:0">
       <label class="ghost" style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:999px;cursor:pointer">
@@ -1816,6 +1819,17 @@
     fixReady();
   });
 
+  function fixRecord(name) {
+    if (!catalogMap) return null;
+    var fw = sigWords(name), best = null, top = MIN_NAME_SCORE;
+    catalogMap.pages.forEach(function (p) {
+      if ((p._names || [p.title]).every(function (n) { return surnameConflict(name, n); })) return;
+      var s = matchScore(fw, p._words);
+      if (s > top) { top = s; best = p; }
+    });
+    return best;
+  }
+
   fixGo.addEventListener('click', function () {
     fixGo.disabled = true;
     fixLogBox.innerHTML = '';
@@ -1837,25 +1851,63 @@
       if (i >= arts.length) return finishFix();
       var a = arts[i++];
       var slug = a.id;
+      var rec = fixRecord(a.name);
       sigHash(pick(slug, 'avatar.webp') || pick(slug, 'avatar.jpg')).then(function (av) {
-        if (!av || !a.works || a.works.length < 2) return next();
+        if ((!av && !rec) || !a.works || a.works.length < 2) return next();
         var jobs = a.works.map(function (w) {
           var fn = String(w.thumb || '').split('/').pop();
           return sigHash(pick(slug, fn));
         });
         Promise.all(jobs).then(function (list) {
-          var keep = [], drop = [];
-          list.forEach(function (r, k) {
+          var marks = list.map(function (r, k) {
             checked++;
-            var same = r && (hamming(r.hash, av.hash) <= MATCH_MAX ||
-                             sigDist(r.sig, av.sig) <= SIG_MAX);
-            if (same) drop.push(a.works[k]); else keep.push(a.works[k]);
+            if (!r) return null;
+            // 1. совпало с портретом самого участника
+            if (av && (hamming(r.hash, av.hash) <= MATCH_MAX || sigDist(r.sig, av.sig) <= SIG_MAX)) {
+              return 'это фото автора';
+            }
+            // 2. совпало с портретом со страницы печатного каталога
+            if (rec && rec.portrait && rec.portrait.sig &&
+                (hamming(r.hash, rec.portrait.hash) <= MATCH_MAX ||
+                 sigDist(r.sig, rec.portrait.sig) <= SIG_MAX)) {
+              return 'это фото автора (по каталогу)';
+            }
+            return null;
           });
+
+          /* 3. В каталоге напечатано ровно столько работ, сколько их у
+                участника. Если у нас больше, лишние — не работы: отбрасываем
+                те, что не совпали ни с одной напечатанной, начиная с самых
+                похожих на портрет. Больше, чем излишек, не трогаем. */
+          if (rec) {
+            var extra = a.works.length - marks.filter(function (m) { return m; }).length - rec.works.length;
+            if (extra > 0) {
+              var cand = [];
+              list.forEach(function (r, k) {
+                if (marks[k] || !r) return;
+                var best = 1e9;
+                rec.works.forEach(function (w) {
+                  if (!w.sig) return;
+                  if (hamming(r.hash, w.hash) <= MATCH_MAX) best = 0;
+                  best = Math.min(best, sigDist(r.sig, w.sig));
+                });
+                if (best > SIG_MAX) {                     // ни на одну печатную не похожа
+                  cand.push({ k: k, near: rec.portrait && rec.portrait.sig
+                    ? sigDist(r.sig, rec.portrait.sig) : 1e9 });
+                }
+              });
+              cand.sort(function (x, y) { return x.near - y.near; });
+              cand.slice(0, extra).forEach(function (c) { marks[c.k] = 'нет в печатном каталоге'; });
+            }
+          }
+
+          var keep = [], drop = [];
+          marks.forEach(function (m, k) { (m ? drop : keep).push({ w: a.works[k], why: m }); });
           if (drop.length && keep.length) {
-            a.works = keep;
+            a.works = keep.map(function (x) { return x.w; });
             removed += drop.length;
-            drop.forEach(function (w) {
-              fixLog('· ' + a.name + ': убрано «' + (w.title || 'без названия') + '» — это фото автора', 'warn');
+            drop.forEach(function (x) {
+              fixLog('· ' + a.name + ': убрано «' + (x.w.title || 'без названия') + '» — ' + x.why, 'warn');
             });
           }
           next();

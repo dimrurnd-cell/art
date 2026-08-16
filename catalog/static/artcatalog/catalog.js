@@ -617,8 +617,9 @@
   var VIEW_DIST = 620;  // с какого расстояния камера смотрит на комнату
   var YAW_MAX = 9;      // насколько можно повернуть взгляд вбок, градусов
   var PITCH_MAX = 4;    // и вверх-вниз
-  var ART_FAR = 7000;   // как далеко по коридору рисуются полотна
+  var ART_FAR = 11000;  // как далеко по коридору рисуются полотна
   var ART_BACK = 900;   // и сколько остаётся видно позади камеры
+  var ART_PRELOAD = 1.7; // во сколько раз раньше начинать подгружать картинки
   var CHIPS_MAX = 10;    // столько фамилий ещё помещается в ряд
   var FOCUS_TURN = 0.3;  // доля разворота полотна, на которую доворачивается камера
   var FOCUS_DIST = 0.44; // дистанция подхода к полотну в долях шага
@@ -1417,12 +1418,16 @@
     for (var i = 0; i < h.arts.length; i++) {
       var art = h.arts[i];
       var dz = +art.getAttribute('data-z') + h.camZ;
-      var near = dz > -(h.lite ? ART_FAR * 0.6 : ART_FAR) && dz < ART_BACK;
+      var far = h.lite ? ART_FAR * 0.6 : ART_FAR;
+      var near = dz > -far && dz < ART_BACK;
       if (near !== art.shown) {
         art.shown = near;
         art.style.visibility = near ? '' : 'hidden';
       }
-      if (art.loaded || !near) continue;
+      // Картинки берём заранее, до того как полотно въедет в кадр: иначе
+      // видно, как оно проявляется уже на стене. Скрытые изображения не
+      // рисуются, поэтому на скорость это не влияет — только на загрузку.
+      if (art.loaded || dz <= -far * ART_PRELOAD || dz >= ART_BACK) continue;
       var imgs = art.querySelectorAll('img[data-webp]');   // полотно и фото автора
       if (!imgs.length) { art.loaded = true; continue; }
       for (var k = 0; k < imgs.length; k++) {
