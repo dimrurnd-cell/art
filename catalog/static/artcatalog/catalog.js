@@ -644,6 +644,7 @@
      одновременно загруженных картинок. Развёрнутое полотно 800×800 — это около
      2.5 МБ распакованного растра, и без потолка проход по залу набирал бы их
      сотнями: вкладка падала при первой же перерисовке на весь экран. */
+  var FAR_K = 4;        // во столько раз мельче плоскости дальней части коридора
   var ART_FAR_SMALL = 5200;
   var ART_PRELOAD_SMALL = 1.25;
   var ART_KEEP = 1.4;   // выгружаем дальше, чем грузим, — чтобы не дёргать туда-сюда
@@ -728,6 +729,11 @@
           '<div class="artc-camera"><div class="artc-world">' +
             '<div class="artc-floor"></div><div class="artc-ceil"></div>' +
             '<div class="artc-wall artc-wall--l"></div><div class="artc-wall artc-wall--r"></div>' +
+            // продолжение коридора вдаль — см. FAR_K
+            '<div class="artc-floor artc-far"></div><div class="artc-ceil artc-far"></div>' +
+            '<div class="artc-wall artc-wall--l artc-far"></div>' +
+            '<div class="artc-wall artc-wall--r artc-far"></div>' +
+            '<div class="artc-fog"></div>' +
             '<div class="artc-end"><div class="artc-end__inner">' +
               pictureHTML(this.base + 'img/logo.webp', 'АРТ Ростов', false) +
               '<span class="artc-end__slogan">Все грани искусства</span>' +
@@ -939,6 +945,26 @@
     stage.style.setProperty('--len', len + 'px');
     stage.style.setProperty('--seg', SEG + 'px');
 
+    /* Продолжение коридора вдаль.
+
+       Ближний кусок доходит всего до 0.66 своей длины — примерно два с
+       половиной шага. Полотна же видны на ART_FAR, вчетверо дальше, и до
+       этой правки они висели за обрывом пола и потолка, в пустоте.
+
+       Просто удлинить ближний кусок нельзя: браузер растрирует плоскость
+       по её собственному размеру, а не по тому, сколько она занимает на
+       экране. Замер: пол во всю длину коридора — 77 мс на кадр, четыре
+       куска обычного размера — 43 мс. Поэтому дальнюю часть собираем из
+       плоскостей вчетверо меньших, растянутых scale(4): тот же замер даёт
+       16.7 мс. Вдали всё равно сжато перспективой в считанные пиксели,
+       и разницы в чёткости не видно, а стоит она вчетверо дешевле.
+       Заодно каждая плоскость остаётся в пределах 4096 пикселей —
+       дальше начинается предел размера текстуры у мобильных видеоядер. */
+    var NEAR_AHEAD = Math.round(SEG * 0.66);
+    var FAR_NEED = (isHandheld() ? ART_FAR_SMALL : ART_FAR) + STEP - NEAR_AHEAD;
+    var FAR = Math.max(0, Math.ceil(FAR_NEED / (STEP * 2)) * STEP * 2);
+    stage.style.setProperty('--far-seg', FAR + 'px');
+
     // пылинки в лучах света
     if (!prefersReducedMotion()) {
       var dust = host.querySelector('.artc-dust');
@@ -984,9 +1010,17 @@
       padF: host.querySelector('.artc-pad--fwd'), padB: host.querySelector('.artc-pad--back'),
       hitF: host.querySelector('.artc-hit--fwd'), hitB: host.querySelector('.artc-hit--back'),
       fsBtn: host.querySelector('.artc-fs'),
-      step: STEP, len: len, seg: SEG, hw: HW, hh: HH, artH: ARTH, persp: PERSP,
-      floor: host.querySelector('.artc-floor'), ceil: host.querySelector('.artc-ceil'),
-      wallL: host.querySelector('.artc-wall--l'), wallR: host.querySelector('.artc-wall--r'),
+      step: STEP, len: len, seg: SEG, far: FAR, nearAhead: NEAR_AHEAD,
+      hw: HW, hh: HH, artH: ARTH, persp: PERSP,
+      floor: host.querySelector('.artc-floor:not(.artc-far)'),
+      ceil: host.querySelector('.artc-ceil:not(.artc-far)'),
+      wallL: host.querySelector('.artc-wall--l:not(.artc-far)'),
+      wallR: host.querySelector('.artc-wall--r:not(.artc-far)'),
+      farFloor: host.querySelector('.artc-floor.artc-far'),
+      farCeil: host.querySelector('.artc-ceil.artc-far'),
+      farWallL: host.querySelector('.artc-wall--l.artc-far'),
+      farWallR: host.querySelector('.artc-wall--r.artc-far'),
+      fog: host.querySelector('.artc-fog'),
       segZ: null,
       maxZ: Math.max(0, len - Math.round(STEP * 0.62)),
       camZ: 0, targetZ: 0, camX: 0, targetX: 0, aim: 0, targetAim: 0,
@@ -1434,7 +1468,11 @@
       if (!hall.lite && hall.probeN < 1e6 && hall.moving && now > hall.probeAfter) {
         var gap = now - (hall.probeLast || now);
         hall.probeLast = now;
-        if (gap > 0 && gap < 140) { hall.probeMs += gap; hall.probeN++; }
+        // Верхняя граница отсекает не медленные кадры, а перерывы между
+        // проходами. Она была 140 мс — и совсем слабое устройство в замер
+        // не попадало вовсе: его кадры длиннее, все пробы отбрасывались,
+        // и облегчённый режим не включался именно там, где нужен.
+        if (gap > 0 && gap < 600) { hall.probeMs += gap; hall.probeN++; }
         if (hall.probeMs > 1400) {
           var fps = hall.probeN / hall.probeMs * 1000;
           hall.probeN = 1e6;
@@ -1520,6 +1558,24 @@
       h.ceil.style.transform = base + '0px, ' + (-h.hh) + 'px, ' + anchor + 'px) rotateX(-90deg)';
       h.wallL.style.transform = base + (-h.hw) + 'px, 0px, ' + anchor + 'px) rotateY(90deg)';
       h.wallR.style.transform = base + h.hw + 'px, 0px, ' + anchor + 'px) rotateY(-90deg)';
+
+      // дальняя часть встык к ближней: уменьшена в FAR_K раз и растянута
+      // обратно, поэтому и стоит во столько же раз дешевле (см. buildHall)
+      var end = anchor - h.seg / 2;
+      if (h.far) {
+        var fz = Math.round(end - h.far / 2);
+        var fk = ') scale(' + FAR_K + ')';
+        h.farFloor.style.transform = base + '0px, ' + h.hh + 'px, ' + fz + 'px) rotateX(90deg' + fk;
+        h.farCeil.style.transform = base + '0px, ' + (-h.hh) + 'px, ' + fz + 'px) rotateX(-90deg' + fk;
+        h.farWallL.style.transform = base + (-h.hw) + 'px, 0px, ' + fz + 'px) rotateY(90deg' + fk;
+        h.farWallR.style.transform = base + h.hw + 'px, 0px, ' + fz + 'px) rotateY(-90deg' + fk;
+        end -= h.far;
+      }
+      // Заглушка в самом конце нарисованного куска. Без неё там остаётся
+      // сквозная дыра в фон сцены — светлое пятно, которое читается как
+      // стена поперёк коридора. Оно и было главной приметой «зал не
+      // дорисован до конца»: при коротком куске пятно занимало пол-экрана.
+      h.fog.style.transform = base + '0px, 0px, ' + Math.round(end) + 'px) scale(1.04)';
     }
 
     // полотна: подгружаем и показываем только те, что рядом с камерой
