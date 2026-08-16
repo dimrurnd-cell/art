@@ -110,6 +110,26 @@
     return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
+  /* Палец вместо мыши. По этому признаку показываем боковые стрелки обзора:
+     мышью зал осматривают движением курсора, а пальцу нужны кнопки. */
+  function isTouch() {
+    return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
+           ('ontouchstart' in window && !window.matchMedia('(pointer: fine)').matches);
+  }
+
+  /* Телефон или планшет — считаем по самому экрану, а не по ширине окна.
+     При развороте ширина становится «настольной» (844 у обычного телефона),
+     и проверка по innerWidth перестаёт срабатывать ровно там, где беречь
+     память нужнее всего: в горизонтальном полноэкранном режиме. */
+  var handheld = null;
+  function isHandheld() {
+    if (handheld === null) {
+      var side = Math.min(screen.width || 9999, screen.height || 9999);
+      handheld = isTouch() && side <= 900;
+    }
+    return handheld;
+  }
+
   /* ---------------- фокус-ловушка для модальных окон ---------------- */
 
   function trapFocus(modal) {
@@ -620,6 +640,33 @@
   var ART_FAR = 11000;  // как далеко по коридору рисуются полотна
   var ART_BACK = 900;   // и сколько остаётся видно позади камеры
   var ART_PRELOAD = 1.7; // во сколько раз раньше начинать подгружать картинки
+  /* На телефоне коридор просматриваем короче и держим жёсткий потолок по числу
+     одновременно загруженных картинок. Развёрнутое полотно 800×800 — это около
+     2.5 МБ распакованного растра, и без потолка проход по залу набирал бы их
+     сотнями: вкладка падала при первой же перерисовке на весь экран. */
+  var ART_FAR_SMALL = 5200;
+  var ART_PRELOAD_SMALL = 1.25;
+  var ART_KEEP = 1.4;   // выгружаем дальше, чем грузим, — чтобы не дёргать туда-сюда
+  var LOAD_MAX = 90;    // потолок загруженных полотен на большом экране
+  var LOAD_MAX_SMALL = 40;
+  /* Обзор вбок. Предел выбран по самому залу: коридор узкий, и уже к 25°
+     ближняя стена закрывает кадр целиком. На 20-22° работа с боковой стены,
+     наоборот, разворачивается почти во весь экран — это и нужно. */
+  var LOOK_MAX = 22;    // насколько можно повернуться боковыми стрелками, градусов
+  var LOOK_STEP = 11;   // поворот за одно нажатие: два нажатия — до упора
+  var LOOK_SPEED = 30;  // и за секунду удержания
+
+  /* Снять с полотна загруженные картинки. Пустой src освобождает и растр,
+     и место в кэше распакованных изображений; data-webp остаётся на месте,
+     поэтому при возвращении работа загрузится снова — уже из кэша сети. */
+  function unloadArt(art) {
+    var imgs = art.querySelectorAll('img[data-webp]');
+    for (var i = 0; i < imgs.length; i++) {
+      imgs[i].onerror = null;
+      imgs[i].src = BLANK;
+    }
+    art.loaded = false;
+  }
   var CHIPS_MAX = 10;    // столько фамилий ещё помещается в ряд
   var FOCUS_TURN = 0.3;  // доля разворота полотна, на которую доворачивается камера
   var FOCUS_DIST = 0.44; // дистанция подхода к полотну в долях шага
@@ -703,11 +750,19 @@
         '<button type="button" class="artc-hit artc-hit--back" data-label="Назад"></button>' +
         '<button type="button" class="artc-hit artc-hit--fwd" data-label="Вперёд"></button>' +
         '<button type="button" class="artc-fs" aria-label="Открыть на весь экран">' + ICON_FS + '</button>' +
+        // Пальцем зал не осмотреть: за курсором мыши взгляд ведёт сам, а
+        // касание — это шаг по коридору. Поэтому на сенсорных экранах обзор
+        // вбок вынесен в две кнопки у краёв сцены.
+        '<button type="button" class="artc-look artc-look--l" aria-label="Посмотреть налево">' +
+          ARROW_L + '</button>' +
+        '<button type="button" class="artc-look artc-look--r" aria-label="Посмотреть направо">' +
+          ARROW_R + '</button>' +
         '<div class="artc-dust" aria-hidden="true"></div>' +
         '<div class="artc-vignette" aria-hidden="true"></div>' +
         '<div class="artc-curtain" aria-hidden="true"></div>' +
-        '<p class="artc-hint">' + ICON_WALK + '<span>' + (window.innerWidth < 700
-          ? 'Проведите пальцем влево или вправо, чтобы пройти по залу'
+        '<p class="artc-hint">' + ICON_WALK + '<span>' + (isTouch()
+          ? 'Проведите пальцем, чтобы пройти по залу, а стрелками по краям ' +
+            'осмотритесь вокруг'
           : 'Идите по залу: перетаскивайте, крутите колесо или жмите <b>W</b>/<b>S</b>') + '</span></p>' +
         '<div class="artc-find" hidden>' +
           '<div class="artc-find__head">' +
@@ -734,6 +789,7 @@
       '</div>';
 
     var stage = host.querySelector('.artc-stage');
+    if (isTouch()) stage.classList.add('is-touch');
     var cs = getComputedStyle(stage);
     var px = function (name, fallback) {
       var v = parseFloat(cs.getPropertyValue(name));
@@ -748,7 +804,8 @@
     var PERSP = parseFloat(getComputedStyle(host.querySelector('.artc-scene')).perspective) || 1150;
     var GAP = Math.round(STEP * 1.35);
     var SEG_HINT = Math.round(STEP * 5.6);
-    var viewDist = window.innerWidth < 700 ? Math.round(VIEW_DIST * 0.62) : VIEW_DIST;
+    var viewDist = (isHandheld() || window.innerWidth < 700)
+      ? Math.round(VIEW_DIST * 0.62) : VIEW_DIST;
     var START = Math.round(STEP * 1.1);
 
     // ритм пилястр вдоль обеих стен (шаг совпадает с шагом полотен)
@@ -935,8 +992,10 @@
       camZ: 0, targetZ: 0, camX: 0, targetX: 0, aim: 0, targetAim: 0,
       zoom: 1, targetZoom: 1,
       bob: 0, yaw: 0, pitch: 0, focus: null,
+      look: 0, targetLook: 0, lookHold: 0,
       progress: 0, moving: false, hitsPlaced: false, t0: Date.now(),
-      probeN: 0, probeMs: 0, probeLast: 0, lite: false
+      probeN: 0, probeMs: 0, probeLast: 0, lite: false,
+      small: isHandheld(), loadMax: isHandheld() ? LOAD_MAX_SMALL : LOAD_MAX
     };
 
     // «влёт» в зал при первом открытии
@@ -1009,6 +1068,36 @@
 
     h.fsBtn.addEventListener('click', function (e) { e.stopPropagation(); self.toggleFullscreen(); });
 
+    /* Обзор вбок кнопками: короткое нажатие поворачивает на шаг, удержание —
+       ведёт взгляд плавно, пока палец на кнопке. Отпустили — взгляд остаётся
+       там же: иначе рассмотреть работу на боковой стене не успеть. */
+    [['.artc-look--l', -1], ['.artc-look--r', 1]].forEach(function (pair) {
+      var btn = stage.querySelector(pair[0]);
+      var dir = pair[1];
+      if (!btn) return;
+      var held = false;
+      var press = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        held = true;
+        h.lookHold = dir;
+        self.lookBy(dir * LOOK_STEP);
+        if (btn.setPointerCapture && e.pointerId != null) {
+          try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+        }
+      };
+      var release = function () { if (held) { held = false; h.lookHold = 0; } };
+      btn.addEventListener('pointerdown', press);
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+        btn.addEventListener(ev, release);
+      });
+      // клавиатура: у нажатия с Enter/Space нет указателя
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (e.detail === 0) self.lookBy(dir * LOOK_STEP);
+      });
+    });
+
     stage.querySelector('.artc-tour')
       .addEventListener('click', function (e) { e.stopPropagation(); self.toggleTour(); });
 
@@ -1065,7 +1154,7 @@
     // перетаскивание / свайп: тянем «на себя» — идём вперёд
     var drag = null;
     stage.addEventListener('pointerdown', function (e) {
-      if (fromModal(e) || e.target.closest('.artc-hud, .artc-rooms, .artc-find, .artc-pad, .artc-fs, .artc-end__ticket')) return;
+      if (fromModal(e) || e.target.closest('.artc-hud, .artc-rooms, .artc-find, .artc-pad, .artc-fs, .artc-look, .artc-end__ticket')) return;
       drag = {
         x: e.clientX, y: e.clientY, z: h.targetZ, moved: 0, id: e.pointerId,
         art: e.target.closest('.artc-art'),
@@ -1188,7 +1277,7 @@
     var h = this.hall;
     if (!h) return;
     var t = 'scale(' + h.zoom.toFixed(3) + ') ' +
-      'rotateY(' + (h.aim + h.yaw).toFixed(2) + 'deg) rotateX(' + h.pitch.toFixed(2) + 'deg)';
+      'rotateY(' + (h.aim + h.yaw + h.look).toFixed(2) + 'deg) rotateX(' + h.pitch.toFixed(2) + 'deg)';
     // при обычной ходьбе камера не поворачивается: лишняя запись в transform
     // заставила бы браузер пересобирать всю сцену каждый кадр
     if (t === h.camKey) return;
@@ -1201,7 +1290,9 @@
      обзором: большой разворот сбивал с толку при ходьбе. */
   Widget.prototype.hallParallax = function (e) {
     var h = this.hall;
-    if (!h || prefersReducedMotion() || window.innerWidth < 720) return;
+    // на сенсорном экране обзором управляют боковые стрелки: параллакс за
+    // «курсором» там срабатывал бы от касаний и уводил взгляд рывками
+    if (!h || prefersReducedMotion() || isTouch() || window.innerWidth < 720) return;
     var r = h.stage.getBoundingClientRect();
     // Взгляд идёт за курсором: увели вправо — смотрим вправо, вниз — вниз.
     // Положительный rotateY поворачивает камеру вправо, положительный
@@ -1255,6 +1346,7 @@
 
     h.targetX = camX;
     h.targetAim = aim;
+    h.targetLook = 0;              // подошли к работе — взгляд возвращаем на неё
     h.targetZoom = FOCUS_ZOOM;
     this.keepFocus = true;
     this.walkTo(camZ);
@@ -1272,6 +1364,16 @@
     h.targetAim = 0;
     h.targetZoom = 1;
     if (h.focus) { h.focus.classList.remove('is-focused'); h.focus = null; }
+  };
+
+  /* Повернуть взгляд вбок (боковые стрелки). Угол сохраняется, пока зритель
+     не вернёт его сам, не подойдёт к работе и не откроет её. */
+  Widget.prototype.lookBy = function (deg) {
+    var h = this.hall;
+    if (!h) return;
+    h.targetLook = Math.max(-LOOK_MAX, Math.min(LOOK_MAX, h.targetLook + deg));
+    h.moving = true;
+    this.hideHint();
   };
 
   Widget.prototype.walkBy = function (dz) { this.walkTo(this.hall.targetZ + dz); };
@@ -1345,22 +1447,28 @@
       var dt = Math.min(4, Math.max(0.2, (now - (hall.last || now)) / 16.67));
       hall.last = now;
 
+      // палец держит боковую стрелку — взгляд едет, пока её не отпустят
+      if (hall.lookHold) self.lookBy(hall.lookHold * LOOK_SPEED * dt / 60);
+
       var k = 1 - Math.pow(1 - 0.085, dt);
       var d = hall.targetZ - hall.camZ;
       var dx = hall.targetX - hall.camX;
       var da = hall.targetAim - hall.aim;
+      var dl = hall.targetLook - hall.look;
       var dzoom = hall.targetZoom - hall.zoom;
       if (Math.abs(d) > 0.4 || Math.abs(dx) > 0.4 ||
-          Math.abs(da) > 0.05 || Math.abs(dzoom) > 0.002) {
+          Math.abs(da) > 0.05 || Math.abs(dl) > 0.05 || Math.abs(dzoom) > 0.002) {
         hall.camZ += d * k;
         hall.camX += dx * k;
         hall.aim += da * k;
+        hall.look += dl * k;
         hall.zoom += dzoom * k;
         hall.moving = true;
       } else if (hall.moving) {
         hall.camZ = hall.targetZ;
         hall.camX = hall.targetX;
         hall.aim = hall.targetAim;
+        hall.look = hall.targetLook;
         hall.zoom = hall.targetZoom;
         hall.moving = false;
         // камера встала — сверяем зоны шага с тем, где сейчас нарисованы
@@ -1379,7 +1487,7 @@
       // в transform заставляет браузер пересобирать весь зал каждый кадр
       var frameKey = bobY.toFixed(1) + '|' + hall.camZ.toFixed(1) + '|' +
                      hall.camX.toFixed(1) + '|' + hall.aim.toFixed(2) + '|' +
-                     hall.zoom.toFixed(3);
+                     hall.look.toFixed(2) + '|' + hall.zoom.toFixed(3);
       if (frameKey === hall.frameKey) return;
       hall.frameKey = frameKey;
 
@@ -1415,19 +1523,34 @@
     }
 
     // полотна: подгружаем и показываем только те, что рядом с камерой
+    var far = h.lite ? ART_FAR * 0.6 : ART_FAR;
+    if (h.small) far = Math.min(far, ART_FAR_SMALL);
+    var loadFrom = -far * (h.small ? ART_PRELOAD_SMALL : ART_PRELOAD);   // отсюда уже грузим
+    var keepFrom = loadFrom * ART_KEEP;            // а отсюда ещё держим в памяти
+    var keepTo = ART_BACK * 2.4;
+    var live = h.live || (h.live = []);
+    live.length = 0;
     for (var i = 0; i < h.arts.length; i++) {
       var art = h.arts[i];
       var dz = +art.getAttribute('data-z') + h.camZ;
-      var far = h.lite ? ART_FAR * 0.6 : ART_FAR;
-      var near = dz > -far && dz < ART_BACK;
-      if (near !== art.shown) {
-        art.shown = near;
-        art.style.visibility = near ? '' : 'hidden';
+      var inView = dz > -far && dz < ART_BACK;
+      if (inView !== art.shown) {
+        art.shown = inView;
+        art.style.visibility = inView ? '' : 'hidden';
+      }
+      // Оставшиеся позади работы выгружаем: распакованный растр живёт, пока
+      // у картинки стоит src, и за проход по залу его набирались сотни
+      // мегабайт. Порог выгрузки дальше порога загрузки — иначе полотно на
+      // самой границе грузилось бы и выгружалось каждый кадр.
+      if (art.loaded) {
+        if (dz < keepFrom || dz > keepTo) unloadArt(art);
+        else live.push(art);
+        continue;
       }
       // Картинки берём заранее, до того как полотно въедет в кадр: иначе
       // видно, как оно проявляется уже на стене. Скрытые изображения не
       // рисуются, поэтому на скорость это не влияет — только на загрузку.
-      if (art.loaded || dz <= -far * ART_PRELOAD || dz >= ART_BACK) continue;
+      if (dz <= loadFrom || dz >= ART_BACK) continue;
       var imgs = art.querySelectorAll('img[data-webp]');   // полотно и фото автора
       if (!imgs.length) { art.loaded = true; continue; }
       for (var k = 0; k < imgs.length; k++) {
@@ -1436,6 +1559,16 @@
         img.src = img.getAttribute('data-webp') || img.getAttribute('data-src');
       }
       art.loaded = true;
+      live.push(art);
+    }
+    // Страховка на случай, когда одной дистанции мало (широкий экран, мелкий
+    // шаг зала): сверх потолка выгружаем самые дальние от камеры.
+    if (live.length > h.loadMax) {
+      live.sort(function (a, b) {
+        return Math.abs(+b.getAttribute('data-z') + h.camZ) -
+               Math.abs(+a.getAttribute('data-z') + h.camZ);
+      });
+      for (var u = 0; u < live.length - h.loadMax; u++) unloadArt(live[u]);
     }
 
     // подсветка текущего «зала» художника
@@ -1767,6 +1900,15 @@
       else stage.style.removeProperty(name);
     });
 
+    // То же и с перспективой. Телефон, развёрнутый набок, шире 600 пикселей,
+    // и css отдал бы сцене «настольную» перспективу — а зал построен под
+    // телефонную, и от подмены геометрия зала разъезжается прямо на глазах.
+    var scene = h.stage.querySelector('.artc-scene');
+    if (scene) {
+      scene.style.perspective = on ? h.persp + 'px' : '';
+      h.camera.style.transformOrigin = on ? '50% 47% ' + h.persp + 'px' : '';
+    }
+
     h.hitsPlaced = false;
     setTimeout(function () {
       self.placeHits();
@@ -1850,7 +1992,7 @@
       this.fromHall = null;
       this.blurArt();
       // на телефоне про колесо мыши писать незачем
-      this.showHint(window.innerWidth < 700
+      this.showHint(isTouch()
         ? 'Вы снова в зале — проведите пальцем, чтобы идти дальше'
         : 'Вы снова в зале — идите дальше: перетаскивайте, крутите колесо ' +
           'или жмите стрелки на полу');

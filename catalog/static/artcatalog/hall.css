@@ -796,6 +796,45 @@
   background: radial-gradient(60% 60% at 50% 50%, var(--artc-coral), rgba(228, 115, 111, .7) 62%, rgba(228, 115, 111, 0) 88%);
 }
 
+/* --- боковые стрелки обзора (сенсорные экраны) ---
+   Мышью зал осматривают движением курсора, пальцем — этими кнопками:
+   касание в сцене означает шаг по коридору, и обзор ему не подчинить.
+   Ставим их по краям на уровне глаз: там нет ни зон шага (они внизу),
+   ни полотен, к которым зритель тянется пальцем. */
+.artc-look {
+  display: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  width: 44px; height: 62px;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  padding: 0;
+  background: rgba(18, 13, 5, .42);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #FBF3E0;
+  align-items: center; justify-content: center;
+  transition: background .2s ease, opacity .2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+.artc-stage.is-touch .artc-look { display: flex; }
+.artc-look--l { left: 8px; }
+.artc-look--r { right: 8px; }
+.artc-look svg { width: 24px; height: 24px; }
+.artc-look:active { background: var(--artc-coral); }
+.artc-look:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+/* пока открыт список художников, стрелки не мешаются */
+.artc-stage.is-finding .artc-look { opacity: 0; pointer-events: none; }
+
+@media (max-width: 600px) {
+  .artc-look { width: 38px; height: 54px; }
+  .artc-look svg { width: 20px; height: 20px; }
+}
+
 /* --- кнопка «во весь экран» --- */
 .artc-fs {
   position: absolute;
