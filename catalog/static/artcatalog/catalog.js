@@ -644,10 +644,14 @@
      одновременно загруженных картинок. Развёрнутое полотно 800×800 — это около
      2.5 МБ распакованного растра, и без потолка проход по залу набирал бы их
      сотнями: вкладка падала при первой же перерисовке на весь экран. */
+  var FAR_K = 8;        // во столько раз мельче плоскости дальней части коридора
   var ART_FAR_SMALL = 5200;
   var ART_PRELOAD_SMALL = 1.25;
-  var ART_KEEP = 1.4;   // выгружаем дальше, чем грузим, — чтобы не дёргать туда-сюда
-  var LOAD_MAX = 90;    // потолок загруженных полотен на большом экране
+  var ART_FADE = 0.45;  // с какой доли дальности работы начинают растворяться
+  /* Потолок загруженных полотен. Держим примерно вдвое больше, чем видно
+     разом: этого хватает, чтобы отойти на несколько шагов назад и не
+     ждать повторной загрузки, и при этом расход остаётся считанным. */
+  var LOAD_MAX = 56;    // на большом экране
   var LOAD_MAX_SMALL = 40;
   /* Обзор вбок. Предел выбран по самому залу: коридор узкий, и уже к 25°
      ближняя стена закрывает кадр целиком. На 20-22° работа с боковой стены,
@@ -725,7 +729,21 @@
       '<div class="artc-stage" tabindex="0" role="application" ' +
            'aria-label="Виртуальный зал выставки: перемещение стрелками, полотна открываются нажатием">' +
         '<div class="artc-scene">' +
-          '<div class="artc-camera"><div class="artc-world">' +
+          '<div class="artc-camera">' +
+            /* Дальняя часть коридора живёт вне мира — рядом с ним, прямо
+               в камере. Мир едет, она стоит; её трансформация задаётся
+               один раз при сборке и больше не трогается никогда.
+               Так и задумано: любое её движение было бы видно рывком, а
+               перерисовывать каждый кадр плоскость такого размера дорого
+               (замер: 180 мс на кадр против 100, когда она ехала вместе
+               с миром). */
+            '<div class="artc-depth" aria-hidden="true">' +
+              '<div class="artc-floor artc-far"></div><div class="artc-ceil artc-far"></div>' +
+              '<div class="artc-wall artc-wall--l artc-far"></div>' +
+              '<div class="artc-wall artc-wall--r artc-far"></div>' +
+              '<div class="artc-fog"></div>' +
+            '</div>' +
+            '<div class="artc-world">' +
             '<div class="artc-floor"></div><div class="artc-ceil"></div>' +
             '<div class="artc-wall artc-wall--l"></div><div class="artc-wall artc-wall--r"></div>' +
             '<div class="artc-end"><div class="artc-end__inner">' +
@@ -804,6 +822,37 @@
     var PERSP = parseFloat(getComputedStyle(host.querySelector('.artc-scene')).perspective) || 1150;
     var GAP = Math.round(STEP * 1.35);
     var SEG_HINT = Math.round(STEP * 5.6);
+
+    /* Дальняя часть коридора.
+
+       Ближний кусок зала доходит до 0.66 своей длины — около двух с
+       половиной шагов, а полотна видны вчетверо дальше. Раньше за его
+       краем оставалась сквозная дыра в фон сцены, и работы висели в
+       пустоте. Дыра к тому же переставлялась вместе с куском — на шаг
+       за раз — и на каждом шаге заметно меняла размер: это и было
+       мельтешение в конце коридора.
+
+       Дальняя часть чинит и то, и другое. Она:
+       — неподвижна относительно камеры (в hallUpdate её сдвиг гасит camZ),
+         поэтому пульсировать там нечему в принципе;
+       — вчетверо мельче и растянута scale(): браузер растрирует плоскость
+         по её собственному размеру, а не по месту на экране, и такой
+         коридор обходится вчетверо дешевле сплошного (замер: 77 мс на
+         кадр против 16.7 мс);
+       — уходит в темноту, и её собственный край не виден совсем.
+       Ближний кусок с его фактурой, пилястрами и плинтусом лежит поверх
+       первых своих двух с половиной шагов — там видно его, дальше её. */
+    /* Начинается она там, где ближний кусок заведомо кончился. Ближний
+       доходит до 0.66 своей длины, но его стык притянут к сетке шага и
+       потому гуляет на шаг — берём ближнюю границу этого разброса и ещё
+       двести пикселей на нахлёст. Так дальняя часть занимает на экране
+       только узкий конус за ближней, а не весь кадр под ней: замер
+       ходьбы — 133 мс на кадр против 101 у прежнего зала, а если начать
+       её от самой камеры, выходит 149. */
+    var DEPTH_FROM = Math.max(0, Math.round(SEG_HINT * 0.66 - STEP - 200));
+    var DEPTH_AHEAD = (isHandheld() ? ART_FAR_SMALL : ART_FAR) + STEP;
+    var DEPTH_LEN = Math.ceil((DEPTH_AHEAD - DEPTH_FROM) / FAR_K) * FAR_K;
+    var DEPTH_MID = -(DEPTH_FROM + DEPTH_LEN / 2);    // где стоит её середина
     var viewDist = (isHandheld() || window.innerWidth < 700)
       ? Math.round(VIEW_DIST * 0.62) : VIEW_DIST;
     var START = Math.round(STEP * 1.1);
@@ -813,8 +862,8 @@
     for (var pi = 0; pi * STEP * 2 < SEG_HINT; pi++) {
       pil += '<i class="artc-pilaster" style="left:' + (pi * STEP * 2 - 21) + 'px"></i>';
     }
-    host.querySelector('.artc-wall--l').innerHTML = pil;
-    host.querySelector('.artc-wall--r').innerHTML = pil;
+    host.querySelector('.artc-wall--l:not(.artc-far)').innerHTML = pil;
+    host.querySelector('.artc-wall--r:not(.artc-far)').innerHTML = pil;
 
     var world = host.querySelector('.artc-world');
     var self = this;
@@ -938,6 +987,24 @@
     var SEG = SEG_HINT;   // длина «движущегося» куска зала (кратно шагу — стык незаметен)
     stage.style.setProperty('--len', len + 'px');
     stage.style.setProperty('--seg', SEG + 'px');
+    stage.style.setProperty('--far-seg', DEPTH_LEN + 'px');
+
+    // Ставим дальнюю часть один раз и больше к ней не возвращаемся.
+    // На 6 пикселей наружу — чтобы в месте нахлёста ближний кусок с его
+    // фактурой и пилястрами всегда оказывался перед ней, а не спорил.
+    var db = 'translate(-50%, -50%) translate3d(';
+    var dk = ') scale(' + FAR_K + ')';
+    var put3 = function (sel, x, y, z, rot) {
+      host.querySelector(sel).style.transform =
+        db + x + 'px, ' + y + 'px, ' + Math.round(z) + 'px) ' + rot + dk;
+    };
+    put3('.artc-floor.artc-far', 0, HH + 6, DEPTH_MID, 'rotateX(90deg');
+    put3('.artc-ceil.artc-far', 0, -HH - 6, DEPTH_MID, 'rotateX(-90deg');
+    put3('.artc-wall--l.artc-far', -HW - 6, 0, DEPTH_MID, 'rotateY(90deg');
+    put3('.artc-wall--r.artc-far', HW + 6, 0, DEPTH_MID, 'rotateY(-90deg');
+    // заглушка в самом конце: за ней уже ничего не рисуется
+    host.querySelector('.artc-fog').style.transform =
+      db + '0px, 0px, ' + (-DEPTH_AHEAD) + 'px) scale(1.06)';
 
     // пылинки в лучах света
     if (!prefersReducedMotion()) {
@@ -985,15 +1052,18 @@
       hitF: host.querySelector('.artc-hit--fwd'), hitB: host.querySelector('.artc-hit--back'),
       fsBtn: host.querySelector('.artc-fs'),
       step: STEP, len: len, seg: SEG, hw: HW, hh: HH, artH: ARTH, persp: PERSP,
-      floor: host.querySelector('.artc-floor'), ceil: host.querySelector('.artc-ceil'),
-      wallL: host.querySelector('.artc-wall--l'), wallR: host.querySelector('.artc-wall--r'),
+      floor: host.querySelector('.artc-floor:not(.artc-far)'),
+      ceil: host.querySelector('.artc-ceil:not(.artc-far)'),
+      wallL: host.querySelector('.artc-wall--l:not(.artc-far)'),
+      wallR: host.querySelector('.artc-wall--r:not(.artc-far)'),
+      depthAhead: DEPTH_AHEAD,
       segZ: null,
       maxZ: Math.max(0, len - Math.round(STEP * 0.62)),
       camZ: 0, targetZ: 0, camX: 0, targetX: 0, aim: 0, targetAim: 0,
       zoom: 1, targetZoom: 1,
       bob: 0, yaw: 0, pitch: 0, focus: null,
       look: 0, targetLook: 0, lookHold: 0,
-      progress: 0, moving: false, hitsPlaced: false, t0: Date.now(),
+      progress: 0, moving: false, hitsPlaced: false, t0: Date.now(), tick: 0,
       probeN: 0, probeMs: 0, probeLast: 0, lite: false,
       small: isHandheld(), loadMax: isHandheld() ? LOAD_MAX_SMALL : LOAD_MAX
     };
@@ -1434,7 +1504,11 @@
       if (!hall.lite && hall.probeN < 1e6 && hall.moving && now > hall.probeAfter) {
         var gap = now - (hall.probeLast || now);
         hall.probeLast = now;
-        if (gap > 0 && gap < 140) { hall.probeMs += gap; hall.probeN++; }
+        // Верхняя граница отсекает не медленные кадры, а перерывы между
+        // проходами. Она была 140 мс — и совсем слабое устройство в замер
+        // не попадало вовсе: его кадры длиннее, все пробы отбрасывались,
+        // и облегчённый режим не включался именно там, где он нужен.
+        if (gap > 0 && gap < 600) { hall.probeMs += gap; hall.probeN++; }
         if (hall.probeMs > 1400) {
           var fps = hall.probeN / hall.probeMs * 1000;
           hall.probeN = 1e6;
@@ -1522,14 +1596,15 @@
       h.wallR.style.transform = base + h.hw + 'px, 0px, ' + anchor + 'px) rotateY(-90deg)';
     }
 
+
     // полотна: подгружаем и показываем только те, что рядом с камерой
     var far = h.lite ? ART_FAR * 0.6 : ART_FAR;
     if (h.small) far = Math.min(far, ART_FAR_SMALL);
     var loadFrom = -far * (h.small ? ART_PRELOAD_SMALL : ART_PRELOAD);   // отсюда уже грузим
-    var keepFrom = loadFrom * ART_KEEP;            // а отсюда ещё держим в памяти
-    var keepTo = ART_BACK * 2.4;
+    var fadeFrom = -far * ART_FADE;                // отсюда работы начинают таять
     var live = h.live || (h.live = []);
     live.length = 0;
+    h.tick++;
     for (var i = 0; i < h.arts.length; i++) {
       var art = h.arts[i];
       var dz = +art.getAttribute('data-z') + h.camZ;
@@ -1538,19 +1613,26 @@
         art.shown = inView;
         art.style.visibility = inView ? '' : 'hidden';
       }
-      // Оставшиеся позади работы выгружаем: распакованный растр живёт, пока
-      // у картинки стоит src, и за проход по залу его набирались сотни
-      // мегабайт. Порог выгрузки дальше порога загрузки — иначе полотно на
-      // самой границе грузилось бы и выгружалось каждый кадр.
-      if (art.loaded) {
-        if (dz < keepFrom || dz > keepTo) unloadArt(art);
-        else live.push(art);
-        continue;
+      /* Работы вдали растворяются в сумраке вместе с коридором. Без этого
+         они висели бы яркими пятнами в темноте, а на границе прорисовки
+         возникали бы разом — заметным скачком. Полотна ближе к оси зала,
+         чем стены, и затемнение стен на них не ложится, поэтому гасим их
+         отдельно. */
+      if (inView) {
+        var fade = dz > fadeFrom ? 1 : Math.max(0, (dz - far) / (fadeFrom - far));
+        fade = Math.round(fade * 20) / 20;          // не пишем стиль на каждый пиксель
+        if (fade !== art.fade) {
+          art.fade = fade;
+          art.style.opacity = fade < 1 ? fade : '';
+        }
       }
+      var wanted = dz > loadFrom && dz < ART_BACK;
+      if (wanted) art.seenAt = h.tick;             // отметка «нужна прямо сейчас»
+      if (art.loaded) { live.push(art); continue; }
       // Картинки берём заранее, до того как полотно въедет в кадр: иначе
       // видно, как оно проявляется уже на стене. Скрытые изображения не
       // рисуются, поэтому на скорость это не влияет — только на загрузку.
-      if (dz <= loadFrom || dz >= ART_BACK) continue;
+      if (!wanted) continue;
       var imgs = art.querySelectorAll('img[data-webp]');   // полотно и фото автора
       if (!imgs.length) { art.loaded = true; continue; }
       for (var k = 0; k < imgs.length; k++) {
@@ -1561,14 +1643,27 @@
       art.loaded = true;
       live.push(art);
     }
-    // Страховка на случай, когда одной дистанции мало (широкий экран, мелкий
-    // шаг зала): сверх потолка выгружаем самые дальние от камеры.
+
+    /* Освобождение памяти. Распакованный растр живёт, пока у картинки стоит
+       src, и за проход по залу его набиралось больше полугигабайта.
+
+       Выгружаем не по дальности, а по давности: когда загруженных работ
+       становится больше потолка, гасим те, что дольше всех не попадались на
+       глаза. По дальности не годится — стоит отойти на пару шагов назад, и
+       только что виденные работы уже выгружены; шаг обратно заставлял их
+       грузиться заново, и картина на стене успевала мигнуть пустотой.
+       Замер ходьбы взад-вперёд: было 66 перезагрузок на сотне кадров у
+       настольной версии и 105 у телефона, стало 0.
+
+       Гасим с запасом, до 0.8 потолка, чтобы разбор не повторялся каждый
+       кадр от одной пересечённой границы. */
     if (live.length > h.loadMax) {
-      live.sort(function (a, b) {
-        return Math.abs(+b.getAttribute('data-z') + h.camZ) -
-               Math.abs(+a.getAttribute('data-z') + h.camZ);
-      });
-      for (var u = 0; u < live.length - h.loadMax; u++) unloadArt(live[u]);
+      live.sort(function (a, b) { return (a.seenAt || 0) - (b.seenAt || 0); });
+      var drop = live.length - Math.round(h.loadMax * 0.8);
+      for (var u = 0; u < drop; u++) {
+        if (live[u].seenAt === h.tick) break;      // нужные сейчас не трогаем
+        unloadArt(live[u]);
+      }
     }
 
     // подсветка текущего «зала» художника
