@@ -102,13 +102,12 @@
   letter-spacing: .5px;
 }
 .artc-head__sub {
-  display: inline-block;
-  background: var(--artc-teal);
-  color: #fff;
-  padding: 7px 18px;
-  border-radius: 12px;
-  font-size: 15px;
-  letter-spacing: .4px;
+  display: block;
+  color: var(--artc-ink);
+  font-size: 17px;
+  letter-spacing: 3.5px;
+  text-transform: uppercase;
+  margin-top: 2px;
 }
 
 /* ----------------------- карусель ------------------------ */
@@ -119,12 +118,23 @@
   transition: transform .32s ease-out;
   will-change: transform;
 }
-.artc-card {
-  flex: 0 0 calc(100% / var(--artc-per-view, 3));
-  padding: 0 10px;
+/* Страница-плитка: занимает всю ширину, внутри — ровная сетка.
+   Карточки одного размера, потому что растягиваются на всю ячейку. */
+.artc-page {
+  flex: 0 0 100%;
+  display: grid;
+  grid-template-columns: repeat(var(--artc-cols, 2), 1fr);
+  gap: 20px 18px;
+  align-items: stretch;
+  padding: 0 6px;
   min-width: 0;
 }
+.artc-card { min-width: 0; display: flex; }
+.artc-card.is-empty { visibility: hidden; }
 .artc-card__inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   background: var(--artc-card);
   border-radius: var(--artc-radius);
   box-shadow: var(--artc-shadow);
@@ -136,7 +146,6 @@
   text-align: left;
   color: inherit;
   transition: transform .25s ease-out, box-shadow .25s ease-out;
-  display: block;
 }
 .artc-card__inner:hover, .artc-card__inner:focus-visible {
   transform: translateY(-5px);
@@ -145,7 +154,12 @@
 .artc-card__inner:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
 .artc-card__cover { position: relative; aspect-ratio: 4 / 3; overflow: hidden; }
 .artc-card__cover img { width: 100%; height: 100%; object-fit: cover; }
-.artc-card__meta { display: flex; gap: 14px; align-items: center; padding: 14px 16px 18px; }
+.artc-card__meta {
+  display: flex; gap: 14px; align-items: center;
+  padding: 14px 16px 18px;
+  flex: 1 1 auto;                 /* подпись занимает остаток — низ карточек ровный */
+}
+.artc-card__text { min-width: 0; }
 .artc-card__ava {
   width: 62px; height: 62px; flex: 0 0 62px;
   border-radius: 50%;
@@ -158,12 +172,16 @@
 }
 .artc-card__ava img { width: 100%; height: 100%; object-fit: cover; }
 .artc-card__name {
-  display: block;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;          /* длинное ФИО не растит карточку */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   font-family: var(--artc-font-head);
-  font-size: 19px;
+  font-size: 18px;
   margin: 0;
   line-height: 1.25;
   font-weight: normal;
+  overflow-wrap: anywhere;
 }
 .artc-card__city { display: block; margin: 3px 0 0; font-size: 13px; color: var(--artc-muted); }
 
@@ -361,6 +379,26 @@
 .artc-lightbox .artc-modal__close:hover { background: var(--artc-coral); }
 .artc-lightbox .artc-buy { padding: 11px 26px; font-size: 15px; }
 
+/* кнопки под работой: купить и вернуться в зал */
+.artc-lightbox__actions {
+  display: flex; flex-wrap: wrap;
+  gap: 10px; justify-content: center;
+}
+.artc-back {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 11px 24px 11px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 247, 228, .38);
+  background: rgba(255, 247, 228, .12);
+  color: #FBF3E0;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background .25s ease, transform .25s ease;
+}
+.artc-back svg { width: 16px; height: 16px; }
+.artc-back:hover { background: rgba(255, 247, 228, .26); transform: translateY(-2px); }
+.artc-back:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+
 /* --------------------- форма «Хочу купить» --------------------- */
 .artc-form-modal { z-index: 99994; } /* форма всегда поверх лайтбокса */
 .artc-form-modal .artc-modal__dialog { max-width: 480px; }
@@ -421,11 +459,13 @@
 .artc-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 /* ---------------------- адаптивность ---------------------- */
-.artc-root { --artc-per-view: 3; }
-@media (min-width: 1200px) { .artc-root { --artc-per-view: 4; } }
-@media (max-width: 900px)  { .artc-root { --artc-per-view: 2; } }
+/* --artc-cols — колонок в плитке, --artc-per-view — карточек на странице
+   (две строки на широком экране, одна на узком). */
+.artc-root { --artc-cols: 3; --artc-per-view: 6; }
+@media (min-width: 1200px) { .artc-root { --artc-cols: 4; --artc-per-view: 8; } }
+@media (max-width: 900px)  { .artc-root { --artc-cols: 2; --artc-per-view: 4; } }
 @media (max-width: 600px) {
-  .artc-root { --artc-per-view: 1; padding: 36px 12px 44px; }
+  .artc-root { --artc-cols: 1; --artc-per-view: 2; padding: 36px 12px 44px; }
   .artc-arrow--prev { left: 2px; }
   .artc-arrow--next { right: 2px; }
   .artc-artist__head { gap: 14px; }
@@ -435,7 +475,25 @@
   .artc-lightbox .artc-arrow--prev { left: 4px; }
   .artc-lightbox .artc-arrow--next { right: 4px; }
   .artc-lightbox__img { max-height: calc(100vh - 210px); }
-  .artc-artist__foot { flex-direction: column; align-items: stretch; }
+  /* На телефоне карточка длинная, и главная кнопка уезжала под нижний край
+     экрана — приклеиваем низ карточки, чтобы «Хочу купить картину» была
+     видна сразу, без прокрутки до конца. overflow у диалога при этом снимаем:
+     любой промежуточный overflow между прилипающим элементом и прокруткой
+     делает прилипание бессмысленным — элемент «прилипает» к диалогу, а
+     прокручивается-то модалка. */
+  .artc-modal__dialog { overflow: visible; }
+  .artc-artist__foot {
+    flex-direction: column; align-items: stretch;
+    position: -webkit-sticky;
+    position: sticky;
+    bottom: -1px;
+    z-index: 2;
+    margin: 0 calc(clamp(18px, 4vw, 44px) * -1) -40px;
+    padding: 14px clamp(18px, 4vw, 44px) 18px;
+    background: var(--artc-bg);
+    /* мягкая растушёвка над прилипшей кнопкой, чтобы работы не обрывались резко */
+    box-shadow: 0 -16px 20px -6px var(--artc-bg);
+  }
   .artc-artist__nav { margin: 0 auto; }
   .artc-buy { text-align: center; }
 }
@@ -444,3 +502,68 @@
   .artc-root *, .artc-root *::before, .artc-root *::after,
   .artc-modal__dialog { animation: none !important; transition: none !important; }
 }
+
+/* ------------- поиск и указатель по буквам ------------- */
+.artc-filter {
+  position: relative; z-index: 3;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  margin: 0 auto 20px;
+}
+.artc-search {
+  position: relative;
+  display: flex; align-items: center; gap: 10px;
+  width: min(440px, 100%);
+  background: rgba(255, 255, 255, .72);
+  border: 1px solid rgba(33, 29, 23, .14);
+  border-radius: 999px;
+  padding: 0 8px 0 16px;
+}
+.artc-search svg { width: 17px; height: 17px; flex: 0 0 17px; opacity: .5; }
+.artc-search__input {
+  flex: 1 1 auto; min-width: 0;
+  border: none; background: none;
+  font: inherit; font-size: 15px;
+  color: var(--artc-ink);
+  padding: 12px 0;
+}
+.artc-search__input:focus { outline: none; }
+.artc-search:focus-within { border-color: var(--artc-teal); background: #fff; }
+.artc-search__clear {
+  flex: 0 0 32px; width: 32px; height: 32px;
+  border: none; border-radius: 50%; cursor: pointer;
+  background: rgba(33, 29, 23, .08);
+  color: var(--artc-muted);
+  font-size: 13px;
+}
+.artc-search__clear:hover { background: var(--artc-coral); color: #fff; }
+
+.artc-abc {
+  display: flex; flex-wrap: wrap; gap: 4px; justify-content: center;
+  max-width: 100%;
+}
+.artc-abc[hidden] { display: none; }
+.artc-abc button {
+  min-width: 30px; height: 30px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: rgba(33, 29, 23, .06);
+  color: var(--artc-ink);
+  font: inherit; font-size: 14px;
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease;
+}
+.artc-abc button:hover { background: rgba(62, 125, 149, .22); }
+.artc-abc button.is-active { background: var(--artc-teal); color: #fff; }
+.artc-abc button:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+.artc-filter__count { margin: 0; font-size: 13px; color: var(--artc-muted); }
+.artc-empty {
+  text-align: center; color: var(--artc-muted);
+  padding: 30px 16px 40px; margin: 0;
+}
+
+@media (max-width: 600px) {
+  .artc-abc button { min-width: 26px; height: 26px; font-size: 13px; border-radius: 8px; }
+  .artc-search__input { font-size: 14px; padding: 10px 0; }
+}
+
+.artc-dots:empty { display: none; }

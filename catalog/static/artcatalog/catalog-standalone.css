@@ -1,0 +1,1768 @@
+/* Собрано автоматически: tools/build-standalone.py
+   Стили каталога и зала + встроенный шрифт Parangon.
+   Правьте catalog.css и hall.css, затем пересоберите этот файл. */
+
+/* ============================================================
+   Арт-Ростов — онлайн-каталог художников
+   Все классы с префиксом .artc- (изоляция от стилей сайта)
+   ============================================================ */
+
+@font-face {
+  font-family: 'Parangon';
+  src: url(data:font/woff2;base64,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) format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.artc-root {
+  --artc-bg: #EFE3C3;
+  --artc-card: #FBF5E4;
+  --artc-ink: #211D17;
+  --artc-muted: #6E6350;
+  --artc-coral: #E4736F;
+  --artc-coral-dark: #D55A56;
+  --artc-teal: #3E7D95;
+  --artc-teal-dark: #34677B;
+  --artc-green: #2E5B4C;
+  --artc-yellow: #F0B450;
+  --artc-radius: 18px;
+  --artc-shadow: 0 10px 30px rgba(46, 35, 15, .14);
+  --artc-font-head: 'Parangon', 'Georgia', serif;
+  --artc-font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+
+  position: relative;
+  font-family: var(--artc-font-body);
+  color: var(--artc-ink);
+  background: var(--artc-bg);
+  border-radius: 24px;
+  overflow: hidden;
+  padding: 48px 20px 56px;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+.artc-root *, .artc-root *::before, .artc-root *::after { box-sizing: border-box; }
+.artc-root img { max-width: 100%; display: block; }
+.artc-root button { font-family: inherit; }
+
+/* зернистая текстура «крафта» */
+.artc-root::after {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  opacity: .35;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.38 0 0 0 0 0.22 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---- декоративные «жидкие» формы по краям (как на макете) ---- */
+.artc-blob {
+  position: absolute;
+  pointer-events: none;
+  filter: saturate(1.05);
+  z-index: 0;
+}
+.artc-blob--1 {
+  width: 240px; height: 150px; top: -60px; left: -70px;
+  background: linear-gradient(130deg, var(--artc-coral) 10%, var(--artc-yellow) 45%, var(--artc-teal) 80%);
+  border-radius: 46% 54% 62% 38% / 58% 44% 56% 42%;
+  transform: rotate(-14deg);
+}
+.artc-blob--2 {
+  width: 190px; height: 120px; top: -50px; right: -50px;
+  background: linear-gradient(220deg, var(--artc-green) 15%, var(--artc-teal) 55%, var(--artc-coral) 95%);
+  border-radius: 58% 42% 40% 60% / 46% 60% 40% 54%;
+  transform: rotate(11deg);
+}
+.artc-blob--3 {
+  width: 260px; height: 160px; bottom: -70px; left: -60px;
+  background: linear-gradient(30deg, var(--artc-teal) 5%, var(--artc-yellow) 45%, var(--artc-coral) 85%);
+  border-radius: 40% 60% 55% 45% / 55% 40% 60% 45%;
+  transform: rotate(8deg);
+}
+.artc-blob--4 {
+  width: 200px; height: 130px; bottom: -55px; right: -55px;
+  background: linear-gradient(300deg, var(--artc-coral) 10%, var(--artc-green) 60%, var(--artc-teal) 100%);
+  border-radius: 62% 38% 46% 54% / 44% 58% 42% 56%;
+  transform: rotate(-9deg);
+}
+.artc-drop {
+  position: absolute; pointer-events: none;
+  width: 16px; height: 24px;
+  border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
+}
+.artc-drop--1 { top: 84px; left: 12%; background: var(--artc-teal); transform: rotate(18deg); }
+.artc-drop--2 { top: 62px; right: 16%; background: var(--artc-coral); transform: rotate(-24deg); width: 12px; height: 18px; }
+.artc-drop--3 { bottom: 96px; right: 9%; background: var(--artc-yellow); transform: rotate(30deg); width: 11px; height: 17px; }
+.artc-drop--4 { bottom: 70px; left: 8%; background: var(--artc-green); transform: rotate(-15deg); width: 10px; height: 16px; }
+
+/* ------------------------- шапка ------------------------- */
+.artc-head { position: relative; z-index: 1; text-align: center; margin-bottom: 34px; }
+.artc-head__logo { width: min(320px, 62vw); margin: 0 auto 10px; }
+.artc-head__title {
+  font-family: var(--artc-font-head);
+  font-size: clamp(26px, 4vw, 40px);
+  margin: 0 0 6px;
+  font-weight: normal;
+  letter-spacing: .5px;
+}
+.artc-head__sub {
+  display: block;
+  color: var(--artc-ink);
+  font-size: 17px;
+  letter-spacing: 3.5px;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* ----------------------- карусель ------------------------ */
+.artc-carousel { position: relative; z-index: 1; max-width: 1160px; margin: 0 auto; }
+.artc-carousel__viewport { overflow: hidden; padding: 8px 4px 22px; }
+.artc-carousel__track {
+  display: flex;
+  transition: transform .32s ease-out;
+  will-change: transform;
+}
+/* Страница-плитка: занимает всю ширину, внутри — ровная сетка.
+   Карточки одного размера, потому что растягиваются на всю ячейку. */
+.artc-page {
+  flex: 0 0 100%;
+  display: grid;
+  grid-template-columns: repeat(var(--artc-cols, 2), 1fr);
+  gap: 20px 18px;
+  align-items: stretch;
+  padding: 0 6px;
+  min-width: 0;
+}
+.artc-card { min-width: 0; display: flex; }
+.artc-card.is-empty { visibility: hidden; }
+.artc-card__inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--artc-card);
+  border-radius: var(--artc-radius);
+  box-shadow: var(--artc-shadow);
+  overflow: hidden;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  transition: transform .25s ease-out, box-shadow .25s ease-out;
+}
+.artc-card__inner:hover, .artc-card__inner:focus-visible {
+  transform: translateY(-5px);
+  box-shadow: 0 16px 36px rgba(46, 35, 15, .22);
+}
+.artc-card__inner:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+.artc-card__cover { position: relative; aspect-ratio: 4 / 3; overflow: hidden; }
+.artc-card__cover img { width: 100%; height: 100%; object-fit: cover; }
+.artc-card__meta {
+  display: flex; gap: 14px; align-items: center;
+  padding: 14px 16px 18px;
+  flex: 1 1 auto;                 /* подпись занимает остаток — низ карточек ровный */
+}
+.artc-card__text { min-width: 0; }
+.artc-card__ava {
+  width: 62px; height: 62px; flex: 0 0 62px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #fff;
+  box-shadow: 0 3px 10px rgba(46,35,15,.25);
+  margin-top: -40px;
+  position: relative; z-index: 1;
+  background: #fff;
+}
+.artc-card__ava img { width: 100%; height: 100%; object-fit: cover; }
+.artc-card__name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;          /* длинное ФИО не растит карточку */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-family: var(--artc-font-head);
+  font-size: 18px;
+  margin: 0;
+  line-height: 1.25;
+  font-weight: normal;
+  overflow-wrap: anywhere;
+}
+.artc-card__city { display: block; margin: 3px 0 0; font-size: 13px; color: var(--artc-muted); }
+
+.artc-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: var(--artc-coral);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(46,35,15,.3);
+  display: flex; align-items: center; justify-content: center;
+  transition: background .2s, transform .2s;
+}
+.artc-arrow svg { width: 20px; height: 20px; }
+.artc-arrow:hover { background: var(--artc-coral-dark); transform: translateY(-50%) scale(1.07); }
+.artc-arrow:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+.artc-arrow--prev { left: -8px; }
+.artc-arrow--next { right: -8px; }
+
+.artc-dots { display: flex; gap: 9px; justify-content: center; margin-top: 4px; }
+.artc-dot {
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  border: none; padding: 0;
+  cursor: pointer;
+  background: rgba(33,29,23,.22);
+  transition: background .2s, transform .2s;
+}
+.artc-dot:hover { transform: scale(1.25); }
+.artc-dot.is-active { background: var(--artc-coral); transform: scale(1.15); }
+.artc-dot:focus-visible { outline: 2px solid var(--artc-teal); outline-offset: 2px; }
+
+/* --------------------- модальные окна --------------------- */
+.artc-modal {
+  position: fixed; inset: 0;
+  z-index: 99990;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 24px 12px;
+  background: rgba(28, 22, 12, .6);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+.artc-modal.is-open { display: flex; }
+.artc-modal__dialog {
+  position: relative;
+  background: var(--artc-bg);
+  border-radius: 22px;
+  max-width: 980px;
+  width: 100%;
+  margin: auto 0;
+  box-shadow: 0 24px 70px rgba(0,0,0,.4);
+  animation: artc-pop .28s ease-out;
+  overflow: hidden;
+  font-family: var(--artc-font-body);
+  color: var(--artc-ink);
+  line-height: 1.5;
+}
+@keyframes artc-pop {
+  from { opacity: 0; transform: translateY(18px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+.artc-modal__close {
+  position: absolute; top: 14px; right: 14px; z-index: 5;
+  width: 40px; height: 40px;
+  border-radius: 50%; border: none; cursor: pointer;
+  background: rgba(33,29,23,.75); color: #fff;
+  font-size: 20px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .2s;
+}
+.artc-modal__close:hover { background: var(--artc-coral); }
+.artc-modal__close:focus-visible { outline: 3px solid var(--artc-teal); }
+
+/* ------------------- карточка художника ------------------- */
+.artc-artist { position: relative; padding: 30px clamp(18px, 4vw, 44px) 40px; }
+.artc-artist__head { display: flex; gap: 22px; align-items: center; margin-bottom: 18px; flex-wrap: wrap; }
+.artc-artist__ava {
+  width: 108px; height: 108px; flex: 0 0 108px;
+  border-radius: 50%; overflow: hidden;
+  border: 4px solid #fff;
+  box-shadow: 0 6px 18px rgba(46,35,15,.3);
+  background: #fff;
+}
+.artc-artist__ava img { width: 100%; height: 100%; object-fit: cover; }
+.artc-artist__name {
+  font-family: var(--artc-font-head);
+  font-size: clamp(24px, 3.4vw, 34px);
+  margin: 0 0 4px;
+  font-weight: normal;
+  line-height: 1.2;
+}
+.artc-artist__city {
+  display: inline-block;
+  background: var(--artc-teal); color: #fff;
+  font-size: 13px; padding: 4px 12px; border-radius: 9px;
+}
+.artc-artist__bio { max-width: 720px; margin: 0 0 10px; white-space: pre-line; }
+.artc-artist__bio.is-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.artc-more {
+  background: none; border: none; padding: 0;
+  color: var(--artc-teal-dark); cursor: pointer;
+  font-size: 14px; text-decoration: underline;
+  margin-bottom: 14px;
+}
+.artc-links { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 24px; padding: 0; list-style: none; }
+.artc-links a {
+  display: inline-block;
+  background: #fff; color: var(--artc-teal-dark);
+  border: 1.5px solid var(--artc-teal);
+  padding: 6px 14px; border-radius: 999px;
+  font-size: 14px; text-decoration: none;
+  transition: background .2s, color .2s;
+}
+.artc-links a:hover { background: var(--artc-teal); color: #fff; }
+
+.artc-works {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 16px;
+  margin-bottom: 26px;
+}
+.artc-work {
+  position: relative;
+  border: none; padding: 0; cursor: zoom-in;
+  border-radius: 14px; overflow: hidden;
+  background: var(--artc-card);
+  box-shadow: var(--artc-shadow);
+  aspect-ratio: 1 / 1;
+  transition: transform .22s ease-out;
+}
+.artc-work:hover, .artc-work:focus-visible { transform: scale(1.025); }
+.artc-work:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+.artc-work img { width: 100%; height: 100%; object-fit: cover; }
+.artc-work__title {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(transparent, rgba(20,15,8,.72));
+  color: #fff; font-size: 13px;
+  padding: 22px 10px 8px;
+  text-align: left;
+}
+
+.artc-artist__foot { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.artc-buy {
+  border: none; cursor: pointer;
+  background: var(--artc-coral); color: #fff;
+  font-size: 17px; font-weight: 600;
+  padding: 14px 34px; border-radius: 999px;
+  box-shadow: 0 8px 20px rgba(228,115,111,.45);
+  transition: background .2s, transform .2s;
+}
+.artc-buy:hover { background: var(--artc-coral-dark); transform: translateY(-2px); }
+.artc-buy:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+
+.artc-artist__nav {
+  display: flex; gap: 10px; margin-left: auto;
+}
+.artc-artist__nav .artc-arrow { position: static; transform: none; width: 42px; height: 42px; }
+.artc-artist__nav .artc-arrow:hover { transform: scale(1.07); }
+
+/* ------------------------ лайтбокс ------------------------ */
+.artc-lightbox { z-index: 99992; background: rgba(15, 12, 6, .88); padding: 0; }
+.artc-lightbox__stage {
+  position: relative;
+  width: 100%; min-height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 54px 60px 30px;
+}
+.artc-lightbox__img {
+  max-width: 100%; max-height: calc(100vh - 170px);
+  width: auto; height: auto;
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  background: #fff;
+}
+.artc-lightbox__caption { color: #f3ead3; margin: 14px 0 12px; font-size: 15px; text-align: center; }
+.artc-lightbox .artc-arrow { background: rgba(255,255,255,.16); }
+.artc-lightbox .artc-arrow:hover { background: var(--artc-coral); }
+.artc-lightbox .artc-arrow--prev { left: 10px; }
+.artc-lightbox .artc-arrow--next { right: 10px; }
+.artc-lightbox .artc-modal__close { background: rgba(255,255,255,.16); }
+.artc-lightbox .artc-modal__close:hover { background: var(--artc-coral); }
+.artc-lightbox .artc-buy { padding: 11px 26px; font-size: 15px; }
+
+/* кнопки под работой: купить и вернуться в зал */
+.artc-lightbox__actions {
+  display: flex; flex-wrap: wrap;
+  gap: 10px; justify-content: center;
+}
+.artc-back {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 11px 24px 11px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 247, 228, .38);
+  background: rgba(255, 247, 228, .12);
+  color: #FBF3E0;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background .25s ease, transform .25s ease;
+}
+.artc-back svg { width: 16px; height: 16px; }
+.artc-back:hover { background: rgba(255, 247, 228, .26); transform: translateY(-2px); }
+.artc-back:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+
+/* --------------------- форма «Хочу купить» --------------------- */
+.artc-form-modal { z-index: 99994; } /* форма всегда поверх лайтбокса */
+.artc-form-modal .artc-modal__dialog { max-width: 480px; }
+.artc-form { padding: 34px clamp(20px, 5vw, 40px) 36px; }
+.artc-form__title {
+  font-family: var(--artc-font-head);
+  font-size: 27px; margin: 0 0 4px; font-weight: normal;
+}
+.artc-form__hint { margin: 0 0 20px; color: var(--artc-muted); font-size: 14px; }
+.artc-form__hint strong { color: var(--artc-ink); }
+.artc-field { margin-bottom: 16px; }
+.artc-field label { display: block; font-size: 14px; margin-bottom: 6px; font-weight: 600; }
+.artc-field input[type="tel"],
+.artc-field input[type="email"] {
+  width: 100%;
+  border: 2px solid rgba(33,29,23,.18);
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 16px;
+  font-family: inherit;
+  color: var(--artc-ink);
+  transition: border-color .2s;
+}
+.artc-field input:focus { outline: none; border-color: var(--artc-teal); }
+.artc-field input.is-invalid { border-color: var(--artc-coral-dark); }
+.artc-field__err { display: none; color: var(--artc-coral-dark); font-size: 13px; margin-top: 4px; }
+.artc-field.has-error .artc-field__err { display: block; }
+.artc-consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--artc-muted); margin: 4px 0 20px; }
+.artc-consent input { margin-top: 2px; width: 17px; height: 17px; accent-color: var(--artc-teal); flex: 0 0 17px; }
+.artc-consent a { color: var(--artc-teal-dark); }
+.artc-form .artc-buy { width: 100%; }
+.artc-form__status { margin: 14px 0 0; font-size: 14px; display: none; }
+.artc-form__status.is-error { display: block; color: var(--artc-coral-dark); }
+.artc-form__ok { text-align: center; padding: 46px 30px 54px; display: none; }
+.artc-form__ok-icon {
+  width: 74px; height: 74px; margin: 0 auto 18px;
+  border-radius: 50%; background: var(--artc-teal);
+  display: flex; align-items: center; justify-content: center;
+}
+.artc-form__ok-icon svg { width: 36px; height: 36px; }
+.artc-form__ok h3 { font-family: var(--artc-font-head); font-weight: normal; font-size: 26px; margin: 0 0 8px; }
+.artc-form__ok p { margin: 0; color: var(--artc-muted); }
+.artc-form-modal.is-sent .artc-form { display: none; }
+.artc-form-modal.is-sent .artc-form__ok { display: block; }
+/* honeypot: спрятано от людей, доступно ботам */
+.artc-hp { position: absolute !important; left: -9999px !important; width: 1px; height: 1px; overflow: hidden; }
+
+.artc-spin {
+  display: inline-block; width: 17px; height: 17px;
+  border: 2.5px solid rgba(255,255,255,.4);
+  border-top-color: #fff; border-radius: 50%;
+  vertical-align: -3px; margin-right: 8px;
+  animation: artc-rot .7s linear infinite;
+}
+@keyframes artc-rot { to { transform: rotate(360deg); } }
+
+.artc-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------------------- адаптивность ---------------------- */
+/* --artc-cols — колонок в плитке, --artc-per-view — карточек на странице
+   (две строки на широком экране, одна на узком). */
+.artc-root { --artc-cols: 3; --artc-per-view: 6; }
+@media (min-width: 1200px) { .artc-root { --artc-cols: 4; --artc-per-view: 8; } }
+@media (max-width: 900px)  { .artc-root { --artc-cols: 2; --artc-per-view: 4; } }
+@media (max-width: 600px) {
+  .artc-root { --artc-cols: 1; --artc-per-view: 2; padding: 36px 12px 44px; }
+  .artc-arrow--prev { left: 2px; }
+  .artc-arrow--next { right: 2px; }
+  .artc-artist__head { gap: 14px; }
+  .artc-artist__ava { width: 84px; height: 84px; flex-basis: 84px; }
+  .artc-works { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .artc-lightbox__stage { padding: 54px 8px 20px; }
+  .artc-lightbox .artc-arrow--prev { left: 4px; }
+  .artc-lightbox .artc-arrow--next { right: 4px; }
+  .artc-lightbox__img { max-height: calc(100vh - 210px); }
+  /* На телефоне карточка длинная, и главная кнопка уезжала под нижний край
+     экрана — приклеиваем низ карточки, чтобы «Хочу купить картину» была
+     видна сразу, без прокрутки до конца. overflow у диалога при этом снимаем:
+     любой промежуточный overflow между прилипающим элементом и прокруткой
+     делает прилипание бессмысленным — элемент «прилипает» к диалогу, а
+     прокручивается-то модалка. */
+  .artc-modal__dialog { overflow: visible; }
+  .artc-artist__foot {
+    flex-direction: column; align-items: stretch;
+    position: -webkit-sticky;
+    position: sticky;
+    bottom: -1px;
+    z-index: 2;
+    margin: 0 calc(clamp(18px, 4vw, 44px) * -1) -40px;
+    padding: 14px clamp(18px, 4vw, 44px) 18px;
+    background: var(--artc-bg);
+    /* мягкая растушёвка над прилипшей кнопкой, чтобы работы не обрывались резко */
+    box-shadow: 0 -16px 20px -6px var(--artc-bg);
+  }
+  .artc-artist__nav { margin: 0 auto; }
+  .artc-buy { text-align: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .artc-root *, .artc-root *::before, .artc-root *::after,
+  .artc-modal__dialog { animation: none !important; transition: none !important; }
+}
+
+/* ------------- поиск и указатель по буквам ------------- */
+.artc-filter {
+  position: relative; z-index: 3;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  margin: 0 auto 20px;
+}
+.artc-search {
+  position: relative;
+  display: flex; align-items: center; gap: 10px;
+  width: min(440px, 100%);
+  background: rgba(255, 255, 255, .72);
+  border: 1px solid rgba(33, 29, 23, .14);
+  border-radius: 999px;
+  padding: 0 8px 0 16px;
+}
+.artc-search svg { width: 17px; height: 17px; flex: 0 0 17px; opacity: .5; }
+.artc-search__input {
+  flex: 1 1 auto; min-width: 0;
+  border: none; background: none;
+  font: inherit; font-size: 15px;
+  color: var(--artc-ink);
+  padding: 12px 0;
+}
+.artc-search__input:focus { outline: none; }
+.artc-search:focus-within { border-color: var(--artc-teal); background: #fff; }
+.artc-search__clear {
+  flex: 0 0 32px; width: 32px; height: 32px;
+  border: none; border-radius: 50%; cursor: pointer;
+  background: rgba(33, 29, 23, .08);
+  color: var(--artc-muted);
+  font-size: 13px;
+}
+.artc-search__clear:hover { background: var(--artc-coral); color: #fff; }
+
+.artc-abc {
+  display: flex; flex-wrap: wrap; gap: 4px; justify-content: center;
+  max-width: 100%;
+}
+.artc-abc[hidden] { display: none; }
+.artc-abc button {
+  min-width: 30px; height: 30px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: rgba(33, 29, 23, .06);
+  color: var(--artc-ink);
+  font: inherit; font-size: 14px;
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease;
+}
+.artc-abc button:hover { background: rgba(62, 125, 149, .22); }
+.artc-abc button.is-active { background: var(--artc-teal); color: #fff; }
+.artc-abc button:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+.artc-filter__count { margin: 0; font-size: 13px; color: var(--artc-muted); }
+.artc-empty {
+  text-align: center; color: var(--artc-muted);
+  padding: 30px 16px 40px; margin: 0;
+}
+
+@media (max-width: 600px) {
+  .artc-abc button { min-width: 26px; height: 26px; font-size: 13px; border-radius: 8px; }
+  .artc-search__input { font-size: 14px; padding: 10px 0; }
+}
+
+.artc-dots:empty { display: none; }
+
+
+/* ============================================================
+   Арт-Ростов — виртуальный зал (3D-тур)
+   Дополнение к catalog.css. Только CSS-трансформы, без библиотек.
+   Все классы с префиксом .artc- (изоляция от стилей сайта).
+   ============================================================ */
+
+/* ------------------ переключатель режимов ------------------ */
+.artc-views {
+  position: relative; z-index: 3;
+  display: flex; gap: 8px; justify-content: center;
+  margin: 0 auto 22px;
+  background: rgba(33, 29, 23, .07);
+  border-radius: 999px;
+  padding: 5px;
+  width: -moz-fit-content;
+  width: fit-content;
+}
+.artc-views__btn {
+  border: none; cursor: pointer;
+  background: transparent;
+  color: var(--artc-ink);
+  font-size: 15px;
+  padding: 9px 22px;
+  border-radius: 999px;
+  display: flex; align-items: center; gap: 8px;
+  transition: background .28s ease, color .28s ease, box-shadow .28s ease;
+}
+.artc-views__btn svg { width: 17px; height: 17px; opacity: .75; }
+.artc-views__btn:hover { background: rgba(255, 255, 255, .55); }
+.artc-views__btn.is-active {
+  background: var(--artc-ink); color: #F7EFDA;
+  box-shadow: 0 6px 18px rgba(33, 29, 23, .3);
+}
+.artc-views__btn.is-active svg { opacity: 1; }
+.artc-views__btn:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+
+.artc-view { display: none; }
+.artc-view.is-active { display: block; animation: artc-view-in .5s ease-out; }
+@keyframes artc-view-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+/* ---------------------- сцена зала ------------------------- */
+.artc-stage {
+  --hw: 430px;          /* половина ширины зала   */
+  --hh: 315px;          /* половина высоты зала   */
+  --step: 720px;        /* шаг между картинами    */
+  --art-h: 300px;       /* высота полотна         */
+  --wall: #E9DCBC;
+  --wall-dark: #D6C69F;
+
+  position: relative;
+  z-index: 1;
+  max-width: 1160px;
+  margin: 0 auto;
+  height: clamp(480px, 80vh, 760px);
+  border-radius: 22px;
+  overflow: hidden;
+  background: #CBBB92;
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, .55), var(--artc-shadow);
+  cursor: -webkit-grab;
+  cursor: grab;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: pan-y;
+}
+.artc-stage.is-grabbing { cursor: -webkit-grabbing; cursor: grabbing; }
+
+.artc-scene {
+  position: absolute; inset: 0;
+  perspective: 1150px;
+  perspective-origin: 50% 47%;
+}
+.artc-camera {
+  position: absolute; inset: 0;
+  transform-style: preserve-3d;
+  /* Центр вращения — точка зрения (она же perspective-origin, вынесенная
+     вперёд на величину perspective). Иначе поворот камеры получается не
+     поворотом головы, а облётом точки в полутора метрах перед зрителем,
+     и работа, к которой подошли, уезжает из центра кадра. */
+  transform-origin: 50% 47% 1150px;
+  transition: transform .45s cubic-bezier(.22, .61, .36, 1);
+}
+.artc-world {
+  position: absolute; inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.artc-world > * { position: absolute; left: 50%; top: 50%; }
+
+/* Дальняя часть коридора: соседка мира внутри камеры. Мир едет, она стоит,
+   и её transform после сборки не меняется ни разу — ни рывков, ни лишней
+   перерисовки. */
+.artc-depth {
+  position: absolute; inset: 0;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+.artc-depth > * { position: absolute; left: 50%; top: 50%; }
+
+/* Слои сцены прозрачны для курсора: иначе плоскости пола, стен и самой
+   камеры (они ближе к зрителю, чем полотна) перехватывали бы все клики. */
+.artc-camera, .artc-world,
+.artc-floor, .artc-ceil, .artc-wall, .artc-end, .artc-sign, .artc-fog { pointer-events: none; }
+.artc-art { pointer-events: auto; }
+
+/* --- пол, потолок, стены --- */
+.artc-floor,
+.artc-ceil {
+  width: calc(var(--hw) * 2);
+  height: var(--seg, 2880px);
+  margin: 0;
+}
+.artc-floor {
+  background:
+    /* мягкий свет по центру прохода вместо полосатого ритма */
+    linear-gradient(to right,
+      rgba(20, 12, 4, .16) 0 14%,
+      rgba(255, 244, 214, .10) 40%,
+      rgba(255, 244, 214, .10) 60%,
+      rgba(20, 12, 4, .16) 86% 100%),
+    repeating-linear-gradient(to right,
+      rgba(255, 236, 196, .03) 0 120px,
+      rgba(40, 28, 12, .05) 120px 122px),
+    linear-gradient(to bottom, #4C3F2C 0%, #7A6647 46%, #8E7A56 100%);
+}
+.artc-ceil {
+  background:
+    /* ровная световая полоса по центру вместо ряда «зебр» */
+    linear-gradient(to right,
+      #5A5142 0 34%,
+      rgba(255, 251, 236, .92) 34% 38%,
+      #63594A 38% 62%,
+      rgba(255, 251, 236, .92) 62% 66%,
+      #5A5142 66%);
+}
+
+.artc-wall {
+  width: var(--seg, 2880px);
+  height: calc(var(--hh) * 2);
+  /* верхний слой — фактура штукатурки: мелкое зерно и лёгкие разводы.
+     Рисуется вместе с плоскостью, отдельного слоя не создаёт. */
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.40 0 0 0 0 0.33 0 0 0 0 0.18 0 0 0 0.30 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23w)'/%3E%3C/svg%3E") 0 0 / 200px 200px repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='b'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.28 0 0 0 0 0.14 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='700' height='700' filter='url(%23b)'/%3E%3C/svg%3E") 0 0 / 700px 700px repeat,
+    linear-gradient(to bottom, #C9B98F 0%, #EFE3C3 20%, #E9DCBC 76%, #B7A578 100%);
+}
+.artc-wall::after {
+  /* плинтус */
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 34px;
+  background: linear-gradient(to bottom, var(--wall-dark), #A8935F);
+  box-shadow: 0 -6px 14px rgba(40, 30, 12, .18);
+}
+
+/* --- дальняя часть коридора ---
+   Те же четыре плоскости, но вчетверо мельче и растянутые обратно через
+   scale(4) в transform: браузер растрирует плоскость по её собственному
+   размеру, а не по месту на экране, поэтому такой коридор обходится
+   вчетверо дешевле сплошного. Все размеры здесь тоже делятся на четыре —
+   иначе плинтус, карниз и разметка пола растянулись бы вместе с плоскостью.
+   Множитель продублирован в js (FAR_K); правится в паре.
+
+   Плоскости уходят в темноту: сплошного края у коридора нет, и конец
+   прорисовки не читается. Направления перехода у всех четырёх разные —
+   плоскости повёрнуты друг относительно друга, и «вдаль» у каждой своя
+   сторона (проверено снимками с раскрашенными половинками). */
+.artc-far { --fk: 8; }
+.artc-floor.artc-far,
+.artc-ceil.artc-far {
+  width: calc(var(--hw) * 2 / var(--fk));
+  height: calc(var(--far-seg, 0px) / var(--fk));
+}
+.artc-wall.artc-far {
+  width: calc(var(--far-seg, 0px) / var(--fk));
+  height: calc(var(--hh) * 2 / var(--fk));
+}
+.artc-wall.artc-far::before { height: calc(26px / var(--fk)); }
+.artc-wall.artc-far::after { height: calc(34px / var(--fk)); }
+
+.artc-floor.artc-far {
+  /* без разметки досок: её шаг задан в пикселях и от растяжения стал бы
+     вчетверо крупнее, чем у ближнего куска */
+  background:
+    linear-gradient(to top, rgba(26, 21, 12, 0) 32%, rgba(26, 21, 12, .5) 62%, rgba(26, 21, 12, .98) 92%),
+    linear-gradient(to right,
+      rgba(20, 12, 4, .16) 0 14%,
+      rgba(255, 244, 214, .10) 40%,
+      rgba(255, 244, 214, .10) 60%,
+      rgba(20, 12, 4, .16) 86% 100%),
+    linear-gradient(to bottom, #4C3F2C 0%, #7A6647 46%, #8E7A56 100%);
+}
+.artc-ceil.artc-far {
+  background:
+    linear-gradient(to bottom, rgba(26, 21, 12, 0) 32%, rgba(26, 21, 12, .5) 62%, rgba(26, 21, 12, .98) 92%),
+    linear-gradient(to right,
+      #5A5142 0 34%,
+      rgba(255, 251, 236, .92) 34% 38%,
+      #63594A 38% 62%,
+      rgba(255, 251, 236, .92) 62% 66%,
+      #5A5142 66%);
+}
+.artc-wall--l.artc-far {
+  background:
+    linear-gradient(to right, rgba(26, 21, 12, 0) 32%, rgba(26, 21, 12, .5) 62%, rgba(26, 21, 12, .98) 92%),
+    linear-gradient(to bottom, #C9B98F 0%, #EFE3C3 20%, #E9DCBC 76%, #B7A578 100%);
+}
+.artc-wall--r.artc-far {
+  background:
+    linear-gradient(to left, rgba(26, 21, 12, 0) 32%, rgba(26, 21, 12, .5) 62%, rgba(26, 21, 12, .98) 92%),
+    linear-gradient(to bottom, #C9B98F 0%, #EFE3C3 20%, #E9DCBC 76%, #B7A578 100%);
+}
+/* заглушка в самом конце: дальше не рисуется ничего */
+.artc-fog {
+  width: calc(var(--hw) * 2);
+  height: calc(var(--hh) * 2);
+  background: #1A150C;
+  pointer-events: none;
+}
+
+/* --- дальняя стена с логотипом --- */
+.artc-end {
+  width: calc(var(--hw) * 2);
+  height: calc(var(--hh) * 2);
+  transform: translate(-50%, -50%) translate3d(0, 0, calc(var(--len, 8000px) * -1 + 2px));
+  background:
+    radial-gradient(120% 90% at 50% 42%, rgba(255, 250, 232, .5), rgba(255, 250, 232, 0) 62%),
+    linear-gradient(to bottom, rgba(60, 48, 28, .3), rgba(40, 32, 18, .48)),
+    var(--wall);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 14px;
+  text-align: center;
+}
+/* содержимое дальней стены — единым блоком строго по центру */
+.artc-end__inner {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px;
+  width: 74%;
+  text-align: center;
+}
+.artc-end img { width: 88%; filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .3)); }
+.artc-end__slogan {
+  font-family: var(--artc-font-body);
+  font-size: 20px; letter-spacing: 5px;
+  text-transform: uppercase;
+  color: #4A3E28;
+}
+.artc-end__invite {
+  margin: 2px 0 0;
+  font-family: var(--artc-font-body);
+  font-size: 22px; line-height: 1.35;
+  color: #3A3020;
+}
+.artc-end__ticket {
+  pointer-events: auto;
+  display: inline-block;
+  margin-top: 6px;
+  padding: 15px 40px;
+  border-radius: 999px;
+  background: var(--artc-coral);
+  color: #fff;
+  font-size: 21px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 10px 26px rgba(120, 50, 40, .4);
+  transition: background .25s ease, transform .25s ease, box-shadow .25s ease;
+}
+.artc-end__ticket:hover {
+  background: var(--artc-coral-dark);
+  transform: translateY(-3px);
+  box-shadow: 0 16px 34px rgba(120, 50, 40, .5);
+}
+.artc-end__ticket[aria-disabled="true"] { opacity: .85; cursor: default; }
+
+/* --- имя художника на стене --- */
+/* backface-visibility — чтобы при довороте камеры к работе не показывалась
+   зеркальная изнанка надписей и рам */
+.artc-sign {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  width: 620px;
+  text-align: center;
+  font-family: var(--artc-font-head);
+  font-size: 44px;
+  line-height: 1.05;
+  color: rgba(70, 56, 32, .3);
+  text-shadow: 0 2px 0 rgba(255, 250, 232, .35);
+  pointer-events: none;
+}
+.artc-sign small {
+  display: block;
+  font-family: var(--artc-font-body);
+  font-size: 19px;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  margin-top: 6px;
+  color: rgba(70, 56, 32, .3);
+}
+
+/* ------------------------ полотно -------------------------- */
+.artc-art {
+  width: var(--aw, 300px);
+  border: none; padding: 0; margin: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  -webkit-tap-highlight-color: transparent;
+}
+/* рамка — отдельная кнопка: по ней работа открывается во весь экран */
+.artc-art__frame {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  position: relative;
+  display: block;
+  border: none; margin: 0;
+  font: inherit; color: inherit;
+  cursor: pointer;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+  height: var(--art-h);
+  padding: 13px;
+  background:
+    linear-gradient(145deg, #E4C77E 0%, #A8813A 26%, #F2DCA2 52%, #9C7530 78%, #DEBE74 100%);
+  border-radius: 3px;
+  box-shadow:
+    0 26px 40px rgba(0, 0, 0, .48),
+    0 2px 0 rgba(255, 255, 255, .35) inset,
+    0 -2px 0 rgba(0, 0, 0, .3) inset;
+  transform: translateZ(0);
+  transition: transform .45s cubic-bezier(.2, .7, .3, 1), box-shadow .45s ease, filter .45s ease;
+}
+.artc-art__frame::after {
+  /* стеклянный блик на полотне */
+  content: '';
+  position: absolute; inset: 13px;
+  background: linear-gradient(118deg, rgba(255, 255, 255, .3) 0%, rgba(255, 255, 255, .06) 26%, rgba(255, 255, 255, 0) 52%);
+  pointer-events: none;
+  opacity: .75;
+  transition: opacity .45s ease;
+}
+.artc-art__frame img,
+.artc-art__frame picture {
+  display: block;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  background: #1B1710;
+}
+.artc-art__frame img { box-shadow: 0 0 22px rgba(0, 0, 0, .55) inset; }
+
+/* свет софита над полотном (радиальный градиент — дёшево для GPU) */
+.artc-art__spot {
+  position: absolute;
+  left: -18%; bottom: 92%;
+  width: 136%; height: 190px;
+  transform: translateZ(-6px);
+  background: radial-gradient(60% 100% at 50% 100%,
+    rgba(255, 246, 219, .55) 0%, rgba(255, 246, 219, .16) 45%, rgba(255, 246, 219, 0) 78%);
+  opacity: .62;
+  pointer-events: none;
+  transition: opacity .5s ease;
+}
+
+/* табличка под полотном: фото художника + название */
+/* табличка — вторая кнопка: по ней открывается карточка художника */
+.artc-art__plaque {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  border: none;
+  font: inherit; color: inherit;
+  cursor: pointer;
+  width: 100%;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  align-items: center;
+  gap: 11px;
+  margin-top: 20px;
+  padding: 9px 15px 9px 9px;
+  background: linear-gradient(to bottom, rgba(253, 247, 231, .97), rgba(240, 230, 205, .97));
+  border-radius: 12px;
+  box-shadow: 0 12px 22px rgba(0, 0, 0, .34), 0 1px 0 rgba(255, 255, 255, .8) inset;
+  text-align: left;
+  transform: translateZ(0);
+  transition: transform .45s cubic-bezier(.2, .7, .3, 1), box-shadow .45s ease;
+}
+.artc-art__ava {
+  flex: 0 0 44px;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid #fff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, .3);
+  background: #fff;
+}
+.artc-art__ava img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.artc-art__meta { min-width: 0; }
+.artc-art__title {
+  display: block;
+  font-family: var(--artc-font-head);
+  font-size: 19px;
+  line-height: 1.2;
+  color: var(--artc-ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.artc-art__author {
+  display: block;
+  font-size: 12px;
+  color: var(--artc-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+/* наведение / фокус: полотно выступает из стены, свет ярче */
+.artc-art:hover .artc-art__frame,
+.artc-art:focus-visible .artc-art__frame {
+  transform: translateZ(30px) scale(1.035);
+  box-shadow: 0 34px 60px rgba(0, 0, 0, .6), 0 0 0 1px rgba(255, 236, 190, .5);
+  filter: brightness(1.11);
+}
+.artc-art:hover .artc-art__frame::after,
+.artc-art:focus-visible .artc-art__frame::after { opacity: .35; }
+.artc-art:hover .artc-art__spot,
+.artc-art:focus-visible .artc-art__spot { opacity: .95; }
+.artc-art:hover .artc-art__plaque,
+.artc-art:focus-visible .artc-art__plaque { transform: translateZ(22px); box-shadow: 0 18px 30px rgba(0, 0, 0, .42); }
+.artc-art__frame:focus-visible,
+.artc-art__plaque:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 5px; }
+/* табличка отзывается на курсор сама по себе — это отдельная кнопка */
+.artc-art__plaque:hover {
+  background: linear-gradient(to bottom, #fff, rgba(246, 238, 216, .99));
+  box-shadow: 0 18px 30px rgba(0, 0, 0, .42), 0 0 0 1px rgba(228, 115, 111, .55) inset;
+}
+
+/* появление полотен при входе в зал */
+.artc-art .artc-art__frame,
+.artc-art .artc-art__plaque { animation: artc-art-in .9s cubic-bezier(.2, .8, .3, 1) both; animation-delay: var(--d, 0ms); }
+@keyframes artc-art-in {
+  from { opacity: 0; transform: translateZ(-70px) scale(.9); }
+  to   { opacity: 1; }
+}
+
+/* --------------------- атмосфера ---------------------------- */
+.artc-vignette {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background:
+    radial-gradient(20% 26% at 50% 47%, rgba(28, 20, 8, .34), rgba(28, 20, 8, .15) 60%, rgba(28, 20, 8, 0) 100%),
+    radial-gradient(130% 96% at 50% 50%, rgba(0, 0, 0, 0) 42%, rgba(15, 11, 5, .62) 100%),
+    linear-gradient(to bottom, rgba(20, 15, 6, .3), rgba(20, 15, 6, 0) 22%);
+}
+.artc-dust {
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 2; overflow: hidden;
+  /* весь слой пыли выносим на GPU: перерисовка не задевает 3D-сцену */
+  will-change: transform;
+  transform: translateZ(0);
+  contain: strict;
+}
+.artc-dust i {
+  position: absolute;
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 244, 214, .75);
+  /* свой композитный слой: иначе анимация пылинок заставляет
+     перерисовывать весь зал под ними и роняет частоту кадров */
+  will-change: transform, opacity;
+  animation: artc-float linear infinite;
+}
+@keyframes artc-float {
+  0%   { transform: translate3d(0, 0, 0) scale(.6); opacity: 0; }
+  12%  { opacity: .85; }
+  88%  { opacity: .7; }
+  100% { transform: translate3d(38px, -190px, 0) scale(1.25); opacity: 0; }
+}
+
+/* ------------------------- HUD ------------------------------ */
+.artc-hud {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  z-index: 4;
+  pointer-events: none;
+  padding: 46px 18px 16px;
+  background: linear-gradient(to top, rgba(18, 13, 5, .82) 32%, rgba(18, 13, 5, 0));
+  display: flex; flex-direction: column; gap: 12px;
+  animation: artc-hud-in .8s .5s ease-out both;
+}
+@keyframes artc-hud-in { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+
+.artc-hud__row { display: flex; align-items: center; gap: 14px; }
+.artc-walk, .artc-rooms__btn { pointer-events: auto; }
+/* полоса прогресса — только индикатор: нажатия ей ни к чему, а лежит она
+   ровно над зоной шага «назад» и перехватывала их */
+.artc-progress { pointer-events: none; }
+.artc-walk {
+  flex: 0 0 auto;
+  width: 50px; height: 50px;
+  border-radius: 50%; border: none;
+  cursor: pointer;
+  background: rgba(255, 247, 228, .14);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #FDF6E4;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .25s ease, transform .25s ease, box-shadow .25s ease;
+}
+.artc-walk svg { width: 22px; height: 22px; }
+.artc-walk:hover { background: var(--artc-coral); transform: scale(1.09); box-shadow: 0 8px 22px rgba(228, 115, 111, .5); }
+.artc-walk:disabled { opacity: .3; cursor: default; transform: none; background: rgba(255, 247, 228, .1); }
+.artc-walk:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+
+.artc-progress {
+  flex: 1 1 auto;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 247, 228, .2);
+  overflow: hidden;
+}
+.artc-progress i {
+  display: block; height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--artc-yellow), var(--artc-coral));
+  transition: width .18s linear;
+}
+
+.artc-rooms {
+  display: flex; gap: 8px;
+  justify-content: center; flex-wrap: wrap;
+}
+.artc-rooms__btn {
+  border: 1px solid rgba(255, 247, 228, .26);
+  background: rgba(255, 247, 228, .08);
+  color: rgba(253, 246, 228, .82);
+  border-radius: 999px;
+  padding: 6px 15px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .25s ease, color .25s ease, border-color .25s ease, transform .25s ease;
+}
+.artc-rooms__btn:hover { background: rgba(255, 247, 228, .2); transform: translateY(-2px); }
+.artc-rooms__btn.is-current {
+  background: var(--artc-coral); border-color: var(--artc-coral);
+  color: #fff; box-shadow: 0 6px 16px rgba(228, 115, 111, .45);
+}
+.artc-rooms__btn:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+
+.artc-hint {
+  position: absolute;
+  top: 18px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex; align-items: center; gap: 9px;
+  background: rgba(18, 13, 5, .58);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #FBF3E0;
+  font-size: 13px;
+  padding: 9px 17px;
+  border-radius: 999px;
+  pointer-events: none;
+  animation: artc-hint-in 1s .9s ease-out both, artc-pulse 3.4s 2s ease-in-out infinite;
+  max-width: calc(100% - 28px);
+  text-align: left;
+  margin: 0;
+}
+.artc-hint b { font-weight: 700; }
+.artc-hint svg { width: 16px; height: 16px; flex: 0 0 16px; }
+.artc-hint.is-hidden { animation: artc-hint-out .5s ease-in both; }
+@keyframes artc-hint-in { from { opacity: 0; transform: translate(-50%, -14px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes artc-hint-out { to { opacity: 0; transform: translate(-50%, -14px); } }
+@keyframes artc-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(228, 115, 111, 0); } 50% { box-shadow: 0 0 0 7px rgba(228, 115, 111, .13); } }
+
+/* «шторка» на входе в зал */
+.artc-curtain {
+  position: absolute; inset: 0;
+  z-index: 6;
+  background: #1A150C;
+  pointer-events: none;
+  animation: artc-curtain 1.5s .15s cubic-bezier(.4, 0, .2, 1) both;
+}
+@keyframes artc-curtain { to { opacity: 0; visibility: hidden; } }
+
+/* ------------------- адаптивность зала ---------------------- */
+@media (max-width: 900px) {
+  .artc-stage { --hw: 360px; --hh: 285px; --step: 620px; --art-h: 240px; }
+  .artc-sign { font-size: 36px; width: 480px; }
+}
+@media (max-width: 600px) {
+  .artc-stage {
+    --hw: 250px; --hh: 245px; --step: 500px; --art-h: 180px;
+    height: clamp(360px, 62vh, 520px);
+    border-radius: 16px;
+  }
+  .artc-scene { perspective: 700px; }
+  .artc-camera { transform-origin: 50% 47% 700px; }   /* см. основной блок */
+  .artc-sign { font-size: 26px; width: 330px; }
+  .artc-sign small { font-size: 13px; letter-spacing: 3px; }
+  .artc-art__plaque { margin-top: 12px; padding: 6px 10px 6px 6px; gap: 8px; }
+  .artc-art__ava { flex-basis: 34px; width: 34px; height: 34px; }
+  .artc-art__title { font-size: 15px; }
+  .artc-art__author { font-size: 11px; }
+  .artc-end span { font-size: 14px; letter-spacing: 2px; padding: 6px 14px; }
+  .artc-hud { padding: 38px 12px 12px; gap: 9px; }
+  .artc-walk { width: 44px; height: 44px; }
+  .artc-rooms__btn { padding: 5px 12px; font-size: 12px; }
+  .artc-hint { font-size: 11.5px; padding: 7px 12px; top: 10px; line-height: 1.35; }
+  .artc-views__btn { padding: 8px 16px; font-size: 14px; }
+}
+
+/* --------- бережный режим: без движения и мерцания ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .artc-camera { transition: none; }
+  .artc-dust { display: none; }
+  .artc-curtain { animation: none; opacity: 0; visibility: hidden; }
+  .artc-art .artc-art__frame,
+  .artc-art .artc-art__plaque,
+  .artc-hud, .artc-hint, .artc-view { animation: none !important; }
+}
+
+/* ============================================================
+   Дополнительные анимации: свет, появление карточки, акценты
+   ============================================================ */
+
+/* мягкое «дыхание» освещения — на лёгком слое поверх сцены,
+   а не фильтром по гигантской плоскости потолка */
+.artc-vignette::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(70% 45% at 50% 34%, rgba(255, 244, 214, .10), rgba(255, 244, 214, 0) 70%);
+  animation: artc-lights 9s ease-in-out infinite;
+}
+@keyframes artc-lights {
+  0%, 100% { opacity: .55; }
+  50%      { opacity: 1; }
+}
+
+/* блик, пробегающий по раме при наведении */
+.artc-art__frame::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 252, 240, .55) 50%, transparent 62%);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.artc-art:hover .artc-art__frame::before { animation: artc-shine 1.1s ease-out; }
+@keyframes artc-shine {
+  0%   { opacity: 0; transform: translateX(-60%); }
+  35%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(60%); }
+}
+
+/* карточка художника: содержимое проявляется по очереди */
+.artc-artist__head  { animation: artc-rise .55s .04s cubic-bezier(.2, .8, .3, 1) both; }
+.artc-artist__bio,
+.artc-more          { animation: artc-rise .55s .12s cubic-bezier(.2, .8, .3, 1) both; }
+.artc-links         { animation: artc-rise .55s .18s cubic-bezier(.2, .8, .3, 1) both; }
+.artc-works         { animation: artc-rise .55s .24s cubic-bezier(.2, .8, .3, 1) both; }
+.artc-artist__foot  { animation: artc-rise .55s .32s cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes artc-rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* работы в карточке проявляются каскадом */
+.artc-works .artc-work { animation: artc-work-in .5s cubic-bezier(.2, .8, .3, 1) both; }
+.artc-works .artc-work:nth-child(1) { animation-delay: .28s; }
+.artc-works .artc-work:nth-child(2) { animation-delay: .35s; }
+.artc-works .artc-work:nth-child(3) { animation-delay: .42s; }
+.artc-works .artc-work:nth-child(4) { animation-delay: .49s; }
+.artc-works .artc-work:nth-child(n+5) { animation-delay: .56s; }
+@keyframes artc-work-in {
+  from { opacity: 0; transform: translateY(16px) scale(.94); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* кнопка покупки: живой блик и мягкая пульсация тени */
+.artc-buy { position: relative; overflow: hidden; }
+.artc-buy::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0; left: -60%;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .42), transparent);
+  transform: skewX(-18deg);
+  animation: artc-buy-shine 4.6s 1.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes artc-buy-shine {
+  0%, 62% { left: -60%; }
+  86%     { left: 120%; }
+  100%    { left: 120%; }
+}
+.artc-artist__foot .artc-buy { animation: artc-buy-beat 3.6s 1s ease-in-out infinite; }
+@keyframes artc-buy-beat {
+  0%, 100% { box-shadow: 0 8px 20px rgba(228, 115, 111, .45); }
+  50%      { box-shadow: 0 10px 30px rgba(228, 115, 111, .72); }
+}
+
+/* карточки карусели «дышат» при наведении, обложка приближается */
+.artc-card__cover img { transition: transform .7s cubic-bezier(.2, .7, .3, 1); }
+.artc-card__inner:hover .artc-card__cover img,
+.artc-card__inner:focus-visible .artc-card__cover img { transform: scale(1.07); }
+
+/* логотип в шапке мягко проявляется */
+.artc-head__logo { animation: artc-logo-in 1.1s cubic-bezier(.2, .8, .3, 1) both; }
+.artc-head__title { animation: artc-rise .7s .16s cubic-bezier(.2, .8, .3, 1) both; }
+.artc-head__sub { animation: artc-rise .7s .26s cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes artc-logo-in {
+  from { opacity: 0; transform: translateY(-12px) scale(.96); filter: blur(6px); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .artc-ceil, .artc-buy::after, .artc-artist__foot .artc-buy,
+  .artc-head__logo, .artc-head__title, .artc-head__sub,
+  .artc-artist__head, .artc-artist__bio, .artc-more, .artc-links,
+  .artc-works, .artc-works .artc-work, .artc-artist__foot { animation: none !important; }
+}
+
+/* ============================================================
+   Напольная навигация, арт-объекты и глубина коридора
+   ============================================================ */
+
+/* --- стрелки-указатели, лежащие на полу зала --- */
+.artc-pad {
+  width: 330px; height: 215px;
+  border: none; padding: 0; margin: 0;
+  background: none;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity .35s ease;
+}
+.artc-pad span {
+  display: flex;
+  align-items: center; justify-content: center;
+  width: 100%; height: 100%;
+  border-radius: 999px;
+  background:
+    radial-gradient(60% 60% at 50% 50%, rgba(255, 250, 232, .95), rgba(255, 246, 219, .72) 62%, rgba(255, 240, 205, 0) 88%);
+  box-shadow: 0 0 34px rgba(255, 244, 214, .5);
+  color: var(--artc-coral-dark);
+  transition: transform .3s cubic-bezier(.2, .8, .3, 1), color .3s ease, filter .3s ease;
+}
+.artc-pad svg { width: 112px; height: 112px; stroke-width: 2.6; }
+.artc-pad:hover span { transform: scale(1.1); color: #fff; background:
+  radial-gradient(60% 60% at 50% 50%, var(--artc-coral), rgba(228, 115, 111, .7) 62%, rgba(228, 115, 111, 0) 88%); }
+.artc-pad:focus-visible span { outline: 3px solid var(--artc-teal); outline-offset: 4px; }
+.artc-pad.is-off { opacity: 0; pointer-events: none; }
+.artc-pad--fwd span { animation: artc-pad-pulse 2.8s ease-in-out infinite; }
+@keyframes artc-pad-pulse {
+  0%, 100% { opacity: .72; }
+  50%      { opacity: 1; }
+}
+
+/* --- арт-объекты зала: вазы, скульптура --- */
+.artc-object {
+  pointer-events: none;
+  width: var(--ow, 150px);
+  filter: drop-shadow(0 18px 22px rgba(30, 20, 6, .38));
+  animation: artc-obj-in 1s cubic-bezier(.2, .8, .3, 1) both;
+}
+.artc-object svg { width: 100%; height: auto; display: block; }
+@keyframes artc-obj-in {
+  from { opacity: 0; transform: translate(-50%, -50%) translate3d(var(--ox), var(--oy), var(--oz)) scale(.9); }
+}
+/* тень объекта на полу */
+.artc-object-shadow {
+  pointer-events: none;
+  width: var(--sw, 170px); height: 70px;
+  border-radius: 50%;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(28, 18, 4, .45), rgba(28, 18, 4, 0) 72%);
+}
+
+/* --- ритм архитектуры: пилястры и карниз для глубины --- */
+/* пилястры — отдельные узкие элементы внутри стены: тот же ритм,
+   но рисуется десяток полос вместо заливки всей плоскости */
+.artc-pilaster {
+  position: absolute;
+  top: 26px; bottom: 34px;
+  width: 42px;
+  background: linear-gradient(to right,
+    rgba(96, 78, 44, .16), rgba(255, 250, 232, .55) 26%, rgba(255, 250, 232, .5) 70%, rgba(120, 98, 56, .22));
+  pointer-events: none;
+}
+
+.artc-wall::before {
+  /* карниз под потолком */
+  content: '';
+  position: absolute; left: 0; right: 0; top: 0;
+  height: 26px;
+  background: linear-gradient(to bottom, #B7A578, rgba(240, 230, 200, .9) 60%, rgba(150, 130, 90, .5));
+  box-shadow: 0 6px 12px rgba(40, 30, 12, .16);
+}
+
+@media (max-width: 600px) {
+  .artc-pad { width: 150px; height: 110px; }
+  .artc-pad svg { width: 54px; height: 54px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .artc-pad--fwd span, .artc-object { animation: none !important; }
+}
+
+
+/* ------------------------------------------------------------
+   Облегчённый режим: включается автоматически, если устройство
+   не тянет полную сцену (замер частоты кадров при входе в зал).
+   ------------------------------------------------------------ */
+.artc-stage.is-lite .artc-dust,
+.artc-stage.is-lite .artc-pilaster { display: none; }
+.artc-stage.is-lite .artc-vignette::after { animation: none; opacity: .8; }
+.artc-stage.is-lite .artc-art__frame { box-shadow: 0 14px 24px rgba(0, 0, 0, .45); }
+.artc-stage.is-lite .artc-art__frame::after { display: none; }
+.artc-stage.is-lite .artc-object { filter: none; }
+.artc-stage.is-lite .artc-wall:not(.artc-far) { background-image: none; }
+.artc-stage.is-lite .artc-pad--fwd span { animation: none; opacity: .85; }
+
+/* ============================================================
+   Полноэкранный режим и удобные зоны нажатия для шага
+   ============================================================ */
+
+/* большие прозрачные зоны поверх сцены: попасть по «наклейке» на полу
+   курсором почти невозможно — она сплющена перспективой, поэтому
+   нажатие ловит зона, а сама стрелка остаётся только рисунком */
+.artc-pad { pointer-events: none; }
+.artc-hit {
+  position: absolute;
+  z-index: 3;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity .3s ease;
+}
+.artc-hit::after {
+  content: attr(data-label);
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font-size: 13px;
+  color: #FBF3E0;
+  background: rgba(18, 13, 5, .72);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  padding: 7px 15px;
+  border-radius: 999px;
+  opacity: 0;
+  transition: opacity .25s ease;
+  pointer-events: none;
+}
+.artc-hit:hover::after,
+.artc-hit:focus-visible::after { opacity: 1; }
+.artc-hit:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: -3px; border-radius: 14px; }
+.artc-hit.is-off { opacity: 0; pointer-events: none; }
+/* подсветка нарисованной стрелки, когда курсор в её зоне */
+.artc-stage.hl-fwd .artc-pad--fwd span,
+.artc-stage.hl-back .artc-pad--back span {
+  transform: scale(1.12);
+  color: #fff;
+  background: radial-gradient(60% 60% at 50% 50%, var(--artc-coral), rgba(228, 115, 111, .7) 62%, rgba(228, 115, 111, 0) 88%);
+}
+
+/* --- боковые стрелки обзора (сенсорные экраны) ---
+   Мышью зал осматривают движением курсора, пальцем — этими кнопками:
+   касание в сцене означает шаг по коридору, и обзор ему не подчинить.
+   Ставим их по краям на уровне глаз: там нет ни зон шага (они внизу),
+   ни полотен, к которым зритель тянется пальцем. */
+.artc-look {
+  display: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  width: 44px; height: 62px;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  padding: 0;
+  background: rgba(18, 13, 5, .42);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #FBF3E0;
+  align-items: center; justify-content: center;
+  transition: background .2s ease, opacity .2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+.artc-stage.is-touch .artc-look { display: flex; }
+.artc-look--l { left: 8px; }
+.artc-look--r { right: 8px; }
+.artc-look svg { width: 24px; height: 24px; }
+.artc-look:active { background: var(--artc-coral); }
+.artc-look:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+/* пока открыт список художников, стрелки не мешаются */
+.artc-stage.is-finding .artc-look { opacity: 0; pointer-events: none; }
+
+@media (max-width: 600px) {
+  .artc-look { width: 38px; height: 54px; }
+  .artc-look svg { width: 20px; height: 20px; }
+}
+
+/* --- кнопка «во весь экран» --- */
+.artc-fs {
+  position: absolute;
+  top: 14px; right: 14px;
+  z-index: 5;
+  width: 44px; height: 44px;
+  border-radius: 50%; border: none;
+  cursor: pointer;
+  background: rgba(18, 13, 5, .55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #FBF3E0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .25s ease, transform .25s ease;
+}
+.artc-fs svg { width: 20px; height: 20px; }
+.artc-fs:hover { background: var(--artc-coral); transform: scale(1.08); }
+.artc-fs:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+.artc-fs .artc-fs__exit { display: none; }
+.artc-stage.is-fs .artc-fs .artc-fs__exit { display: block; }
+.artc-stage.is-fs .artc-fs .artc-fs__enter { display: none; }
+
+/* Запасной полноэкранный режим (iPhone): зал переезжает в body внутрь
+   этой обёртки — она и растягивается на экран. Отступы и фон каталога
+   здесь сброшены, от .artc-root нужны только css-переменные. */
+.artc-fs-host {
+  position: fixed;
+  inset: 0;
+  z-index: 99980;
+  padding: 0;
+  border-radius: 0;
+  background: #1A150C;
+  overflow: hidden;
+}
+.artc-fs-host::after { display: none; }   /* зернистая текстура тут не нужна */
+.artc-fs-host .artc-stage {
+  max-width: none;
+  height: 100%;
+  margin: 0;
+  border-radius: 0;
+}
+
+/* Во весь экран странице уже нечего прокручивать, поэтому зал забирает
+   себе и вертикальные жесты: провести пальцем сверху вниз — самое
+   естественное движение «пройти по коридору». В обычном же режиме
+   вертикаль остаётся за страницей, иначе виджет запер бы прокрутку. */
+.artc-stage.is-fs { touch-action: none; }
+
+/* сцена, растянутая на весь экран */
+.artc-stage:fullscreen,
+.artc-stage:-webkit-full-screen {
+  width: 100vw; height: 100vh;
+  max-width: none;
+  border-radius: 0;
+}
+.artc-stage:fullscreen .artc-hud,
+.artc-stage:-webkit-full-screen .artc-hud { padding-bottom: 22px; }
+
+@media (max-width: 600px) {
+  .artc-fs { width: 38px; height: 38px; top: 10px; right: 10px; }
+  .artc-fs svg { width: 17px; height: 17px; }
+  .artc-hit::after { font-size: 12px; padding: 6px 12px; }
+}
+
+/* ------------------- автоэкскурсия и фокус ------------------- */
+.artc-tools {
+  display: flex; gap: 8px;
+  justify-content: center; flex-wrap: wrap;
+}
+.artc-tour, .artc-gyro {
+  pointer-events: auto;
+  display: flex; align-items: center; gap: 9px;
+  border: 1px solid rgba(255, 247, 228, .3);
+  background: rgba(255, 247, 228, .12);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #FBF3E0;
+  border-radius: 999px;
+  padding: 8px 20px 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background .25s ease, transform .25s ease, border-color .25s ease;
+}
+.artc-tour svg, .artc-gyro svg { width: 16px; height: 16px; }
+.artc-tour .artc-tour__stop { display: none; }
+.artc-tour:hover, .artc-gyro:hover { background: rgba(255, 247, 228, .24); transform: translateY(-2px); }
+.artc-tour:focus-visible,
+.artc-gyro:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+.artc-stage.is-touring .artc-tour {
+  background: var(--artc-coral); border-color: var(--artc-coral);
+  box-shadow: 0 6px 18px rgba(228, 115, 111, .45);
+}
+.artc-stage.is-touring .artc-tour__play { display: none; }
+.artc-stage.is-touring .artc-tour__stop { display: block; }
+
+/* осмотр поворотом телефона: пока включён — кнопка активна, а камера
+   ходит за датчиком без сглаживающего перехода (иначе взгляд запаздывает) */
+.artc-stage.is-gyro .artc-gyro {
+  background: var(--artc-coral); border-color: var(--artc-coral);
+  box-shadow: 0 6px 18px rgba(228, 115, 111, .45);
+}
+.artc-stage.is-gyro .artc-camera { transition: none; }
+.artc-gyro:disabled { opacity: .5; cursor: default; transform: none; }
+
+/* полотно, к которому подошли: свет ярче, рама чуть выступает */
+.artc-art.is-focused .artc-art__frame {
+  transform: translateZ(26px);
+  box-shadow: 0 34px 60px rgba(0, 0, 0, .58), 0 0 0 1px rgba(255, 236, 190, .45);
+  filter: brightness(1.08);
+}
+.artc-art.is-focused .artc-art__spot { opacity: .95; }
+.artc-art.is-focused .artc-art__plaque { transform: translateZ(18px); }
+
+@media (max-width: 600px) {
+  .artc-tour, .artc-gyro { padding: 7px 14px 7px 11px; font-size: 12.5px; }
+  .artc-tools { gap: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .artc-tour, .artc-gyro { transition: none; }
+}
+
+/* ============================================================
+   Разделы выставки и поиск художника в длинном зале
+   ============================================================ */
+
+/* переключатель «Арт-салон / Галереи» — под переключателем режима просмотра */
+.artc-sections {
+  position: relative; z-index: 3;
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  margin: -8px auto 22px;
+}
+.artc-sections__btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid rgba(33, 29, 23, .16);
+  background: rgba(255, 255, 255, .5);
+  color: var(--artc-ink);
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background .25s ease, border-color .25s ease, transform .25s ease;
+}
+.artc-sections__btn i {
+  font-style: normal; font-size: 12px;
+  padding: 1px 8px; border-radius: 999px;
+  background: rgba(33, 29, 23, .1);
+}
+.artc-sections__btn:hover { background: #fff; transform: translateY(-1px); }
+.artc-sections__btn.is-active {
+  background: var(--artc-teal); border-color: var(--artc-teal); color: #fff;
+}
+.artc-sections__btn.is-active i { background: rgba(255, 255, 255, .26); }
+.artc-sections__btn:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+
+/* кнопка со списком художников вместо ряда фамилий */
+.artc-rooms--find { justify-content: center; }
+.artc-rooms__find {
+  pointer-events: auto;
+  display: inline-flex; align-items: center; gap: 9px;
+  max-width: 100%;
+  border: 1px solid rgba(255, 247, 228, .3);
+  background: rgba(255, 247, 228, .12);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #FBF3E0;
+  border-radius: 999px;
+  padding: 7px 8px 7px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background .25s ease, transform .25s ease;
+}
+.artc-rooms__find svg { width: 15px; height: 15px; flex: 0 0 15px; }
+.artc-rooms__find span {
+  max-width: 46vw;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.artc-rooms__find i {
+  font-style: normal; font-size: 12px;
+  padding: 2px 9px; border-radius: 999px;
+  background: rgba(255, 247, 228, .18);
+}
+.artc-rooms__find:hover { background: rgba(255, 247, 228, .24); transform: translateY(-2px); }
+.artc-rooms__find:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+
+/* сама панель поиска — внутри сцены, поэтому работает и в полноэкранном режиме */
+.artc-find {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  width: min(460px, calc(100% - 28px));
+  max-height: min(78%, 560px);
+  display: flex; flex-direction: column;
+  background: rgba(24, 18, 8, .92);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, .55);
+  overflow: hidden;
+  animation: artc-find-in .25s ease-out;
+}
+@keyframes artc-find-in {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(.97); }
+}
+.artc-find[hidden] { display: none; }
+.artc-find__head { display: flex; gap: 8px; padding: 12px 12px 10px; }
+.artc-find__input {
+  flex: 1 1 auto; min-width: 0;
+  border: 1px solid rgba(255, 247, 228, .26);
+  background: rgba(255, 247, 228, .1);
+  color: #FBF3E0;
+  border-radius: 12px;
+  padding: 11px 14px;
+  font: inherit; font-size: 15px;
+}
+.artc-find__input::placeholder { color: rgba(251, 243, 224, .55); }
+.artc-find__input:focus { outline: 2px solid var(--artc-teal); outline-offset: 1px; }
+.artc-find__close {
+  flex: 0 0 42px; width: 42px; height: 42px;
+  border: none; border-radius: 50%;
+  background: rgba(255, 247, 228, .12);
+  color: #FBF3E0; font-size: 16px; cursor: pointer;
+}
+.artc-find__close:hover { background: var(--artc-coral); }
+.artc-find__list {
+  list-style: none; margin: 0; padding: 0 8px 10px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.artc-find__list button {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%;
+  border: none; background: none;
+  color: #FBF3E0;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font: inherit;
+  cursor: pointer;
+}
+.artc-find__list button:hover,
+.artc-find__list button:focus-visible {
+  background: rgba(255, 247, 228, .14);
+  outline: none;
+}
+.artc-find__ava {
+  flex: 0 0 40px; width: 40px; height: 40px;
+  border-radius: 50%; overflow: hidden;
+  background: rgba(255, 247, 228, .12);
+}
+.artc-find__ava img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.artc-find__meta { min-width: 0; }
+.artc-find__meta b { display: block; font-weight: 600; font-size: 15px; }
+.artc-find__meta span { display: block; font-size: 12px; color: rgba(251, 243, 224, .6); }
+.artc-find__empty { margin: 0; padding: 6px 22px 20px; color: rgba(251, 243, 224, .6); font-size: 14px; }
+
+@media (max-width: 600px) {
+  .artc-sections { margin: -4px auto 18px; gap: 6px; }
+  .artc-sections__btn { padding: 7px 14px; font-size: 13.5px; }
+  .artc-find { width: calc(100% - 16px); max-height: 84%; }
+  .artc-find__list button { padding: 7px 8px; }
+  .artc-rooms__find { font-size: 13px; }
+}
+
+/* указатель по буквам внутри панели поиска зала */
+.artc-find__abc {
+  padding: 0 12px 10px;
+  gap: 4px;
+}
+.artc-find__abc button {
+  min-width: 28px; height: 28px;
+  border: none; border-radius: 8px;
+  background: rgba(255, 247, 228, .1);
+  color: #FBF3E0;
+  font: inherit; font-size: 13.5px;
+  cursor: pointer;
+}
+.artc-find__abc button:hover { background: rgba(255, 247, 228, .24); }
+.artc-find__abc button.is-active { background: var(--artc-coral); }
+.artc-find__abc[hidden] { display: none; }

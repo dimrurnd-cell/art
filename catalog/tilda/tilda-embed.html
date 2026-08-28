@@ -1,0 +1,23 @@
+<!-- ============================================================
+     Онлайн-каталог художников «Арт-Ростов» — версия для Tilda
+     Вставьте этот код целиком в блок T123 (Другое → HTML-код).
+
+     Виртуальный зал (3D-тур) + карусель каталога. Статика раздаётся
+     из GitHub-репозитория через CDN jsDelivr — на Tilda ничего
+     загружать не нужно. Версия закреплена хешем коммита: работает
+     сразу и кешируется CDN навсегда.
+
+     Перед публикацией:
+     1) создайте попап-форму Tilda с именем popup:artbuy
+        (см. tilda/README.md) — она принимает заявки
+        «Хочу купить картину» и отправляет их на ads@donexpocentre.ru;
+     2) после обновления каталога (новые художники/фото) замените
+        хеш коммита в обоих блоках на новый (см. README).
+     ============================================================ -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/dimrurnd-cell/art@b7d6cc221e5062eb27da15f624e75ddc2ab7a0d1/catalog/static/artcatalog/catalog.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/dimrurnd-cell/art@b7d6cc221e5062eb27da15f624e75ddc2ab7a0d1/catalog/static/artcatalog/hall.css">
+<div id="artrostov-catalog"
+     data-base="https://cdn.jsdelivr.net/gh/dimrurnd-cell/art@b7d6cc221e5062eb27da15f624e75ddc2ab7a0d1/catalog/static/artcatalog/"
+     data-tilda-popup="popup:artbuy"
+     data-ticket-url="#"></div>
+<script src="https://cdn.jsdelivr.net/gh/dimrurnd-cell/art@b7d6cc221e5062eb27da15f624e75ddc2ab7a0d1/catalog/static/artcatalog/catalog.js" defer></script>

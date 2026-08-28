@@ -1,0 +1,17 @@
+<!-- ============================================================
+     БЛОК 2 из 2 — вставляется в блок T123 («Другое → HTML-код»)
+     в том месте страницы, где должен появиться каталог.
+
+     Первый блок (стили) вставляется в <head> — см. tilda-head.html.
+     Если стилей в head не окажется, скрипт подключит их сам, но
+     каталог на долю секунды мелькнёт неоформленным.
+
+     Перед публикацией: создайте попап-форму Tilda popup:artbuy
+     (см. README.md) — она принимает заявки «Хочу купить картину»
+     и отправляет их на ads@donexpocentre.ru.
+     ============================================================ -->
+<div id="artrostov-catalog"
+     data-base="https://cdn.jsdelivr.net/gh/dimrurnd-cell/art@b7d6cc221e5062eb27da15f624e75ddc2ab7a0d1/catalog/static/artcatalog/"
+     data-tilda-popup="popup:artbuy"
+     data-ticket-url="#"></div>
+<script src="https://cdn.jsdelivr.net/gh/dimrurnd-cell/art@b7d6cc221e5062eb27da15f624e75ddc2ab7a0d1/catalog/static/artcatalog/catalog.js" defer></script>

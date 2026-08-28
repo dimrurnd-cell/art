@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Демо Tilda-режима — каталог Арт-Ростов</title>
+<!-- Имитация страницы Tilda: попап-форма artbuy + делегированный обработчик #popup: -->
+<style>
+  body { margin: 0; background: #f6f1e2; font-family: Arial, sans-serif; }
+  .fake-site { max-width: 1240px; margin: 0 auto; padding: 30px 16px; }
+  .fake-popup { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5);
+    align-items: center; justify-content: center; z-index: 999999; }
+  .fake-popup.open { display: flex; }
+  .fake-popup .t-form { background: #EFE3C3; padding: 30px; border-radius: 16px; width: 360px; }
+  .fake-popup input { display: block; width: 100%; margin: 8px 0; padding: 10px; box-sizing: border-box; }
+</style>
+<link rel="stylesheet" href="../static/artcatalog/catalog.css">
+<link rel="stylesheet" href="../static/artcatalog/hall.css">
+</head>
+<body>
+<div class="fake-site">
+  <h1 style="font-size:22px;color:#555;font-weight:normal">Страница Tilda (демо-обвязка): каталог + попап-форма</h1>
+
+  <!-- ↓↓↓ содержимое блока T123 (пути локальные вместо jsDelivr) ↓↓↓ -->
+  <div id="artrostov-catalog"
+       data-base="../static/artcatalog/"
+       data-tilda-popup="popup:artbuy"></div>
+  <script src="../static/artcatalog/catalog.js" defer></script>
+  <!-- ↑↑↑ конец содержимого блока T123 ↑↑↑ -->
+
+  <!-- имитация попап-формы Tilda (BF502N, хук popup:artbuy) -->
+  <div class="fake-popup" id="fakePopup">
+    <form class="t-form">
+      <h3>Хочу купить (форма Tilda)</h3>
+      <input type="tel" name="phone" placeholder="Телефон">
+      <input type="email" name="email" placeholder="Email">
+      <input type="hidden" name="artist">
+      <input type="hidden" name="work">
+      <button type="button" onclick="document.getElementById('fakePopup').classList.remove('open')">Отправить заявку</button>
+    </form>
+  </div>
+  <script>
+    // как в Tilda: делегированный обработчик ссылок #popup:имя
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest('a[href*="#popup:"]');
+      if (!a) return;
+      e.preventDefault();
+      if (a.getAttribute('href').indexOf('#popup:artbuy') === 0) {
+        document.getElementById('fakePopup').classList.add('open');
+      }
+    });
+  </script>
+</div>
+</body>
+</html>
