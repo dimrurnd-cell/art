@@ -63,25 +63,31 @@ export class TextureManager {
     return fetch(this.bridge.url('atlas.json'), { mode: 'cors', credentials: 'omit' })
       .then((r) => { if (!r.ok) throw new Error('atlas.json: ' + r.status); return r.json(); })
       .then((json) => {
+        // paintings — живой список собранных залов: он растёт по мере сборки
         this.plan = paintings;
         this.atlas = { json, pages: [] };
-        const byPage = {};
-        for (const it of paintings) {
-          const cell = json.items[it.work.thumb];
-          if (!cell) continue;
-          it.cell = cell;
-          (byPage[cell[0]] = byPage[cell[0]] || []).push(it);
-        }
+        for (const it of paintings) it.cell = json.items[it.work.thumb] || null;
         let n = 0;
         done(0, json.pages.length);
         return Promise.all(json.pages.map((p, i) => this.fetchImage(this.bridge.url(p)).then((img) => {
           const t = this.makeTexture(img);
           this.atlas.pages[i] = t;
-          for (const it of byPage[i] || []) if (!it.level && !it.mesh.material.map) this.toAtlas(it);
+          for (const it of this.plan) {
+            if (it.cell && it.cell[0] === i && !it.level && !it.mesh.material.map) this.toAtlas(it);
+          }
           done(++n, json.pages.length);
         }).catch(() => { done(++n, json.pages.length); })));
       })
       .catch(() => { this.atlas = null; done(1, 1); });   // атласа нет — работаем без него
+  }
+
+  /* Работы только что собранного зала: сразу их клетки атласа */
+  attach(items) {
+    if (!this.atlas) return;
+    for (const it of items) {
+      it.cell = this.atlas.json.items[it.work.thumb] || null;
+      if (!it.mesh.material.map) this.toAtlas(it);
+    }
   }
 
   /* Работа показывает свою клетку атласа (одна текстура на всю страницу
@@ -204,6 +210,8 @@ export class TextureManager {
         if (!it.mesh.material.map && it.dist < 60 && !this.hopeless(it)) blank++;
       }
       let lv = this.levelFor(it.dist);
+      // зал за стеной сейчас не виден — крупнее 400 px ему не нужно
+      if (it.group && !it.group.visible) lv = Math.min(lv, 1);
       if (lv < it.level) {
         lv = Math.min(it.level, this.levelFor(it.dist / 1.45));
         // до атласа опускаемся, только если он есть; иначе держим 400 px

@@ -19,6 +19,7 @@ import { COR_W } from './layout.js';
 
 const COR_HALF = COR_W / 2;
 import { TextureManager } from './textures.js';
+import { computeVisible } from './visibility.js';
 import { CSS } from './ui-css.js';
 
 const VERSION = '1';
@@ -106,12 +107,17 @@ class Gallery {
     renderer.setPixelRatio(this.pr);
 
     this.plan = buildLayout(bridge.artists, bridge.sections);
+    const tb = performance.now();
     this.world = new World(renderer, this.plan, bridge);
+    this.buildMs = Math.round(performance.now() - tb);
     this.scene = this.world.scene;
     this.camera = new THREE.PerspectiveCamera(62, 1, 0.05, 140);
     this.camera.rotation.order = 'YXZ';
     this.nav = new Nav(this.plan);
     this.tex = new TextureManager(renderer, bridge, this.small);
+    this.world.onPaintings = (items) => this.tex.attach(items);
+    this.allWorks = [].concat(...this.plan.corridors.map((c) => c.works));
+    this.cull = true;                 // false — рисовать всё (для сравнения кадров)
     this.ray = new THREE.Raycaster();
     this.ray.far = 45;
     this.focus = null;
@@ -377,7 +383,7 @@ class Gallery {
     let m = h.match(/^#artc-work=([^/]+)\/(\d+)/);
     if (m) {
       const gi = this.bridge.artists.findIndex((a, i) => String(a.id || i) === m[1]);
-      const it = this.world.paintings.find((p) => p.gi === gi && p.wi === +m[2] - 1);
+      const it = this.allWorks.find((p) => p.gi === gi && p.wi === +m[2] - 1);
       if (it) {
         const s = viewSpot(it);
         Object.assign(this.nav, { x: s.x, z: s.z, yaw: s.yaw, pitch: 0 });
@@ -480,7 +486,13 @@ class Gallery {
     const v = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     this.ray.setFromCamera(v, this.camera);
     const hits = this.ray.intersectObjects(this.world.pickables, false);
-    for (const h of hits) if (h.object.visible) return h;
+    for (const h of hits) {
+      let o = h.object, vis = true;
+      while (o) { if (!o.visible) { vis = false; break; } o = o.parent; }
+      if (!vis) continue;
+      // стена закрывает всё, что за ней
+      return h.object.userData.blocker ? null : h;
+    }
     return null;
   }
 
@@ -573,7 +585,7 @@ class Gallery {
   }
 
   goToArtist(gi) {
-    for (const it of this.world.paintings) {
+    for (const it of this.allWorks) {
       if (it.gi === gi) { this.focusArt(it); return; }
     }
   }
@@ -705,8 +717,31 @@ class Gallery {
       if (!map.hidden && this.tick % 12 === 1) this.drawMap();
     }
 
+    this.updateVisibility();
     this.renderer.render(this.scene, cam);
     this.adapt(dt * 1000);
+  }
+
+  /* Какие залы рисовать: отсечение по проёмам каждый кадр (десяток
+     проекций — дёшево), плюс по одному залу за кадр достраиваем соседей
+     по ходу, чтобы не собирать их в момент, когда они покажутся */
+  updateVisibility() {
+    const nav = this.nav;
+    if (this.cull) {
+      const v = computeVisible(this.plan, this.camera, nav.x, nav.z);
+      this.world.setVisible(v.hall, v.rooms, v.win, this.camera);
+    } else {
+      if (!this.allRooms) this.allRooms = new Set([].concat(...this.plan.corridors.map((c) => c.rooms)));
+      this.world.setVisible(true, this.allRooms);
+    }
+    const r = this.sub;
+    if (r && this.tick % 3 === 0) {
+      const rooms = this.plan.corridors[r.sec].rooms;
+      for (const d of [1, -1, 2, -2]) {
+        const n = rooms[r.idx + d];
+        if (n && this.world.ensureRoom(n)) { n.group.visible = false; break; }
+      }
+    }
   }
 
   destroy() {

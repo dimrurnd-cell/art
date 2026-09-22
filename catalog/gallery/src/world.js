@@ -4,9 +4,19 @@
    микроцемента, тонкие чёрные рамы, световые линии в потолке и трековые
    споты над работами. Никаких карнизов и позолоты; глубину дают мягкие
    тени под работами и светлая дымка, в которой тают дальние стены.
-   Повторяющиеся детали (рамы, тени, споты) идут через InstancedMesh —
-   по одному вызову отрисовки на коридор. */
+   Каждый зал — своя группа (THREE.Group) и собирается, когда впервые
+   нужен: при входе — холл и первые залы разделов, остальные — когда
+   попадают в поле зрения или оказываются рядом. Перегородка между залами
+   и стена холла с проёмами — отдельные группы: их видно из обоих
+   помещений. Видимость групп задаёт visibility.js (отсечение по проёмам).
+   Повторяющиеся детали зала (рамы, тени, споты) — InstancedMesh, по
+   одному вызову отрисовки на зал; всё неподвижное одного материала
+   (стены, пол, потолок, швы, треки, световые линии) при сборке зала
+   сливается в один меш, а фактура стен и пола раскладывается по мировым
+   координатам — без швов на стыках кусков. */
 import * as THREE from 'three';
+import { project, cut } from './visibility.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
   ART_Y, COR_W, COR_H, ARCH_W, ARCH_H, WALL_T, SPINE_T, SPINE_H, DOOR_W, DOOR_H, aisleX,
 } from './layout.js';
@@ -59,6 +69,33 @@ function instanced(geo, mat, items, fn) {
   return im;
 }
 
+/* Рамка работы на экране (плоскость вдоль стены, по Z) */
+function projectArt(camera, x, it) {
+  const a = project(camera, x, x, ART_Y - it.h / 2, ART_Y + it.h / 2, it.z - it.w / 2);
+  const b = project(camera, x, x, ART_Y - it.h / 2, ART_Y + it.h / 2, it.z + it.w / 2);
+  if (a[0] === -1 && a[2] === 1 || b[0] === -1 && b[2] === 1) return [-1, -1, 1, 1];
+  return [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
+}
+
+/* Материал, куски которого при сборке сливаются в один меш */
+function batch(mat, opts) {
+  Object.assign(mat.userData, { batch: true }, opts || {});
+  return mat;
+}
+
+/* Текстурные координаты по мировым: грань получает проекцию по своей
+   нормали, плитка tile метров. Соседние куски стены стыкуются без шва. */
+function worldUV(g, tile) {
+  const pos = g.attributes.position, nor = g.attributes.normal, uv = g.attributes.uv;
+  for (let i = 0; i < pos.count; i++) {
+    const ax = Math.abs(nor.getX(i)), ay = Math.abs(nor.getY(i)), az = Math.abs(nor.getZ(i));
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    if (ax >= ay && ax >= az) uv.setXY(i, z / tile, y / tile);
+    else if (ay >= az) uv.setXY(i, x / tile, z / tile);
+    else uv.setXY(i, x / tile, y / tile);
+  }
+}
+
 export class World {
   constructor(renderer, plan, bridge) {
     this.plan = plan;
@@ -80,8 +117,16 @@ export class World {
     this.scene.add(this.camLight);
 
     this.mat = this.makeMaterials();
+    this.onPaintings = null;          // сюда менеджер текстур подписывается на новые работы
+    this.hallGroup = this.group();
+    this.hallNorth = this.group();    // стена холла с проёмами: видна и из холла, и из первых залов
+    this.target = this.hallGroup;
+    this.beginBatch();
     this.buildHall();
-    plan.corridors.forEach((c) => this.buildCorridor(c));
+    this.endBatch();
+    this.target = null;
+    plan.corridors.forEach((c) => this.prepareSection(c));
+    plan.corridors.forEach((c) => this.ensureRoom(c.rooms[0]));
   }
 
   makeMaterials() {
@@ -91,62 +136,111 @@ export class World {
       ceilTex: paint('#fafaf9', a),
       floorTex: concrete(a),
       frame: new THREE.MeshLambertMaterial({ color: 0x1d1d1d }),
-      gap: new THREE.MeshBasicMaterial({ color: 0x9a9995 }),
-      reveal: new THREE.MeshLambertMaterial({ color: 0xe6e5e2 }),
-      light: new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }),
-      slot: new THREE.MeshBasicMaterial({ color: 0xd9d8d4 }),
-      track: new THREE.MeshLambertMaterial({ color: 0x2b2b2b }),
+      gap: batch(new THREE.MeshBasicMaterial({ color: 0x9a9995 })),
+      reveal: batch(new THREE.MeshLambertMaterial({ color: 0xe6e5e2 })),
+      light: batch(new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false })),
+      slot: batch(new THREE.MeshBasicMaterial({ color: 0xd9d8d4 })),
+      track: batch(new THREE.MeshLambertMaterial({ color: 0x2b2b2b })),
       shadow: new THREE.MeshBasicMaterial({
         alphaMap: softShadow(), color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false,
       }),
-      white: new THREE.MeshLambertMaterial({ color: 0xfafaf8 }),
-      oak: new THREE.MeshLambertMaterial({ color: 0xcbb99d }),
-      grey: new THREE.MeshLambertMaterial({ color: 0xbdbcb8 }),
+      white: batch(new THREE.MeshLambertMaterial({ color: 0xfafaf8 })),
+      oak: batch(new THREE.MeshLambertMaterial({ color: 0xcbb99d })),
+      grey: batch(new THREE.MeshLambertMaterial({ color: 0xbdbcb8 })),
     };
   }
 
-  /* Материал стены с фактурой, подогнанной под размер грани */
-  wallMat(w, h) {
-    const t = this.mat.wallTex.clone();
-    t.repeat.set(Math.max(1, w / 3), Math.max(1, h / 3));
-    t.needsUpdate = true;
-    return new THREE.MeshLambertMaterial({ map: t });
+  /* Общие материалы стен, потолка и пола: фактура по мировым координатам */
+  get wall() {
+    return this._wall || (this._wall = batch(new THREE.MeshLambertMaterial({ map: this.mat.wallTex }), { tile: 3, blocker: true }));
+  }
+  get ceil() {
+    const t = this.mat.ceilTex;
+    return this._ceil || (this._ceil = batch(new THREE.MeshLambertMaterial({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.55 }), { tile: 3 }));
+  }
+  get floorMat() {
+    return this._floor || (this._floor = batch(new THREE.MeshStandardMaterial({ map: this.mat.floorTex, roughness: 0.62, metalness: 0 }), { tile: 4, floor: true }));
   }
 
-  /* Потолок снизу почти не освещён полусферой — подсвечиваем его сами */
-  ceilMat(w, h) {
-    const t = this.mat.ceilTex.clone();
-    t.repeat.set(Math.max(1, w / 3), Math.max(1, h / 3));
-    t.needsUpdate = true;
-    return new THREE.MeshLambertMaterial({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.55 });
-  }
+  wallMat() { return this.wall; }
+  ceilMat() { return this.ceil; }
 
   box(w, h, d, mat, x, y, z) {
+    if (this.batch && mat.userData.batch) {
+      const g = new THREE.BoxGeometry(w, h, d);
+      g.translate(x, y, z);
+      this.push(mat, g);
+      return null;
+    }
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
     m.position.set(x, y, z);
-    this.scene.add(m);
+    this.add(m);
     return m;
   }
 
   plane(w, h, mat, x, y, z, ry = 0, rx = 0) {
+    if (this.batch && mat.userData.batch) {
+      const g = new THREE.PlaneGeometry(w, h);
+      g.applyMatrix4(_m.makeRotationFromEuler(_e.set(rx, ry, 0, 'YXZ')));
+      g.translate(x, y, z);
+      this.push(mat, g);
+      return null;
+    }
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
     m.position.set(x, y, z);
     m.rotation.set(rx, ry, 0, 'YXZ');
-    this.scene.add(m);
+    this.add(m);
     return m;
+  }
+
+  /* Всё строится в текущую группу (зал, перегородку, холл) */
+  add(obj) { (this.target || this.scene).add(obj); }
+
+  group() {
+    const g = new THREE.Group();
+    this.scene.add(g);
+    return g;
+  }
+
+  /* Стена, сквозь которую нельзя «нажать» картину за ней */
+  blocker(m) { if (m) { m.userData.blocker = true; this.pickables.push(m); } return m; }
+
+  /* ---------- слияние неподвижной геометрии ---------- */
+
+  beginBatch() { this.batch = new Map(); }
+
+  push(mat, g) {
+    if (mat.userData.tile) worldUV(g, mat.userData.tile);
+    if (!this.batch.has(mat)) this.batch.set(mat, []);
+    this.batch.get(mat).push(g);
+  }
+
+  endBatch() {
+    const b = this.batch;
+    this.batch = null;
+    if (!b) return;
+    for (const [mat, list] of b) {
+      const g = mergeGeometries(list, false);
+      list.forEach((x) => x.dispose());
+      if (!g) continue;
+      const m = new THREE.Mesh(g, mat);
+      this.add(m);
+      if (mat.userData.blocker) this.blocker(m);
+      if (mat.userData.floor) { m.userData.floor = true; this.pickables.push(m); }
+    }
+  }
+
+  /* Сменить группу посреди сборки: накопленное уходит в прежнюю */
+  setTarget(g) {
+    const was = !!this.batch;
+    if (was) this.endBatch();
+    this.target = g;
+    if (was) this.beginBatch();
   }
 
   /* Пол — микроцемент со слабым бликом от света у зрителя */
   floor(x0, x1, z0, z1) {
-    const w = x1 - x0, d = z1 - z0;
-    const t = this.mat.floorTex.clone();
-    t.repeat.set(w / 4, d / 4);
-    t.needsUpdate = true;
-    const mat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.62, metalness: 0 });
-    const m = this.plane(w, d, mat, (x0 + x1) / 2, 0, (z0 + z1) / 2, 0, -Math.PI / 2);
-    m.userData.floor = true;
-    this.pickables.push(m);
-    return m;
+    return this.plane(x1 - x0, z1 - z0, this.floorMat, (x0 + x1) / 2, 0, (z0 + z1) / 2, 0, -Math.PI / 2);
   }
 
   sign(canvasEl, w, h, x, y, z, ry, action) {
@@ -183,11 +277,12 @@ export class World {
     this.box(WALL_T, H, D, this.wallMat(D, H), hall.x1 + WALL_T / 2, H / 2, 0);
 
     // северная стена с проёмами в залы
+    this.setTarget(this.hallNorth);
     const zN = hall.z0;
     const cuts = corridors.map((c) => [c.cx - ARCH_W / 2, c.cx + ARCH_W / 2]);
     let x = hall.x0 - WALL_T;
     cuts.concat([[hall.x1 + WALL_T, hall.x1 + WALL_T]]).forEach(([a, b]) => {
-      if (a - x > 0.01) this.box(a - x, H, WALL_T, this.wallMat(a - x, H), (x + a) / 2, H / 2, zN);
+      if (a - x > 0.01) this.blocker(this.box(a - x, H, WALL_T, this.wallMat(a - x, H), (x + a) / 2, H / 2, zN));
       if (b > a) this.box(b - a, H - ARCH_H, WALL_T, this.wallMat(b - a, H - ARCH_H), (a + b) / 2, ARCH_H + (H - ARCH_H) / 2, zN);
       x = b;
     });
@@ -223,6 +318,7 @@ export class World {
       });
       this.sign(back, 1.8, 0.375, c.cx, ARCH_H + 0.5, zN - WALL_T / 2 - 0.005, Math.PI, { type: 'hall' });
     });
+    this.setTarget(this.hallGroup);
 
     // стойка информации: белый монолит у западной стены
     const dx = hall.x0 + 1.5;
@@ -248,7 +344,10 @@ export class World {
       const ar = t.image.width / t.image.height || 2;
       const h = 1.6;
       const mat = new THREE.MeshBasicMaterial({ map: t, transparent: true, toneMapped: false });
+      const prev = this.target;
+      this.target = this.hallGroup;                 // картинка пришла позже — кладём в холл
       this.plane(h * ar, h, mat, hall.x0 + 0.005, 3.2, -2.4, Math.PI / 2);
+      this.target = prev;
     });
     const tag = textCanvas(1024, 160, (g2, w) => {
       g2.fillStyle = MUTED; g2.textAlign = 'center';
@@ -290,86 +389,79 @@ export class World {
 
   /* ---------------- анфилада раздела ---------------- */
 
-  buildCorridor(c) {
-    const M = this.mat;
-    const L = c.zStart - c.zEnd;
-    const zMid = (c.zStart + c.zEnd) / 2;
-    const xl = c.cx - COR_W / 2, xr = c.cx + COR_W / 2;
-    const H = COR_H;
-
-    this.floor(xl, xr, c.zEnd, c.zStart);
-    this.plane(COR_W, L, this.ceilMat(COR_W, L), c.cx, H, zMid, 0, Math.PI / 2);
-    this.plane(L, H, this.wallMat(L, H), xl, H / 2, zMid, Math.PI / 2);
-    this.plane(L, H, this.wallMat(L, H), xr, H / 2, zMid, -Math.PI / 2);
-
-    // торцевая стена последнего зала — выход обратно по правому проходу
-    this.plane(COR_W, H, this.wallMat(COR_W, H), c.cx, H / 2, c.zEnd, 0);
-    const endCv = textCanvas(1024, 420, (g, w) => {
-      g.textAlign = 'center';
-      g.fillStyle = MUTED;
-      g.font = '400 44px ' + SANS;
-      g.fillText('Последний зал раздела «' + (c.title || 'Экспозиция') + '»', w / 2, 120);
-      g.fillText('Обратно к холлу — по правой стороне', w / 2, 190);
-      g.fillStyle = ACCENT;
-      g.font = '500 60px ' + SANS;
-      g.fillText('Сразу в холл  →', w / 2, 320);
-      g.fillRect(w / 2 - 230, 345, 460, 4);
+  /* Подготовка без геометрии: подписи залов (нужны плану и спискам),
+     связи работ и «пролётов» с разделом */
+  prepareSection(c) {
+    c.parts = [];
+    c.rooms.forEach((r) => {
+      const names = r.bays.map((b) => surname(this.bridge.artists[b.gi].name));
+      r.label = names.length > 1 ? names[0] + ' — ' + names[names.length - 1] : (names[0] || '');
+      r.sectionRef = c;
+      r.group = null;
     });
-    this.sign(endCv, 3.4, 1.39, c.cx, 2.1, c.zEnd + 0.01, 0, { type: 'hall' });
+    c.works.forEach((it) => { it.room = c.i; it.level = 0; });
+    c.bays.forEach((b) => { b.room = c; this.bays.push(b); });
+  }
+
+  /* Собрать зал, если он ещё не собран. Возвращает true, если собрали сейчас */
+  ensureRoom(r) {
+    if (r.group) return false;
+    const c = r.sectionRef;
+    const prev = this.target;
+    r.group = this.group();
+    this.target = r.group;
+    this.beginBatch();
+    this.buildRoom(c, r, r.idx);
+    this.endBatch();
+    this.target = prev;
+    if (r.idx > 0) this.ensurePart(c, r.idx - 1);
+    if (r.idx < c.rooms.length - 1) this.ensurePart(c, r.idx);
+    return true;
+  }
+
+  /* Зал: свой отрезок пола, потолка и наружных стен, остров, треки,
+     номер на торцах острова, рамы, тени, споты и сами полотна */
+  buildRoom(c, r, ri) {
+    const M = this.mat;
+    const H = COR_H;
+    const last = ri === c.rooms.length - 1;
+    const xl = c.cx - COR_W / 2, xr = c.cx + COR_W / 2;
+    const z0 = r.z0, z1 = last ? r.z1 : r.z1 - WALL_T;   // вместе с полосой под перегородкой
+    const L = z0 - z1, zMid = (z0 + z1) / 2;
+
+    this.floor(xl, xr, z1, z0);
+    this.plane(COR_W, L, this.ceilMat(COR_W, L), c.cx, H, zMid, 0, Math.PI / 2);
+    this.blocker(this.plane(L, H, this.wallMat(L, H), xl, H / 2, zMid, Math.PI / 2));
+    this.blocker(this.plane(L, H, this.wallMat(L, H), xr, H / 2, zMid, -Math.PI / 2));
 
     // теневой шов у пола и световые линии вдоль наружных стен
     [[xl, 1], [xr, -1]].forEach(([x, s]) => {
       this.box(0.01, 0.035, L, M.gap, x + s * 0.004, 0.0175, zMid);
-      this.plane(0.12, L - 0.4, M.slot, x + s * 0.55, H - 0.005, zMid, 0, Math.PI / 2);
-      this.plane(0.06, L - 0.4, M.light, x + s * 0.55, H - 0.008, zMid, 0, Math.PI / 2);
+      this.plane(0.12, L, M.slot, x + s * 0.55, H - 0.005, zMid, 0, Math.PI / 2);
+      this.plane(0.06, L, M.light, x + s * 0.55, H - 0.008, zMid, 0, Math.PI / 2);
     });
 
-    c.rooms.forEach((r, ri) => this.buildRoom(c, r, ri));
-
-    const ws = c.works;
-    const face = (it) => (it.side < 0 ? Math.PI / 2 : -Math.PI / 2);
-
-    // тонкая чёрная рама и мягкая тень под работой
-    this.scene.add(instanced(new THREE.PlaneGeometry(1, 1), M.shadow, ws, (it, p, e, s) => {
-      p.set(it.x - it.side * 0.003, ART_Y - 0.07, it.z); e.set(0, face(it), 0); s.set(it.w * 1.12 + 0.35, it.h * 1.12 + 0.4, 1);
-    }));
-    this.scene.add(instanced(new THREE.BoxGeometry(1, 1, 1), M.frame, ws, (it, p, e, s) => {
-      p.set(it.x - it.side * 0.022, ART_Y, it.z); e.set(0, face(it), 0); s.set(it.w + 0.05, it.h + 0.05, 0.044);
-    }));
-    // споты: корпус на треке, наклонён к работе
-    this.scene.add(instanced(new THREE.CylinderGeometry(0.045, 0.055, 0.2, 14), M.track, ws, (it, p, e, s) => {
-      p.set(it.x - it.side * TRACK, H - 0.15, it.z);
-      e.set(0, 0, it.side * 0.62);
-      s.set(1, 1, 1);
-    }));
-
-    // сами полотна
-    ws.forEach((it) => {
-      const mat = new THREE.MeshBasicMaterial({ color: PLACEHOLDER, toneMapped: false });
-      const m = this.plane(it.w, it.h, mat, it.x - it.side * 0.046, ART_Y, it.z, face(it));
-      m.userData.art = it;
-      it.mesh = m;
-      it.room = c.i;
-      it.level = 0;
-      this.paintings.push(it);
-      this.pickables.push(m);
-    });
-
-    c.bays.forEach((b) => { b.room = c; this.bays.push(b); });
-  }
-
-  /* Зал анфилады: остров посередине, перегородка с двумя проёмами в конце,
-     треки со спотами над каждой из четырёх экспозиционных плоскостей,
-     номер зала и фамилии — над проёмами */
-  buildRoom(c, r, ri) {
-    const M = this.mat;
-    const H = COR_H;
-    const xl = c.cx - COR_W / 2, xr = c.cx + COR_W / 2;
-    const len = r.spine0 - r.spine1;
-    const zs = (r.spine0 + r.spine1) / 2;
+    if (last) {
+      // торцевая стена последнего зала — выход обратно по правому проходу
+      this.blocker(this.plane(COR_W, H, this.wallMat(COR_W, H), c.cx, H / 2, c.zEnd, 0));
+      const endCv = textCanvas(1024, 420, (g, w) => {
+        g.textAlign = 'center';
+        g.fillStyle = MUTED;
+        g.font = '400 44px ' + SANS;
+        g.fillText('Последний зал раздела «' + (c.title || 'Экспозиция') + '»', w / 2, 120);
+        g.fillText('Обратно к холлу — по правой стороне', w / 2, 190);
+        g.fillStyle = ACCENT;
+        g.font = '500 60px ' + SANS;
+        g.fillText('Сразу в холл  →', w / 2, 320);
+        g.fillRect(w / 2 - 230, 345, 460, 4);
+      });
+      this.sign(endCv, 3.4, 1.39, c.cx, 2.1, c.zEnd + 0.01, 0, { type: 'hall' });
+    }
 
     // остров: белая стена не до потолка, с теневым швом у пола
-    this.box(SPINE_T, SPINE_H, len, this.wallMat(len, SPINE_H), c.cx, SPINE_H / 2, zs);
+    const len = r.spine0 - r.spine1;
+    const zs = (r.spine0 + r.spine1) / 2;
+    this.blocker(this.box(SPINE_T, SPINE_H, len, this.wallMat(len, SPINE_H), c.cx, SPINE_H / 2, zs));
     this.box(SPINE_T + 0.02, 0.035, len - 0.02, M.gap, c.cx, 0.0175, zs);
 
     // треки: над наружными стенами и над обеими сторонами острова
@@ -379,46 +471,7 @@ export class World {
       this.box(0.035, 0.035, rl, M.track, x, H - 0.02, zr);
     });
 
-    // имена в зале для надписей
-    const names = r.bays.map((b) => surname(this.bridge.artists[b.gi].name));
-    const range = names.length ? (names.length > 1 ? names[0] + ' — ' + names[names.length - 1] : names[0]) : '';
-
-    // перегородка в конце зала: два проёма по осям проходов
-    if (ri < c.rooms.length - 1) {
-      const zw = r.z1 - WALL_T / 2;
-      const xa = aisleX(c, -1), xb = aisleX(c, 1);
-      const segs = [[xl, xa - DOOR_W / 2], [xa + DOOR_W / 2, xb - DOOR_W / 2], [xb + DOOR_W / 2, xr]];
-      segs.forEach(([a, b]) => this.box(b - a, H, WALL_T, this.wallMat(b - a, H), (a + b) / 2, H / 2, zw));
-      [xa, xb].forEach((x) => {
-        this.box(DOOR_W, H - DOOR_H, WALL_T, this.wallMat(DOOR_W, H - DOOR_H), x, DOOR_H + (H - DOOR_H) / 2, zw);
-        this.box(0.02, DOOR_H, WALL_T, M.reveal, x - DOOR_W / 2 + 0.01, DOOR_H / 2, zw);
-        this.box(0.02, DOOR_H, WALL_T, M.reveal, x + DOOR_W / 2 - 0.01, DOOR_H / 2, zw);
-        this.box(DOOR_W, 0.02, WALL_T, M.reveal, x, DOOR_H - 0.01, zw);
-      });
-      this.box(COR_W, 0.035, 0.01, M.gap, c.cx, 0.0175, zw + WALL_T / 2 + 0.004);
-      this.box(COR_W, 0.035, 0.01, M.gap, c.cx, 0.0175, zw - WALL_T / 2 - 0.004);
-
-      // из этого зала: «ЗАЛ n+1» над средним простенком, с той стороны — «ЗАЛ n»
-      const next = c.rooms[ri + 1];
-      const nextNames = next.bays.map((b) => surname(this.bridge.artists[b.gi].name));
-      const nextRange = nextNames.length > 1 ? nextNames[0] + ' — ' + nextNames[nextNames.length - 1] : (nextNames[0] || '');
-      const plate = (num, sub, arrow) => textCanvas(1024, 300, (g, w) => {
-        g.fillStyle = INK; g.textAlign = 'center';
-        g.font = '300 88px ' + SANS;
-        spaced(g, 'ЗАЛ ' + num, w / 2, 120, 16);
-        g.fillStyle = MUTED;
-        g.font = '400 38px ' + SANS;
-        let t = sub;
-        while (g.measureText(t).width > w - 60 && t.length > 4) t = t.slice(0, -2);
-        g.fillText(t, w / 2, 200);
-        if (arrow) { g.font = '400 40px ' + SANS; g.fillText(arrow, w / 2, 268); }
-      });
-      const mw = (xb - DOOR_W / 2) - (xa + DOOR_W / 2) - 0.6;
-      this.sign(plate(ri + 2, nextRange, '↑'), mw, mw * 300 / 1024, c.cx, 3.05, zw + WALL_T / 2 + 0.005, 0);
-      this.sign(plate(ri + 1, range, '↑'), mw, mw * 300 / 1024, c.cx, 3.05, zw - WALL_T / 2 - 0.005, Math.PI);
-    }
-
-    // номер зала на торце острова со стороны входа — виден из проёма
+    // номер зала на торцах острова — виден из проёмов
     const tag = textCanvas(512, 512, (g, w) => {
       g.fillStyle = INK; g.textAlign = 'center';
       g.font = '200 220px ' + SANS;
@@ -429,7 +482,122 @@ export class World {
     });
     this.sign(tag, 0.3, 0.3, c.cx, 2.2, r.spine0 + 0.004, 0);
     this.sign(tag, 0.3, 0.3, c.cx, 2.2, r.spine1 - 0.004, Math.PI);
-    r.label = range;
+
+    const ws = r.works;
+    const face = (it) => (it.side < 0 ? Math.PI / 2 : -Math.PI / 2);
+    if (ws.length) {
+      // тонкая чёрная рама и мягкая тень под работой
+      this.add(instanced(this.geo('plane'), M.shadow, ws, (it, p, e, s) => {
+        p.set(it.x - it.side * 0.003, ART_Y - 0.07, it.z); e.set(0, face(it), 0); s.set(it.w * 1.12 + 0.35, it.h * 1.12 + 0.4, 1);
+      }));
+      this.add(instanced(this.geo('box'), M.frame, ws, (it, p, e, s) => {
+        p.set(it.x - it.side * 0.022, ART_Y, it.z); e.set(0, face(it), 0); s.set(it.w + 0.05, it.h + 0.05, 0.044);
+      }));
+      // споты: корпус на треке, наклонён к работе
+      this.add(instanced(this.geo('spot'), M.track, ws, (it, p, e, s) => {
+        p.set(it.x - it.side * TRACK, H - 0.15, it.z);
+        e.set(0, 0, it.side * 0.62);
+        s.set(1, 1, 1);
+      }));
+    }
+
+    // сами полотна
+    ws.forEach((it) => {
+      const mat = new THREE.MeshBasicMaterial({ color: PLACEHOLDER, toneMapped: false });
+      const m = this.plane(it.w, it.h, mat, it.x - it.side * 0.046, ART_Y, it.z, face(it));
+      m.userData.art = it;
+      it.mesh = m;
+      it.group = r.group;
+      this.paintings.push(it);
+      this.pickables.push(m);
+    });
+    if (this.onPaintings && ws.length) this.onPaintings(ws);
+  }
+
+  /* Общая геометрия для InstancedMesh всех залов */
+  geo(kind) {
+    this.geos = this.geos || {
+      plane: new THREE.PlaneGeometry(1, 1),
+      box: new THREE.BoxGeometry(1, 1, 1),
+      spot: new THREE.CylinderGeometry(0.045, 0.055, 0.2, 10),
+    };
+    return this.geos[kind];
+  }
+
+  /* Перегородка k — между залами k и k+1: два проёма по осям проходов,
+     «ЗАЛ n+1» и фамилии над средним простенком, с той стороны — «ЗАЛ n» */
+  ensurePart(c, k) {
+    if (c.parts[k]) return;
+    const M = this.mat;
+    const H = COR_H;
+    const r = c.rooms[k], next = c.rooms[k + 1];
+    const prev = this.target;
+    const g = this.target = this.group();
+    c.parts[k] = g;
+    this.beginBatch();
+
+    const xl = c.cx - COR_W / 2, xr = c.cx + COR_W / 2;
+    const zw = r.z1 - WALL_T / 2;
+    const xa = aisleX(c, -1), xb = aisleX(c, 1);
+    const segs = [[xl, xa - DOOR_W / 2], [xa + DOOR_W / 2, xb - DOOR_W / 2], [xb + DOOR_W / 2, xr]];
+    segs.forEach(([a, b]) => this.blocker(this.box(b - a, H, WALL_T, this.wallMat(b - a, H), (a + b) / 2, H / 2, zw)));
+    [xa, xb].forEach((x) => {
+      this.box(DOOR_W, H - DOOR_H, WALL_T, this.wallMat(DOOR_W, H - DOOR_H), x, DOOR_H + (H - DOOR_H) / 2, zw);
+      this.box(0.02, DOOR_H, WALL_T, M.reveal, x - DOOR_W / 2 + 0.01, DOOR_H / 2, zw);
+      this.box(0.02, DOOR_H, WALL_T, M.reveal, x + DOOR_W / 2 - 0.01, DOOR_H / 2, zw);
+      this.box(DOOR_W, 0.02, WALL_T, M.reveal, x, DOOR_H - 0.01, zw);
+    });
+    this.box(COR_W, 0.035, 0.01, M.gap, c.cx, 0.0175, zw + WALL_T / 2 + 0.004);
+    this.box(COR_W, 0.035, 0.01, M.gap, c.cx, 0.0175, zw - WALL_T / 2 - 0.004);
+
+    const plate = (num, sub, arrow) => textCanvas(1024, 300, (g2, w) => {
+      g2.fillStyle = INK; g2.textAlign = 'center';
+      g2.font = '300 88px ' + SANS;
+      spaced(g2, 'ЗАЛ ' + num, w / 2, 120, 16);
+      g2.fillStyle = MUTED;
+      g2.font = '400 38px ' + SANS;
+      let t = sub;
+      while (g2.measureText(t).width > w - 60 && t.length > 4) t = t.slice(0, -2);
+      g2.fillText(t, w / 2, 200);
+      if (arrow) { g2.font = '400 40px ' + SANS; g2.fillText(arrow, w / 2, 268); }
+    });
+    const mw = (xb - DOOR_W / 2) - (xa + DOOR_W / 2) - 0.6;
+    this.sign(plate(k + 2, next.label, '↑'), mw, mw * 300 / 1024, c.cx, 3.05, zw + WALL_T / 2 + 0.005, 0);
+    this.sign(plate(k + 1, r.label, '↑'), mw, mw * 300 / 1024, c.cx, 3.05, zw - WALL_T / 2 - 0.005, Math.PI);
+    this.endBatch();
+    this.target = prev;
+  }
+
+  /* Видимость: холл и множество залов → группы. Перегородку видно, если
+     виден хоть один из залов по её сторонам; стену холла — если виден
+     холл или первый зал любого раздела. */
+  setVisible(hall, rooms, win, camera) {
+    this.hallGroup.visible = hall;
+    let north = hall;
+    for (const c of this.plan.corridors) {
+      for (const r of c.rooms) {
+        const on = rooms.has(r);
+        if (on) this.ensureRoom(r);
+        if (r.group) r.group.visible = on;
+        if (on) {
+          // работы дальнего зала — только те, что попадают в его проём
+          const w = win && win.get(r);
+          const full = !w || (w[0] <= -1 && w[1] <= -1 && w[2] >= 1 && w[3] >= 1);
+          for (const it of r.works) {
+            if (!it.mesh) continue;
+            let v = !(it.dist > 125);
+            if (v && !full) {
+              const x = it.x - it.side * 0.05;
+              v = !!cut(w, projectArt(camera, x, it));
+            }
+            it.mesh.visible = v;
+          }
+        }
+        if (on && r.idx === 0) north = true;
+      }
+      c.parts.forEach((g, k) => { if (g) g.visible = rooms.has(c.rooms[k]) || rooms.has(c.rooms[k + 1]); });
+    }
+    this.hallNorth.visible = north;
   }
 
   /* ---------------- ленивые таблички ---------------- */
@@ -455,7 +623,10 @@ export class World {
     const face = it.side < 0 ? Math.PI / 2 : -Math.PI / 2;
     // этикетка справа от работы, по музейной привычке, на уровне руки
     const along = it.side < 0 ? -1 : 1;             // «вправо» для смотрящего на стену
+    const prev = this.target;
+    this.target = it.group;
     const m = this.plane(0.38, 0.19, mat, it.x - it.side * 0.006, 1.3, it.z + along * (it.w / 2 + 0.38), face);
+    this.target = prev;
     m.userData.plaque = it;
     this.pickables.push(m);
     return m;
@@ -481,14 +652,18 @@ export class World {
     const h = len * 160 / 1024;
     // над работами художника — и на наружной стене, и на острове напротив
     const ai = b.aisle;
-    return [
+    const prev = this.target;
+    this.target = b.room.rooms[b.sub].group;
+    const out = [
       this.plane(len, h, mat, b.xWall - ai * 0.006, 3.35, zc, ai < 0 ? Math.PI / 2 : -Math.PI / 2),
       this.plane(len * 0.8, h * 0.8, mat, b.xSpine + ai * 0.006, 3.3, zc, ai < 0 ? -Math.PI / 2 : Math.PI / 2),
     ];
+    this.target = prev;
+    return out;
   }
 
   removeMesh(m) {
-    this.scene.remove(m);
+    if (m.parent) m.parent.remove(m);
     const i = this.pickables.indexOf(m);
     if (i >= 0) this.pickables.splice(i, 1);
     if (m.material.map) m.material.map.dispose();
@@ -502,18 +677,18 @@ export class World {
     for (const it of this.paintings) {
       const d = Math.hypot(it.x - cx, it.z - cz);
       it.dist = d;
-      it.mesh.visible = d < 125;
       const pl = this.plaques.get(it);
       if (!pl && d < PLAQUE_NEAR) this.plaques.set(it, this.plaque(it));
       else if (pl && d > PLAQUE_FAR) { this.removeMesh(pl); this.plaques.delete(it); }
     }
     for (const b of this.bays) {
+      if (!b.room.rooms[b.sub].group) continue;       // зал ещё не собран
       const d = Math.abs((b.z0 + b.z1) / 2 - cz) + Math.abs(b.xWall - cx) * 0.5;
       const bn = this.banners.get(b);
       if (!bn && d < BANNER_NEAR) this.banners.set(b, this.banner(b));
       else if (bn && d > BANNER_FAR) {
         bn[0].material.map.dispose();
-        bn.forEach((m) => { this.scene.remove(m); m.geometry.dispose(); });
+        bn.forEach((m) => { if (m.parent) m.parent.remove(m); m.geometry.dispose(); });
         bn[0].material.dispose();
         this.banners.delete(b);
       }
