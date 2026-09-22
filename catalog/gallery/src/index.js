@@ -3,7 +3,7 @@
    bridge — связь с виджетом каталога (catalog.js):
      artists, sections      — данные в том виде, в каком их держит виджет;
      url(path)              — абсолютный адрес файла из artists.json;
-     ticketUrl, objects     — ссылка «Купить билет», силуэты арт-объектов;
+     ticketUrl              — ссылка «Купить билет» на стене холла;
      openWork(gi, wi)       — открыть работу во весь экран (с карточкой под ней);
      openArtist(gi)         — открыть карточку художника;
      onRoom(i)              — зритель перешёл в зал раздела i (−1 — холл);
@@ -84,8 +84,9 @@ class Gallery {
     }
     this.renderer = renderer;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    // нейтральный тон-маппинг: белые стены остаются белыми, а не серыми, как у ACES
+    renderer.toneMapping = THREE.NeutralToneMapping;
+    renderer.toneMappingExposure = 1.0;
     this.maxPR = Math.min(window.devicePixelRatio || 1, this.small ? 2 : 2);
     this.pr = this.maxPR;
     renderer.setPixelRatio(this.pr);
@@ -457,7 +458,6 @@ class Gallery {
     if (this.tick++ % 6 === 0) {
       this.world.update(nav);
       this.tex.update(this.world.paintings);
-      this.world.faceBillboards(cam.position);
       const room = nav.room;
       let bay = null;
       if (room >= 0) {

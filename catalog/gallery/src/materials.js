@@ -1,6 +1,7 @@
 /* Процедурные фактуры помещения. Рисуются на canvas при старте, поэтому
    не весят ничего при загрузке и одинаково выглядят на любом сервере.
-   Все тайлятся: размер плитки в метрах указан у каждой. */
+   Стиль — светлый минимализм: белые стены, светло-серый микроцемент,
+   никакого орнамента; глубину дают мягкие тени и свет. */
 import * as THREE from 'three';
 
 let seed = 7;
@@ -15,131 +16,80 @@ function canvas(w, h) {
   return c;
 }
 
-function tex(c, repeatX, repeatY, aniso, srgb = true) {
+function tex(c, aniso) {
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(repeatX || 1, repeatY || 1);
   t.anisotropy = aniso || 1;
-  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
 
-/* Дубовый паркет «ёлочкой», плитка 2×2 м */
-export function parquet(aniso) {
-  const S = 1024;
-  const c = canvas(S);
-  const g = c.getContext('2d');
-  g.fillStyle = '#6d4c2c';
-  g.fillRect(0, 0, S, S);
-  const pl = S / 8;                  // длина планки: 25 см
-  const pw = pl / 4;
-  const tones = ['#9a6d42', '#a37547', '#8f643b', '#ab7d4f', '#94683f', '#b08453'];
-  for (let row = -2; row < S / pw + 2; row++) {
-    for (let col = -2; col < S / pl + 2; col++) {
-      const x = col * pl;
-      const y = row * pw * 2 + (col % 2) * pw;
-      g.save();
-      g.translate(x, y);
-      g.rotate((col % 2 ? -1 : 1) * Math.PI / 4);
-      g.fillStyle = tones[Math.floor(rnd() * tones.length)];
-      g.fillRect(0, 0, pl * 0.98, pw * 0.94);
-      g.globalAlpha = 0.12;
-      g.strokeStyle = '#3d2814';
-      for (let k = 0; k < 5; k++) {
-        const yy = rnd() * pw;
-        g.beginPath();
-        g.moveTo(0, yy);
-        g.bezierCurveTo(pl * 0.3, yy + rnd() * 4 - 2, pl * 0.6, yy + rnd() * 4 - 2, pl, yy);
-        g.stroke();
-      }
-      g.restore();
-    }
-  }
-  // лак: мягкие блики
-  const grd = g.createLinearGradient(0, 0, S, S);
-  grd.addColorStop(0, 'rgba(255,240,210,0.05)');
-  grd.addColorStop(0.5, 'rgba(0,0,0,0.04)');
-  grd.addColorStop(1, 'rgba(255,240,210,0.05)');
-  g.fillStyle = grd;
-  g.fillRect(0, 0, S, S);
-  return tex(c, 1, 1, aniso);
-}
-
-/* Терраццо для холла, плитка 2×2 м */
-export function terrazzo(aniso) {
-  const S = 1024;
-  const c = canvas(S);
-  const g = c.getContext('2d');
-  g.fillStyle = '#e6dcc6';
-  g.fillRect(0, 0, S, S);
-  const chips = ['#b9ab8e', '#8c7f68', '#d59a74', '#6f8f86', '#f4efe4', '#a8584f', '#4f6b73'];
-  for (let i = 0; i < 5200; i++) {
-    const r = 1 + rnd() * rnd() * 9;
-    g.fillStyle = chips[Math.floor(rnd() * chips.length)];
-    g.globalAlpha = 0.55 + rnd() * 0.45;
-    g.beginPath();
-    const x = rnd() * S, y = rnd() * S;
-    g.ellipse(x, y, r, r * (0.5 + rnd() * 0.5), rnd() * Math.PI, 0, Math.PI * 2);
-    g.fill();
-  }
-  g.globalAlpha = 1;
-  // швы плит 1×1 м
-  g.strokeStyle = 'rgba(90,76,56,0.35)';
-  g.lineWidth = 2;
-  g.strokeRect(0, 0, S / 2, S / 2);
-  g.strokeRect(S / 2, S / 2, S / 2, S / 2);
-  return tex(c, 1, 1, aniso);
-}
-
-/* Штукатурка: тёплый тон с мягкими разводами, плитка 2.5 м.
-   Её же берём картой рельефа — стена перестаёт быть пластиком. */
-export function plaster(base, aniso) {
-  const S = 512;
-  const c = canvas(S);
-  const g = c.getContext('2d');
-  g.fillStyle = base;
-  g.fillRect(0, 0, S, S);
-  for (let i = 0; i < 90; i++) {
-    const x = rnd() * S, y = rnd() * S, r = 30 + rnd() * 110;
+/* Мягкие пятна, бесшовные по краям плитки */
+function clouds(g, S, count, rMin, rMax, light, dark) {
+  for (let i = 0; i < count; i++) {
+    const x = rnd() * S, y = rnd() * S, r = rMin + rnd() * (rMax - rMin);
     const grd = g.createRadialGradient(x, y, 0, x, y, r);
-    const light = rnd() > 0.5;
-    grd.addColorStop(0, light ? 'rgba(255,250,240,0.05)' : 'rgba(120,100,70,0.035)');
+    grd.addColorStop(0, rnd() > 0.5 ? light : dark);
     grd.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = grd;
-    for (let dx = -S; dx <= S; dx += S) {      // бесшовно по краям
+    for (let dx = -S; dx <= S; dx += S) {
       for (let dy = -S; dy <= S; dy += S) {
         g.save(); g.translate(dx, dy); g.fillRect(x - r, y - r, r * 2, r * 2); g.restore();
       }
     }
   }
+}
+
+function grain(g, S, amp) {
   const img = g.getImageData(0, 0, S, S);
   for (let i = 0; i < img.data.length; i += 4) {
-    const n = (rnd() - 0.5) * 8;
+    const n = (rnd() - 0.5) * amp;
     img.data[i] += n; img.data[i + 1] += n; img.data[i + 2] += n;
   }
   g.putImageData(img, 0, 0);
-  return tex(c, 1, 1, aniso);
 }
 
-/* Световое пятно от светильника над картиной */
-export function lightPool() {
-  const S = 256;
+/* Светло-серый микроцемент, плитка 4×4 м: лёгкие облака и зерно */
+export function concrete(aniso) {
+  const S = 1024;
   const c = canvas(S);
   const g = c.getContext('2d');
-  const grd = g.createRadialGradient(S / 2, S * 0.38, 0, S / 2, S * 0.45, S / 2);
-  grd.addColorStop(0, 'rgba(255,236,200,1)');
-  grd.addColorStop(0.45, 'rgba(255,226,180,0.55)');
-  grd.addColorStop(1, 'rgba(255,220,170,0)');
-  g.fillStyle = grd;
+  g.fillStyle = '#d9d9d6';
   g.fillRect(0, 0, S, S);
+  clouds(g, S, 120, 80, 300, 'rgba(255,255,255,0.035)', 'rgba(90,90,85,0.025)');
+  clouds(g, S, 220, 8, 40, 'rgba(255,255,255,0.03)', 'rgba(80,80,76,0.022)');
+  grain(g, S, 7);
+  return tex(c, aniso);
+}
+
+/* Гладкая окрашенная стена: почти ровный тон, едва заметная неровность */
+export function paint(base, aniso) {
+  const S = 512;
+  const c = canvas(S);
+  const g = c.getContext('2d');
+  g.fillStyle = base;
+  g.fillRect(0, 0, S, S);
+  clouds(g, S, 40, 80, 200, 'rgba(255,255,255,0.012)', 'rgba(60,60,60,0.008)');
+  grain(g, S, 2);
+  return tex(c, aniso);
+}
+
+/* Мягкая тень под работой: размытый прямоугольник, края в ноль */
+export function softShadow() {
+  const S = 256, pad = 48;
+  const c = canvas(S);
+  const g = c.getContext('2d');
+  g.filter = 'blur(18px)';
+  g.fillStyle = '#000';
+  g.fillRect(pad, pad, S - pad * 2, S - pad * 2);
+  g.filter = 'none';
   const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
 
-/* Надпись на canvas: табличка, вывеска над аркой, афиша. */
-export const FONT = '"Parangon", "Playfair Display", Georgia, "Times New Roman", serif';
-export const SANS = '"Helvetica Neue", Arial, sans-serif';
+/* Надписи: современный гротеск, как в музейной навигации */
+export const SANS = '"Inter", "Helvetica Neue", Helvetica, Arial, sans-serif';
+export const FONT = SANS;
 
 export function textCanvas(w, h, draw) {
   const c = canvas(w, h);
@@ -158,6 +108,15 @@ export function wrapText(g, text, maxW) {
   }
   if (line) lines.push(line);
   return lines;
+}
+
+/* Разрядка для заглавных надписей */
+export function spaced(g, text, x, y, spacing) {
+  if ('letterSpacing' in g) {
+    g.letterSpacing = spacing + 'px';
+    g.fillText(text, x, y);
+    g.letterSpacing = '0px';
+  } else g.fillText(text, x, y);
 }
 
 export function canvasTexture(c, aniso) {

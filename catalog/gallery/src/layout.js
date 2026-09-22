@@ -9,13 +9,13 @@
 export const EYE = 1.62;           // высота глаз
 export const ART_Y = 1.72;         // центр полотен по высоте
 export const HALL_D = 16;          // глубина холла
-export const HALL_H = 5.4;         // высота холла
-export const COR_W = 6.4;          // ширина коридора
-export const COR_H = 4.6;          // высота коридора
-export const ARCH_W = 3.4;         // проём арки
-export const ARCH_H = 3.6;
+export const HALL_H = 6;         // высота холла
+export const COR_W = 7;            // ширина коридора
+export const COR_H = 5;            // высота коридора
+export const ARCH_W = 3.6;         // проём арки
+export const ARCH_H = 3.8;
 export const WALL_T = 0.3;         // толщина стены холла
-const GAP = 7.6;                   // между осями соседних коридоров
+const GAP = 8.4;                   // между осями соседних коридоров
 const MARGIN = 0.45;               // ближе к стене камера не подходит
 
 /* Размер полотна на стене по пропорциям файла. Крупные вещи не должны
