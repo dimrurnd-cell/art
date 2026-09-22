@@ -29,6 +29,17 @@ export const CSS = `
 .artg-panel__list i{display:block;font-style:normal;font-size:12px;color:#8c8c88}
 .artg-panel__sec{margin:10px 10px 4px;font:12px/1 "Helvetica Neue",Arial,sans-serif;text-transform:uppercase;letter-spacing:.08em;color:#8c8c88}
 .artg-panel__none{padding:10px;color:#8c8c88}
+.artg-map{position:absolute;right:14px;top:60px;width:min(360px,calc(100% - 28px));max-height:calc(100% - 140px);
+  display:flex;flex-direction:column;background:rgba(255,255,255,.97);border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.14);overflow:hidden}
+.artg-map[hidden]{display:none}
+.artg-map__plan{width:100%;height:auto;aspect-ratio:2/1;display:block;cursor:pointer;border-bottom:1px solid #ecebe8}
+.artg-map__list{overflow:auto;padding:4px 6px 10px}
+.artg-map__list button{display:block;width:100%;text-align:left;border:0;background:none;padding:7px 10px;border-radius:8px;
+  font-size:14px;color:#2a2a2a;cursor:pointer}
+.artg-map__list button:hover,.artg-map__list button:focus-visible{background:#f0efec;outline:none}
+.artg-map__list button.is-here{background:#2a2a2a;color:#fff}
+.artg-map__list button.is-here i{color:#cfcfcb}
+.artg-map__list i{display:block;font-style:normal;font-size:12px;color:#8c8c88;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .artg-hint{position:absolute;left:50%;bottom:86px;transform:translate(-50%,10px);max-width:min(560px,86%);
   padding:10px 16px;border-radius:12px;background:rgba(42,42,42,.82);color:#fff;font-size:14px;line-height:1.35;
   text-align:center;opacity:0;transition:opacity .35s,transform .35s;pointer-events:none}
@@ -48,6 +59,7 @@ export const CSS = `
 .artg-fs-host .artg-stage{height:100%;width:100%;max-width:none;border-radius:0}
 @media (max-width:600px){
   .artg-stage{height:clamp(440px,74vh,640px);border-radius:16px}
-  .artg-btn{padding:9px 11px;font-size:13px}
+  .artg-btn{padding:9px 10px;font-size:13px}
+  .artg-actions{gap:5px}
 }
 `;

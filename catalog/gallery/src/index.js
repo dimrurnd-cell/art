@@ -10,9 +10,14 @@
      onFullscreen(el|null)  — перенести модальные окна в развёрнутый элемент;
      fallback(reason)       — WebGL-зал невозможен, вернуть CSS-зал. */
 import * as THREE from 'three';
-import { buildLayout, viewSpot, roomAt, EYE, COR_W, ART_Y } from './layout.js';
+import {
+  buildLayout, viewSpot, roomAt, subRoomAt, canStand, aisleX, EYE, ART_Y,
+} from './layout.js';
 import { World } from './world.js';
 import { Nav } from './nav.js';
+import { COR_W } from './layout.js';
+
+const COR_HALF = COR_W / 2;
 import { TextureManager } from './textures.js';
 import { CSS } from './ui-css.js';
 
@@ -52,7 +57,11 @@ class Gallery {
           '<div class="artg-where"><b></b><span></span></div>' +
           '<div class="artg-actions">' +
             '<button type="button" class="artg-btn" data-a="hall">Холл</button>' +
+            '<button type="button" class="artg-btn" data-a="map">План</button>' +
             '<button type="button" class="artg-btn" data-a="list">Художники</button>' +
+            '<button type="button" class="artg-btn artg-btn--icon" data-a="share" aria-label="Поделиться ссылкой на это место">' +
+              '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">' +
+              '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>' +
             '<button type="button" class="artg-btn artg-btn--icon" data-a="fs" aria-label="Во весь экран">' +
               '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">' +
               '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>' +
@@ -61,6 +70,10 @@ class Gallery {
         '<div class="artg-panel" hidden>' +
           '<input type="search" class="artg-panel__q" placeholder="Фамилия или город" aria-label="Поиск художника">' +
           '<div class="artg-panel__list"></div>' +
+        '</div>' +
+        '<div class="artg-map" hidden>' +
+          '<canvas class="artg-map__plan" width="600" height="300"></canvas>' +
+          '<div class="artg-map__list"></div>' +
         '</div>' +
         '<div class="artg-hint"></div>' +
         '<div class="artg-move">' +
@@ -116,6 +129,7 @@ class Gallery {
       if (this.revealed) return;
       this.revealed = true;
       this.tex.resetStats();
+      this.applyHash();
       this.stage.querySelector('.artg-fade').classList.remove('is-on');
     };
     this.revealT = setTimeout(reveal, 5000);
@@ -159,7 +173,17 @@ class Gallery {
   bindUi() {
     const st = this.stage;
     st.querySelector('[data-a="hall"]').addEventListener('click', () => this.goHall());
-    st.querySelector('[data-a="list"]').addEventListener('click', () => this.togglePanel());
+    st.querySelector('[data-a="list"]').addEventListener('click', () => { this.toggleMap(false); this.togglePanel(); });
+    st.querySelector('[data-a="map"]').addEventListener('click', () => { this.togglePanel(false); this.toggleMap(); });
+    st.querySelector('[data-a="share"]').addEventListener('click', () => this.share());
+    st.querySelector('.artg-map__list').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-room]');
+      if (!b) return;
+      const [si, ri] = b.getAttribute('data-room').split('.').map(Number);
+      this.toggleMap(false);
+      if (si < 0) this.goHall(); else this.goToSubRoom(si, ri);
+    });
+    st.querySelector('.artg-map__plan').addEventListener('click', (e) => this.mapClick(e));
     st.querySelector('[data-a="fs"]').addEventListener('click', () => this.toggleFullscreen());
     const q = st.querySelector('.artg-panel__q');
     q.addEventListener('input', () => this.fillPanel(q.value));
@@ -221,8 +245,167 @@ class Gallery {
     const s = this.stage.querySelector('.artg-where span');
     if (this.room < 0) { b.textContent = 'Холл'; s.textContent = 'выберите зал'; return; }
     const c = this.plan.corridors[this.room];
-    b.textContent = c.title || 'Экспозиция';
+    const r = this.sub;
+    b.textContent = (c.title || 'Экспозиция') + (r ? ' · зал ' + (r.idx + 1) + ' из ' + c.rooms.length : '');
     s.textContent = this.bay ? this.bridge.artists[this.bay.gi].name : '';
+  }
+
+  /* ---------------- план ---------------- */
+
+  toggleMap(on) {
+    const p = this.stage.querySelector('.artg-map');
+    const show = on == null ? p.hidden : on;
+    p.hidden = !show;
+    if (show) { this.fillMap(); this.drawMap(); }
+  }
+
+  fillMap() {
+    const cur = this.sub;
+    let html = '<button type="button" data-room="-1.0"' + (this.room < 0 ? ' class="is-here"' : '') + '>Холл</button>';
+    this.plan.corridors.forEach((c) => {
+      html += '<p class="artg-panel__sec">' + esc(c.title || 'Экспозиция') + '</p>';
+      c.rooms.forEach((r) => {
+        html += '<button type="button" data-room="' + c.i + '.' + r.idx + '"' + (r === cur ? ' class="is-here"' : '') + '>' +
+          'Зал ' + (r.idx + 1) + '<i>' + esc(r.label || '') + '</i></button>';
+      });
+    });
+    const list = this.stage.querySelector('.artg-map__list');
+    list.innerHTML = html;
+    const here = list.querySelector('.is-here');
+    if (here) here.scrollIntoView({ block: 'center' });
+  }
+
+  /* Схема здания: холл внизу, разделы — столбцы залов (зал 1 у холла),
+     в каждом зале два прохода; точка — где стоит зритель */
+  mapGeom() {
+    const cv = this.stage.querySelector('.artg-map__plan');
+    const W = cv.width, H = cv.height;
+    const cs = this.plan.corridors;
+    const colW = Math.min(110, (W - 40) / Math.max(1, cs.length) - 24);
+    const hallH = 40, top = 34, bottom = H - hallH - 14;
+    const span = cs.length * (colW + 24) - 24;
+    const x0 = (W - span) / 2;
+    return { cv, W, H, cs, colW, hallH, top, bottom, x0, span };
+  }
+
+  drawMap() {
+    const { cv, W, H, cs, colW, hallH, top, bottom, x0, span } = this.mapGeom();
+    const g = cv.getContext('2d');
+    const nav = this.nav;
+    const hall = this.plan.hall;
+    g.clearRect(0, 0, W, H);
+    g.font = '500 17px "Helvetica Neue", Arial, sans-serif';
+    g.textAlign = 'center';
+    // холл
+    const hx = x0 - 12, hw = span + 24, hy = H - hallH - 6;
+    g.fillStyle = this.room < 0 ? '#2a2a2a' : '#e2e1dd';
+    g.fillRect(hx, hy, hw, hallH);
+    g.fillStyle = this.room < 0 ? '#fff' : '#8c8c88';
+    g.fillText('ХОЛЛ', W / 2, hy + hallH / 2 + 6);
+    const dot = (x, y) => {
+      g.fillStyle = '#d4574f';
+      g.beginPath(); g.arc(x, y, 7, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#fff'; g.lineWidth = 2; g.stroke();
+    };
+    cs.forEach((c, ci) => {
+      const cx = x0 + ci * (colW + 24);
+      const rh = (bottom - top) / c.rooms.length;
+      g.fillStyle = '#2a2a2a';
+      g.fillText(c.title || '', cx + colW / 2, 20);
+      c.rooms.forEach((r) => {
+        const y = bottom - (r.idx + 1) * rh;
+        const here = r === this.sub;
+        g.fillStyle = here ? '#2a2a2a' : '#e2e1dd';
+        g.fillRect(cx, y + 1, colW, Math.max(1, rh - 2));
+        g.fillStyle = here ? '#6f6f6b' : '#c9c8c4';
+        g.fillRect(cx + colW / 2 - 1, y + rh * 0.22, 2, rh * 0.56);    // остров
+      });
+      if (this.room === c.i && this.sub) {
+        const r = this.sub;
+        const t = Math.max(0, Math.min(1, (r.z0 - nav.z) / (r.z0 - r.z1)));
+        const half = colW / 2;
+        dot(cx + colW / 2 + (nav.x - c.cx) / (COR_HALF) * half * 0.85, bottom - (r.idx + t) * rh);
+      }
+    });
+    if (this.room < 0) {
+      const t = (nav.x - hall.x0) / (hall.x1 - hall.x0);
+      dot(hx + t * hw, hy + hallH * Math.max(0.2, Math.min(0.8, (nav.z - hall.z0) / (hall.z1 - hall.z0))));
+    }
+  }
+
+  mapClick(e) {
+    const { cv, H, cs, colW, hallH, top, bottom, x0 } = this.mapGeom();
+    const rc = cv.getBoundingClientRect();
+    const x = (e.clientX - rc.left) * cv.width / rc.width, y = (e.clientY - rc.top) * cv.height / rc.height;
+    if (y > H - hallH - 14) { this.toggleMap(false); this.goHall(); return; }
+    cs.forEach((c, ci) => {
+      const cx = x0 + ci * (colW + 20);
+      if (x < cx || x > cx + colW || y < top || y > bottom) return;
+      const ri = Math.min(c.rooms.length - 1, Math.floor((bottom - y) / ((bottom - top) / c.rooms.length)));
+      this.toggleMap(false);
+      this.goToSubRoom(c.i, ri);
+    });
+  }
+
+  /* ---------------- ссылки на место ---------------- */
+
+  /* #artc-work=<id художника>/<номер работы> или #artc-room=<раздел>/<зал>.
+     Адрес меняем через replaceState — история браузера не засоряется;
+     чужие якоря страницы (Tilda и т. п.) не трогаем. */
+  hashFor() {
+    if (this.focus) {
+      const a = this.bridge.artists[this.focus.gi];
+      return 'artc-work=' + encodeURIComponent(a.id || this.focus.gi) + '/' + (this.focus.wi + 1);
+    }
+    if (this.sub) return 'artc-room=' + (this.room + 1) + '/' + (this.sub.idx + 1);
+    return '';
+  }
+
+  syncHash() {
+    if (!this.revealed || !window.history || !history.replaceState) return;
+    const h = location.hash;
+    if (h && !/^#artc-/.test(h)) return;
+    const want = this.hashFor();
+    if ((h || '#') === '#' + want || (!h && !want)) return;
+    try {
+      history.replaceState(history.state, '', want ? '#' + want : location.pathname + location.search);
+    } catch (e) { /* песочница без истории */ }
+  }
+
+  applyHash() {
+    const h = decodeURIComponent(location.hash || '');
+    let m = h.match(/^#artc-work=([^/]+)\/(\d+)/);
+    if (m) {
+      const gi = this.bridge.artists.findIndex((a, i) => String(a.id || i) === m[1]);
+      const it = this.world.paintings.find((p) => p.gi === gi && p.wi === +m[2] - 1);
+      if (it) {
+        const s = viewSpot(it);
+        Object.assign(this.nav, { x: s.x, z: s.z, yaw: s.yaw, pitch: 0 });
+        this.focus = it;
+        this.hint('Вы у работы по ссылке. Нажмите на неё, чтобы открыть во весь экран');
+        return;
+      }
+    }
+    m = h.match(/^#artc-room=(\d+)\/(\d+)/);
+    if (m) {
+      const c = this.plan.corridors[+m[1] - 1];
+      const r = c && c.rooms[+m[2] - 1];
+      if (r) Object.assign(this.nav, { x: c.cx, z: r.z0 - 1.6, yaw: 0, pitch: -0.02 });
+    }
+  }
+
+  share() {
+    this.syncHash();
+    const url = location.href;
+    const title = this.focus ? this.bridge.artists[this.focus.gi].name : 'Арт-Ростов — виртуальная галерея';
+    if (navigator.share && this.touch) {
+      navigator.share({ title, url }).catch(() => {});
+      return;
+    }
+    const done = () => this.hint('Ссылка на это место скопирована');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done, () => this.hint(url));
+    } else this.hint(url);
   }
 
   /* ---------------- ввод ---------------- */
@@ -346,8 +529,14 @@ class Gallery {
     setTimeout(() => {
       // появляемся в нескольких шагах и подходим — так видно, куда попали
       const c = this.plan.corridors[roomAt(this.plan, x, z)];
-      this.nav.x = c ? c.cx : x;
-      this.nav.z = c ? Math.min(z + 4.5, c.zStart - 1) : z;
+      const r = c && subRoomAt(this.plan, x, z);
+      if (r) {
+        // появиться на оси того же прохода, на пару шагов ближе к холлу
+        const ax = aisleX(c, x < c.cx ? -1 : 1);
+        this.nav.x = ax;
+        this.nav.z = Math.min(z + 3.5, r.z0 - 0.8);
+        if (!canStand(this.plan, this.nav.x, this.nav.z)) this.nav.z = z;
+      } else { this.nav.x = x; this.nav.z = z; }
       this.nav.yaw = 0;
       this.nav.goTo(x, z, yaw, pitch, cb);
       fade.classList.remove('is-on');
@@ -365,7 +554,15 @@ class Gallery {
     const c = this.plan.corridors[i];
     if (!c) return;
     this.focus = null;
-    this.travel(c.cx, c.zStart - 3.2, 0, -0.02);
+    this.travel(c.cx, c.rooms[0].z0 - 1.8, 0, -0.02);
+  }
+
+  goToSubRoom(si, ri) {
+    const c = this.plan.corridors[si];
+    const r = c && c.rooms[ri];
+    if (!r) return;
+    this.focus = null;
+    this.travel(c.cx, r.z0 - 1.6, 0, -0.02);
   }
 
   goHall() {
@@ -387,8 +584,8 @@ class Gallery {
     const it = this.focus;
     this.focus = null;
     const s = viewSpot(it);
-    const d = Math.min(1.2, COR_W / 2 - 0.6 - Math.abs(s.x - this.plan.corridors[it.room].cx));
-    if (d > 0.2) this.nav.goTo(s.x - it.side * d, s.z, s.yaw, -0.02);
+    const x = s.x - it.side * 1.1;
+    if (canStand(this.plan, x, s.z)) this.nav.goTo(x, s.z, s.yaw, -0.02);
     this.hint(this.touch ? 'Вы снова в зале — коснитесь пола, чтобы идти дальше' : 'Вы снова в зале — идите дальше');
   }
 
@@ -481,19 +678,31 @@ class Gallery {
       this.world.update(nav);
       this.tex.update(this.world.paintings, cam);
       const room = nav.room;
+      const sub = subRoomAt(this.plan, nav.x, nav.z);
       let bay = null;
-      if (room >= 0) {
-        for (const b of this.plan.corridors[room].bays) {
-          if (nav.z <= b.z0 + 0.6 && nav.z >= b.z1 - 1.2) { bay = b; break; }
+      if (sub) {
+        // художник — тот, у чьих работ стоим, на своей стороне острова
+        const c = this.plan.corridors[room];
+        const a = nav.x < c.cx ? -1 : 1;
+        for (const b of sub.bays) {
+          if (b.aisle === a && nav.z <= b.z0 + 0.6 && nav.z >= b.z1 - 0.6) { bay = b; break; }
         }
       }
-      if (room !== this.room || bay !== this.bay) {
+      if (room !== this.room || bay !== this.bay || sub !== this.sub) {
         const changed = room !== this.room;
         this.room = room;
+        this.sub = sub;
         this.bay = bay;
         this.updateWhere();
         if (changed && this.bridge.onRoom) this.bridge.onRoom(room);
       }
+      if (this.focus && !nav.path) {
+        const sp = viewSpot(this.focus);
+        if (Math.hypot(sp.x - nav.x, sp.z - nav.z) > 2.5) this.focus = null;   // отошёл сам
+      }
+      if (!nav.path) this.syncHash();
+      const map = this.stage.querySelector('.artg-map');
+      if (!map.hidden && this.tick % 12 === 1) this.drawMap();
     }
 
     this.renderer.render(this.scene, cam);

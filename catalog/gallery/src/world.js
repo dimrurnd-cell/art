@@ -7,7 +7,9 @@
    Повторяющиеся детали (рамы, тени, споты) идут через InstancedMesh —
    по одному вызову отрисовки на коридор. */
 import * as THREE from 'three';
-import { ART_Y, COR_W, COR_H, ARCH_W, ARCH_H, WALL_T } from './layout.js';
+import {
+  ART_Y, COR_W, COR_H, ARCH_W, ARCH_H, WALL_T, SPINE_T, SPINE_H, DOOR_W, DOOR_H, aisleX,
+} from './layout.js';
 import {
   concrete, paint, softShadow, textCanvas, wrapText, spaced, canvasTexture, SANS,
 } from './materials.js';
@@ -22,6 +24,12 @@ const PLAQUE_FAR = 26;               // и удаляются дальше эт�
 const BANNER_NEAR = 40;
 const BANNER_FAR = 55;
 const TRACK = 1.55;                  // трек со спотами — на таком расстоянии от стены
+
+/* Фамилия (первое слово), у галерей — название в кавычках */
+function surname(name) {
+  const q = String(name).match(/[«"]([^»"]+)[»"]/);
+  return (q ? q[1] : String(name).split(/\s+/)[0]).replace(/[,.;:]+$/, '');
+}
 
 export function plural(n, one, few, many) {
   const m10 = n % 10, m100 = n % 100;
@@ -280,7 +288,7 @@ export class World {
     hm.rotation.set(-Math.PI / 2, 0, 0);
   }
 
-  /* ---------------- коридор раздела ---------------- */
+  /* ---------------- анфилада раздела ---------------- */
 
   buildCorridor(c) {
     const M = this.mat;
@@ -294,27 +302,29 @@ export class World {
     this.plane(L, H, this.wallMat(L, H), xl, H / 2, zMid, Math.PI / 2);
     this.plane(L, H, this.wallMat(L, H), xr, H / 2, zMid, -Math.PI / 2);
 
-    // торцевая стена с выходом обратно
+    // торцевая стена последнего зала — выход обратно по правому проходу
     this.plane(COR_W, H, this.wallMat(COR_W, H), c.cx, H / 2, c.zEnd, 0);
     const endCv = textCanvas(1024, 420, (g, w) => {
       g.textAlign = 'center';
       g.fillStyle = MUTED;
       g.font = '400 44px ' + SANS;
-      g.fillText('Раздел «' + (c.title || 'Экспозиция') + '» пройден', w / 2, 120);
+      g.fillText('Последний зал раздела «' + (c.title || 'Экспозиция') + '»', w / 2, 120);
+      g.fillText('Обратно к холлу — по правой стороне', w / 2, 190);
       g.fillStyle = ACCENT;
-      g.font = '500 64px ' + SANS;
-      g.fillText('Вернуться в холл  →', w / 2, 250);
-      g.fillRect(w / 2 - 300, 275, 600, 4);
+      g.font = '500 60px ' + SANS;
+      g.fillText('Сразу в холл  →', w / 2, 320);
+      g.fillRect(w / 2 - 230, 345, 460, 4);
     });
-    this.sign(endCv, 3.2, 1.31, c.cx, 1.9, c.zEnd + 0.01, 0, { type: 'hall' });
+    this.sign(endCv, 3.4, 1.39, c.cx, 2.1, c.zEnd + 0.01, 0, { type: 'hall' });
 
-    // теневой шов у пола, световые линии вдоль стен и треки со спотами
+    // теневой шов у пола и световые линии вдоль наружных стен
     [[xl, 1], [xr, -1]].forEach(([x, s]) => {
       this.box(0.01, 0.035, L, M.gap, x + s * 0.004, 0.0175, zMid);
       this.plane(0.12, L - 0.4, M.slot, x + s * 0.55, H - 0.005, zMid, 0, Math.PI / 2);
       this.plane(0.06, L - 0.4, M.light, x + s * 0.55, H - 0.008, zMid, 0, Math.PI / 2);
-      this.box(0.035, 0.035, L - 1, M.track, x + s * TRACK, H - 0.02, zMid);
     });
+
+    c.rooms.forEach((r, ri) => this.buildRoom(c, r, ri));
 
     const ws = c.works;
     const face = (it) => (it.side < 0 ? Math.PI / 2 : -Math.PI / 2);
@@ -346,6 +356,80 @@ export class World {
     });
 
     c.bays.forEach((b) => { b.room = c; this.bays.push(b); });
+  }
+
+  /* Зал анфилады: остров посередине, перегородка с двумя проёмами в конце,
+     треки со спотами над каждой из четырёх экспозиционных плоскостей,
+     номер зала и фамилии — над проёмами */
+  buildRoom(c, r, ri) {
+    const M = this.mat;
+    const H = COR_H;
+    const xl = c.cx - COR_W / 2, xr = c.cx + COR_W / 2;
+    const len = r.spine0 - r.spine1;
+    const zs = (r.spine0 + r.spine1) / 2;
+
+    // остров: белая стена не до потолка, с теневым швом у пола
+    this.box(SPINE_T, SPINE_H, len, this.wallMat(len, SPINE_H), c.cx, SPINE_H / 2, zs);
+    this.box(SPINE_T + 0.02, 0.035, len - 0.02, M.gap, c.cx, 0.0175, zs);
+
+    // треки: над наружными стенами и над обеими сторонами острова
+    const rl = r.z0 - r.z1 - 0.6;
+    const zr = (r.z0 + r.z1) / 2;
+    [xl + TRACK, c.cx - SPINE_T / 2 - TRACK, c.cx + SPINE_T / 2 + TRACK, xr - TRACK].forEach((x) => {
+      this.box(0.035, 0.035, rl, M.track, x, H - 0.02, zr);
+    });
+
+    // имена в зале для надписей
+    const names = r.bays.map((b) => surname(this.bridge.artists[b.gi].name));
+    const range = names.length ? (names.length > 1 ? names[0] + ' — ' + names[names.length - 1] : names[0]) : '';
+
+    // перегородка в конце зала: два проёма по осям проходов
+    if (ri < c.rooms.length - 1) {
+      const zw = r.z1 - WALL_T / 2;
+      const xa = aisleX(c, -1), xb = aisleX(c, 1);
+      const segs = [[xl, xa - DOOR_W / 2], [xa + DOOR_W / 2, xb - DOOR_W / 2], [xb + DOOR_W / 2, xr]];
+      segs.forEach(([a, b]) => this.box(b - a, H, WALL_T, this.wallMat(b - a, H), (a + b) / 2, H / 2, zw));
+      [xa, xb].forEach((x) => {
+        this.box(DOOR_W, H - DOOR_H, WALL_T, this.wallMat(DOOR_W, H - DOOR_H), x, DOOR_H + (H - DOOR_H) / 2, zw);
+        this.box(0.02, DOOR_H, WALL_T, M.reveal, x - DOOR_W / 2 + 0.01, DOOR_H / 2, zw);
+        this.box(0.02, DOOR_H, WALL_T, M.reveal, x + DOOR_W / 2 - 0.01, DOOR_H / 2, zw);
+        this.box(DOOR_W, 0.02, WALL_T, M.reveal, x, DOOR_H - 0.01, zw);
+      });
+      this.box(COR_W, 0.035, 0.01, M.gap, c.cx, 0.0175, zw + WALL_T / 2 + 0.004);
+      this.box(COR_W, 0.035, 0.01, M.gap, c.cx, 0.0175, zw - WALL_T / 2 - 0.004);
+
+      // из этого зала: «ЗАЛ n+1» над средним простенком, с той стороны — «ЗАЛ n»
+      const next = c.rooms[ri + 1];
+      const nextNames = next.bays.map((b) => surname(this.bridge.artists[b.gi].name));
+      const nextRange = nextNames.length > 1 ? nextNames[0] + ' — ' + nextNames[nextNames.length - 1] : (nextNames[0] || '');
+      const plate = (num, sub, arrow) => textCanvas(1024, 300, (g, w) => {
+        g.fillStyle = INK; g.textAlign = 'center';
+        g.font = '300 88px ' + SANS;
+        spaced(g, 'ЗАЛ ' + num, w / 2, 120, 16);
+        g.fillStyle = MUTED;
+        g.font = '400 38px ' + SANS;
+        let t = sub;
+        while (g.measureText(t).width > w - 60 && t.length > 4) t = t.slice(0, -2);
+        g.fillText(t, w / 2, 200);
+        if (arrow) { g.font = '400 40px ' + SANS; g.fillText(arrow, w / 2, 268); }
+      });
+      const mw = (xb - DOOR_W / 2) - (xa + DOOR_W / 2) - 0.6;
+      this.sign(plate(ri + 2, nextRange, '↑'), mw, mw * 300 / 1024, c.cx, 3.05, zw + WALL_T / 2 + 0.005, 0);
+      this.sign(plate(ri + 1, range, '↑'), mw, mw * 300 / 1024, c.cx, 3.05, zw - WALL_T / 2 - 0.005, Math.PI);
+    }
+
+    // номер зала на торце острова со стороны входа — виден из проёма
+    const tag = textCanvas(512, 512, (g, w) => {
+      g.fillStyle = INK; g.textAlign = 'center';
+      g.font = '200 220px ' + SANS;
+      g.fillText(String(ri + 1), w / 2, 250);
+      g.fillStyle = MUTED;
+      g.font = '400 40px ' + SANS;
+      spaced(g, 'ЗАЛ', w / 2, 330, 14);
+    });
+    this.sign(tag, 0.3, 0.3, c.cx, 2.2, r.spine0 + 0.004, 0);
+    this.sign(tag, 0.3, 0.3, c.cx, 2.2, r.spine1 - 0.004, Math.PI);
+    r.label = range;
   }
 
   /* ---------------- ленивые таблички ---------------- */
@@ -393,12 +477,13 @@ export class World {
     });
     const tex = canvasTexture(cv, this.aniso);
     const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, toneMapped: false });
-    const c = b.room;
     const zc = (b.z0 + b.z1) / 2;
     const h = len * 160 / 1024;
+    // над работами художника — и на наружной стене, и на острове напротив
+    const ai = b.aisle;
     return [
-      this.plane(len, h, mat, c.cx - COR_W / 2 + 0.006, 3.5, zc, Math.PI / 2),
-      this.plane(len, h, mat, c.cx + COR_W / 2 - 0.006, 3.5, zc, -Math.PI / 2),
+      this.plane(len, h, mat, b.xWall - ai * 0.006, 3.35, zc, ai < 0 ? Math.PI / 2 : -Math.PI / 2),
+      this.plane(len * 0.8, h * 0.8, mat, b.xSpine + ai * 0.006, 3.3, zc, ai < 0 ? -Math.PI / 2 : Math.PI / 2),
     ];
   }
 
@@ -423,7 +508,7 @@ export class World {
       else if (pl && d > PLAQUE_FAR) { this.removeMesh(pl); this.plaques.delete(it); }
     }
     for (const b of this.bays) {
-      const d = Math.abs((b.z0 + b.z1) / 2 - cz) + Math.abs(b.room.cx - cx);
+      const d = Math.abs((b.z0 + b.z1) / 2 - cz) + Math.abs(b.xWall - cx) * 0.5;
       const bn = this.banners.get(b);
       if (!bn && d < BANNER_NEAR) this.banners.set(b, this.banner(b));
       else if (bn && d > BANNER_FAR) {

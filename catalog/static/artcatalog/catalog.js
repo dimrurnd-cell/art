@@ -772,6 +772,16 @@
       '</div>';
 
     this.loadGL();   // скрипт грузим заранее, чтобы по нажатию войти сразу
+
+    // Пришли по ссылке на работу или зал (#artc-work=… / #artc-room=…) —
+    // входим сразу, без заставки, и прокручиваем страницу к галерее
+    if (/^#artc-(work|room)=/.test(location.hash)) {
+      this.loadGL(function (ok) {
+        if (!ok) { self.glFallback('script'); return; }
+        self.startGL();
+        try { host.scrollIntoView({ block: 'center' }); } catch (e) { host.scrollIntoView(); }
+      });
+    }
     host.querySelector('.artc-glposter__go').addEventListener('click', function () {
       this.disabled = true;
       this.textContent = 'Открываем…';

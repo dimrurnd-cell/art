@@ -1,7 +1,7 @@
 /* Перемещение зрителя: клавиши, колесо, перетаскивание, кнопки шага,
    автоматический подход к точке (к полотну, в арку, в холл).
    Столкновения — по плану из layout.js: камера скользит вдоль стен. */
-import { canStand, roomAt, COR_W } from './layout.js';
+import { canStand, roomAt, subRoomAt, inGap, aisleX, COR_W } from './layout.js';
 
 const SPEED = 3.3;       // шаг, м/с
 const RUN = 2.3;         // во сколько раз быстрее с Shift
@@ -39,34 +39,57 @@ export class Nav {
 
   cancel() { this.path = null; this.onArrive = null; }
 
-  /* Маршрут до точки: если она в другом помещении, идём через арки */
+  /* Маршрут до точки. Между помещениями — через проёмы: из холла в раздел
+     по оси проёма, внутри раздела — по оси прохода (там проёмы в
+     перегородках), на другую сторону острова — у его торца. */
   goTo(x, z, yaw, pitch, onArrive) {
+    const plan = this.plan;
     const pts = [];
     const from = this.room;
-    const to = roomAt(this.plan, x, z);
-    const hz = this.plan.hall.z0;
-    if (from !== to) {
-      if (from >= 0) {
-        const c = this.plan.corridors[from];
-        pts.push({ x: c.cx, z: Math.max(this.z, c.zStart - 2.2), fast: true });
-        pts.push({ x: c.cx, z: hz + 1.6, fast: true });
-      }
-      if (to >= 0) {
-        const c = this.plan.corridors[to];
-        pts.push({ x: c.cx, z: hz + 1.6, fast: true });
-        pts.push({ x: c.cx, z: hz - 2.2, fast: true });
-      }
-    } else if (from >= 0) {
-      // в коридоре идём по оси, а не наискосок сквозь зрителей у стен
-      const c = this.plan.corridors[from];
-      if (Math.abs(z - this.z) > 6) {
-        pts.push({ x: c.cx + Math.max(-1, Math.min(1, this.x - c.cx)), z: this.z, fast: true });
-        pts.push({ x: c.cx, z: z + Math.sign(this.z - z) * 2.5, fast: true });
-      }
+    const to = roomAt(plan, x, z);
+    const hz = plan.hall.z0;
+    let px = this.x, pz = this.z;
+
+    if (from >= 0 && from !== to) {
+      // выйти из раздела к проёму в холл
+      const c = plan.corridors[from];
+      this.aislePath(pts, c, px, pz, c.cx, c.rooms[0].z0 - 1.6);
+      pts.push({ x: c.cx, z: c.rooms[0].z0 - 1.6, fast: true });
+      pts.push({ x: c.cx, z: hz + 1.6, fast: true });
+      px = c.cx; pz = hz + 1.6;
     }
+    if (to >= 0 && from !== to) {
+      const c = plan.corridors[to];
+      pts.push({ x: c.cx, z: hz + 1.6, fast: true });
+      pts.push({ x: c.cx, z: hz - 1.8, fast: true });
+      px = c.cx; pz = hz - 1.8;
+    }
+    if (to >= 0) this.aislePath(pts, plan.corridors[to], px, pz, x, z);
+
     pts.push({ x, z, yaw, pitch: pitch == null ? -0.02 : pitch });
     this.path = pts;
     this.onArrive = onArrive || null;
+  }
+
+  /* Точки пути внутри раздела от (px, pz) до (x, z), без самой цели */
+  aislePath(pts, c, px, pz, x, z) {
+    const plan = this.plan;
+    const rp = subRoomAt(plan, px, pz), rt = subRoomAt(plan, x, z);
+    const side = (vx) => (vx < c.cx ? -1 : 1);
+    const gp = inGap(plan, px, pz), gt = inGap(plan, x, z);
+    // рядом и в одном зале, на одной стороне или у торца — напрямую
+    if (rp === rt && Math.abs(z - pz) < 5 && (gp || gt || side(px) === side(x))) return;
+    const ap = gp ? side(x) : side(px);
+    const at = gt ? ap : side(x);
+    const xa = aisleX(c, ap), xt = aisleX(c, at);
+    pts.push({ x: xa, z: pz, fast: true });
+    if (ap !== at) {
+      // перейти на другую сторону у торца острова в зале цели
+      const zg = Math.abs(rt.spine0 - z) < Math.abs(rt.spine1 - z) ? (rt.spine0 + rt.z0) / 2 : (rt.spine1 + rt.z1) / 2;
+      pts.push({ x: xa, z: zg, fast: true });
+      pts.push({ x: xt, z: zg, fast: true });
+    }
+    pts.push({ x: xt, z, fast: true });
   }
 
   update(dt) {
