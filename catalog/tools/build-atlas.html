@@ -30,8 +30,10 @@
   <p>Укажите адрес папки каталога — локальной или на сервере (нужен CORS, как для
     самой галереи). Страница прочитает <code>artists.json</code>, скачает превью
     <code>workN-400</code> и отдаст файлы <code>atlas.json</code> и
-    <code>img/atlas/atlas-N.webp</code>: их нужно положить в ту же папку каталога.
-    Пересобирать после каждого изменения состава работ.</p>
+    <code>img/atlas/atlas-N-xxxxxxxx.webp</code>: их нужно положить в ту же папку
+    каталога. Пересобирать после каждого изменения состава работ. Старые страницы
+    атласа из <code>img/atlas/</code> после заливки новых можно удалить: у новых
+    другие имена, поэтому долгий кеш картинок на сервере не мешает.</p>
 
   <label for="base">Папка каталога</label>
   <input id="base" value="../static/artcatalog/">
@@ -72,6 +74,13 @@ function blobOf(canvas) {
       else canvas.toBlob(resolve, 'image/jpeg', 0.86);   // Safari не пишет webp
     }, 'image/webp', 0.84);
   });
+}
+
+/* Короткий отпечаток файла (FNV-1a, 8 шестнадцатеричных знаков) */
+function fnv(bytes) {
+  var h = 0x811c9dc5;
+  for (var i = 0; i < bytes.length; i++) { h ^= bytes[i]; h = Math.imul(h, 0x01000193); }
+  return ('0000000' + (h >>> 0).toString(16)).slice(-8);
 }
 
 /* Главная функция; её же вызывает автотест. log — куда писать ход работы. */
@@ -119,11 +128,14 @@ async function buildAtlas(base, log) {
   }
   if (canvas) pages.push(canvas);
 
+  // В имени страницы — отпечаток содержимого: на сервере картинки могут
+  // кешироваться надолго, и пересобранный атлас должен получить новые имена
   var files = [];
   for (var n = 0; n < pages.length; n++) {
     var blob = await blobOf(pages[n]);
     var ext = blob.type === 'image/webp' ? 'webp' : 'jpg';
-    files.push({ name: 'img/atlas/atlas-' + n + '.' + ext, blob: blob, canvas: pages[n] });
+    var tag = fnv(new Uint8Array(await blob.arrayBuffer()));
+    files.push({ name: 'img/atlas/atlas-' + n + '-' + tag + '.' + ext, blob: blob, canvas: pages[n] });
   }
   var json = {
     v: 1, size: SIZE, cell: CELL,
@@ -155,7 +167,7 @@ document.getElementById('go').addEventListener('click', async function () {
       im.src = URL.createObjectURL(f.blob);
       pv.appendChild(im);
     });
-    log('\natlas.json кладётся в корень папки каталога, atlas-N.* — в img/atlas/.');
+    log('\natlas.json кладётся в корень папки каталога, atlas-N-*.webp — в img/atlas/.');
   } catch (e) {
     log('Ошибка: ' + e.message + '\nПроверьте адрес папки и CORS на сервере.');
   }
