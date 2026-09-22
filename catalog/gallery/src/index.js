@@ -69,7 +69,8 @@ class Gallery {
           '<button type="button" class="artg-step" data-step="-1" aria-label="Шаг назад">' +
             '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 19l7-9H5z" fill="currentColor"/></svg></button>' +
         '</div>' +
-        '<div class="artg-fade"></div>' +
+        '<div class="artg-load"><i></i></div>' +
+        '<div class="artg-fade is-on"></div>' +
       '</div>';
     this.stage = host.querySelector('.artg-stage');
     this.canvas = host.querySelector('.artg-canvas');
@@ -106,6 +107,27 @@ class Gallery {
     this.visible = true;
     this.frames = [];
     this.tick = 0;
+
+    // атлас превью: пока он грузится, над сценой тонкая полоса прогресса
+    // Сцена проявляется, когда атлас готов (или через 5 с, если сеть медленная):
+    // так зритель не видит ни одной пустой рамы даже в первые секунды.
+    const bar = this.stage.querySelector('.artg-load');
+    const reveal = () => {
+      if (this.revealed) return;
+      this.revealed = true;
+      this.tex.resetStats();
+      this.stage.querySelector('.artg-fade').classList.remove('is-on');
+    };
+    this.revealT = setTimeout(reveal, 5000);
+    this.tex.loadAtlas(this.world.paintings, (n, total) => {
+      bar.firstChild.style.width = (total ? n / total * 100 : 100) + '%';
+      if (n >= total) {
+        clearTimeout(this.revealT);
+        // дать кадру отрисоваться с атласом, потом снять завесу
+        setTimeout(reveal, 120);
+        setTimeout(() => bar.classList.add('is-done'), 300);
+      }
+    });
 
     this.bindUi();
     this.bindInput();
@@ -457,7 +479,7 @@ class Gallery {
 
     if (this.tick++ % 6 === 0) {
       this.world.update(nav);
-      this.tex.update(this.world.paintings);
+      this.tex.update(this.world.paintings, cam);
       const room = nav.room;
       let bay = null;
       if (room >= 0) {
@@ -488,6 +510,7 @@ class Gallery {
     document.removeEventListener('webkitfullscreenchange', this.fsHandler);
     if (this.ro) this.ro.disconnect();
     if (this.io) this.io.disconnect();
+    clearTimeout(this.revealT);
     if (this.fsFake) this.fakeFs(false);
     if (this.renderer) this.renderer.dispose();
   }
@@ -498,7 +521,7 @@ window.ArtGallery = {
   supported() {
     try {
       const c = document.createElement('canvas');
-      return !!(c.getContext('webgl2') || c.getContext('webgl'));
+      return !!c.getContext('webgl2');     // three.js r163+ работает только на WebGL2
     } catch (e) { return false; }
   },
   create(host, bridge) {

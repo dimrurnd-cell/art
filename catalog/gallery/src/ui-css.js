@@ -38,6 +38,9 @@ export const CSS = `
   color:#2a2a2a;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.1);
   touch-action:none}
 .artg-step:active{background:#2a2a2a;color:#fff}
+.artg-load{position:absolute;left:0;right:0;top:0;height:3px;background:rgba(0,0,0,.06);transition:opacity .5s}
+.artg-load i{display:block;height:100%;width:0;background:#2a2a2a;transition:width .3s}
+.artg-load.is-done{opacity:0}
 .artg-fade{position:absolute;inset:0;background:#ecebe8;opacity:0;pointer-events:none;transition:opacity .3s}
 .artg-fade.is-on{opacity:1}
 .artg-stage.is-fs{max-width:none;height:100%;border-radius:0}

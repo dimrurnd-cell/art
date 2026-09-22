@@ -751,8 +751,7 @@
         this.base.indexOf(location.origin) !== 0) return false;
     if (window.ArtGallery) return window.ArtGallery.supported();
     try {
-      var c = document.createElement('canvas');
-      return !!(c.getContext('webgl2') || c.getContext('webgl'));
+      return !!document.createElement('canvas').getContext('webgl2');   // three.js требует WebGL2
     } catch (e) { return false; }
   };
 

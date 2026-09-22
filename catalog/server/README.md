@@ -20,9 +20,11 @@
 ├── catalog.css
 ├── hall.css
 ├── artists.json
+├── atlas.json         ← атлас превью 3D-галереи (tools/build-atlas.html)
 ├── fonts/parangon.woff2
 └── img/
     ├── logo.webp, logo.png
+    ├── atlas/       atlas-0.webp, atlas-1.webp … — мелкие копии всех работ
     ├── volvich/     avatar.*, work1-400.*, work1-800.*, work1-1600.* …
     ├── dzhakhaeva/  …
     ├── zhegulova/   …
@@ -31,6 +33,13 @@
 ```
 
 Всего 139 файлов, ~16 МБ (133 из них бинарные). Права: файлы 644, папки 755.
+
+**Атлас превью для 3D-галереи.** После заливки картинок откройте в браузере
+`tools/build-atlas.html` из репозитория, укажите адрес
+`https://donexpocentre.ru/static/artcatalog/`, нажмите «Собрать атлас» и
+залейте скачанные файлы: `atlas.json` — в корень папки каталога,
+`atlas-N.webp` — в `img/atlas/`. Повторять при каждом изменении состава работ.
+Без атласа галерея работает, но дальние работы до подгрузки видны пустыми.
 
 ### Бинарный режим в WinSCP
 
@@ -78,13 +87,13 @@ ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 
 | Файл | Байт |
 |---|---|
-| `catalog.js` | 136 655 |
+| `catalog.js` | 136 647 |
 | `catalog.css` | 22 321 |
 | `hall.css` | 49 755 |
 | `artists.json` | 329 957 |
 | `artists.js` | 261 991 |
 | `catalog-standalone.css` | 99 444 |
-| `gallery.js` | 529 516 |
+| `gallery.js` | 530 553 |
 | `fonts/parangon.woff2` | 20 328 |
 | `img/logo.webp` | 31 726 |
 

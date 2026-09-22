@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Атлас превью для 3D-галереи</title>
+<style>
+  :root { --ink: #2a2a2a; --muted: #6f6f6b; --line: #dcdbd7; --bg: #f4f4f2; --accent: #d4574f; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 "Inter", "Helvetica Neue", Arial, sans-serif; }
+  main { max-width: 820px; margin: 0 auto; padding: 32px 16px 60px; }
+  h1 { font-weight: 300; letter-spacing: .08em; text-transform: uppercase; font-size: 24px; margin: 0 0 8px; }
+  p { color: var(--muted); margin: 0 0 14px; }
+  code { background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+  label { display: block; font-weight: 500; margin: 18px 0 6px; }
+  input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 15px; background: #fff; }
+  button { margin-top: 14px; padding: 12px 22px; border: 0; border-radius: 999px; background: var(--ink); color: #fff; font-size: 15px; cursor: pointer; }
+  button[disabled] { opacity: .6; cursor: progress; }
+  #log { margin-top: 18px; white-space: pre-wrap; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-height: 60px; font: 13px/1.45 ui-monospace, Menlo, monospace; }
+  #out a { display: inline-block; margin: 10px 12px 0 0; color: var(--accent); }
+  #pages img { max-width: 100%; margin-top: 12px; border: 1px solid var(--line); background: #fff; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Атлас превью</h1>
+  <p>Собирает мелкие копии всех работ в несколько больших картинок. 3D-галерея
+    грузит их сразу при входе, поэтому любая работа видна с любого расстояния —
+    пустых рам не бывает, пока подгружается крупная версия.</p>
+  <p>Укажите адрес папки каталога — локальной или на сервере (нужен CORS, как для
+    самой галереи). Страница прочитает <code>artists.json</code>, скачает превью
+    <code>workN-400</code> и отдаст файлы <code>atlas.json</code> и
+    <code>img/atlas/atlas-N.webp</code>: их нужно положить в ту же папку каталога.
+    Пересобирать после каждого изменения состава работ.</p>
+
+  <label for="base">Папка каталога</label>
+  <input id="base" value="../static/artcatalog/">
+  <button id="go" type="button">Собрать атлас</button>
+  <div id="log"></div>
+  <div id="out"></div>
+  <div id="pages"></div>
+</main>
+<script>
+/* Раскладка: страница SIZE×SIZE, ячейка CELL. Работа вписывается в ячейку
+   с полями PAD; под ней в ячейке растянута она же — поля заполнены её
+   краевыми цветами, и на мелких mip-уровнях соседние работы не
+   просвечивают друг в друга. */
+var SIZE = 2048, CELL = 96, PAD = 4;
+var PER_ROW = Math.floor(SIZE / CELL), PER_PAGE = PER_ROW * PER_ROW;
+
+function loadImage(url) {
+  return new Promise(function (resolve, reject) {
+    var img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function () { resolve(img); };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+function loadThumb(url) {
+  return loadImage(url).catch(function () {
+    if (!/\.webp(\?|$)/.test(url)) throw new Error('нет файла');
+    return loadImage(url.replace(/\.webp(\?|$)/, '.jpg$1'));
+  });
+}
+
+function blobOf(canvas) {
+  return new Promise(function (resolve) {
+    canvas.toBlob(function (b) {
+      if (b && b.type === 'image/webp') resolve(b);
+      else canvas.toBlob(resolve, 'image/jpeg', 0.86);   // Safari не пишет webp
+    }, 'image/webp', 0.84);
+  });
+}
+
+/* Главная функция; её же вызывает автотест. log — куда писать ход работы. */
+async function buildAtlas(base, log) {
+  base = base.replace(/\/?$/, '/');
+  var abs = function (p) { return /^(https?:)?\/\//.test(p) ? p : base + p; };
+  var data = await (await fetch(base + 'artists.json', { cache: 'no-store' })).json();
+  var works = [];
+  (data.artists || []).forEach(function (a) {
+    (a.works || []).forEach(function (w) { if (w.thumb) works.push(w.thumb); });
+  });
+  var uniq = works.filter(function (p, i) { return works.indexOf(p) === i; });
+  log('Работ: ' + uniq.length + ', страниц атласа: ' + Math.ceil(uniq.length / PER_PAGE));
+
+  var pages = [], items = {}, missing = [];
+  var canvas = null, ctx = null, slot = 0;
+  var QUEUE = 8;
+  for (var i = 0; i < uniq.length; i += QUEUE) {
+    var batch = uniq.slice(i, i + QUEUE);
+    var imgs = await Promise.all(batch.map(function (p) { return loadThumb(abs(p)).catch(function () { return null; }); }));
+    for (var k = 0; k < batch.length; k++) {
+      var img = imgs[k];
+      if (!img) { missing.push(batch[k]); continue; }
+      if (!canvas || slot >= PER_PAGE) {
+        if (canvas) pages.push(canvas);
+        canvas = document.createElement('canvas');
+        canvas.width = canvas.height = SIZE;
+        ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#e2e0db';
+        ctx.fillRect(0, 0, SIZE, SIZE);
+        ctx.imageSmoothingQuality = 'high';
+        slot = 0;
+      }
+      var cx = (slot % PER_ROW) * CELL, cy = Math.floor(slot / PER_ROW) * CELL;
+      var iw = img.naturalWidth, ih = img.naturalHeight;
+      var k2 = Math.min((CELL - PAD * 2) / iw, (CELL - PAD * 2) / ih);
+      var w = Math.max(1, Math.round(iw * k2)), h = Math.max(1, Math.round(ih * k2));
+      var x = cx + Math.round((CELL - w) / 2), y = cy + Math.round((CELL - h) / 2);
+      ctx.drawImage(img, cx, cy, CELL, CELL);        // поля краевыми цветами
+      ctx.drawImage(img, x, y, w, h);
+      items[batch[k]] = [pages.length, x, y, w, h];
+      slot++;
+    }
+    log('… ' + Math.min(i + QUEUE, uniq.length) + ' / ' + uniq.length);
+  }
+  if (canvas) pages.push(canvas);
+
+  var files = [];
+  for (var n = 0; n < pages.length; n++) {
+    var blob = await blobOf(pages[n]);
+    var ext = blob.type === 'image/webp' ? 'webp' : 'jpg';
+    files.push({ name: 'img/atlas/atlas-' + n + '.' + ext, blob: blob, canvas: pages[n] });
+  }
+  var json = {
+    v: 1, size: SIZE, cell: CELL,
+    pages: files.map(function (f) { return f.name; }),
+    items: items,
+  };
+  if (missing.length) log('Без превью (файла нет): ' + missing.length + '\n  ' + missing.slice(0, 12).join('\n  ') + (missing.length > 12 ? '\n  …' : ''));
+  log('Готово: ' + Object.keys(items).length + ' работ в ' + files.length + ' стр.');
+  return { json: json, files: files, missing: missing };
+}
+
+document.getElementById('go').addEventListener('click', async function () {
+  var btn = this, logEl = document.getElementById('log'), out = document.getElementById('out'), pv = document.getElementById('pages');
+  btn.disabled = true; logEl.textContent = ''; out.innerHTML = ''; pv.innerHTML = '';
+  var log = function (t) { logEl.textContent += t + '\n'; };
+  try {
+    var r = await buildAtlas(document.getElementById('base').value.trim(), log);
+    var link = function (name, blob) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name.split('/').pop();
+      a.textContent = 'Скачать ' + name;
+      out.appendChild(a);
+    };
+    link('atlas.json', new Blob([JSON.stringify(r.json)], { type: 'application/json' }));
+    r.files.forEach(function (f) {
+      link(f.name, f.blob);
+      var im = document.createElement('img');
+      im.src = URL.createObjectURL(f.blob);
+      pv.appendChild(im);
+    });
+    log('\natlas.json кладётся в корень папки каталога, atlas-N.* — в img/atlas/.');
+  } catch (e) {
+    log('Ошибка: ' + e.message + '\nПроверьте адрес папки и CORS на сервере.');
+  }
+  btn.disabled = false;
+});
+</script>
+</body>
+</html>
