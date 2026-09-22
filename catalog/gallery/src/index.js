@@ -24,6 +24,7 @@ import { Quality, NAMES } from './quality.js';
 import { Tour } from './tour.js';
 import { Spots } from './lights.js';
 import { Probe } from './probe.js';
+import { Atmosphere } from './atmosphere.js';
 import { CSS } from './ui-css.js';
 
 const VERSION = '1';
@@ -131,6 +132,7 @@ class Gallery {
     renderer.shadowMap.enabled = !this.small;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.spots = new Spots(this.scene, this.small);
+    this.atmo = new Atmosphere(this.scene, this.spots, this.small);
     this.probe = new Probe(renderer, this.scene, this.small);
     this.world.reflectMats().forEach((m) => this.probe.patch(m));
     this.probeKey = '';
@@ -810,6 +812,7 @@ class Gallery {
     }
 
     this.spots.update(dt);
+    this.atmo.update(cam, this.pr, this.stage.clientHeight);
     this.updateVisibility();
     this.updateProbe();
     this.quality.render();
@@ -853,7 +856,10 @@ class Gallery {
       [spot.room.idx - 1, spot.room.idx, spot.room.idx + 1].forEach((i) => { if (all[i]) rooms.add(all[i]); });
     } else this.plan.corridors.forEach((c) => rooms.add(c.rooms[0]));
     this.world.setVisible(!spot.room || spot.room.idx === 0, rooms, null, this.camera);
+    const atmoOn = this.atmo.on;
+    this.atmo.setEnabled(false);                 // лучи и пыль в отражениях не нужны
     this.probe.capture(spot, spot.pos);
+    this.atmo.setEnabled(atmoOn);
     this.probeKey = spot.key;
     this.updateVisibility();
   }

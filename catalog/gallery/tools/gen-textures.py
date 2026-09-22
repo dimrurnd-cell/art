@@ -115,14 +115,14 @@ def microcement():
     pores = (pores > 3.9).astype(np.float64)
     specks = (spectral(n, 0.5, lo=300) > 3.7).astype(np.float64)
 
-    h = clouds * 0.25 + mid * 0.35 + strokes * 0.18 - pores * 2.5
+    h = clouds * 0.25 + mid * 0.2 + strokes * 0.12 - pores * 2.0
     gray = norm01(clouds * 0.55 + mid * 0.25 + strokes * 0.12)
-    color = tint(gray, (0.74, 0.74, 0.725), 0.05)
+    color = tint(gray, (0.74, 0.74, 0.725), 0.028)
     color *= (1 - specks * 0.12)[..., None]
     color *= (1 - pores * 0.2)[..., None]
     polish = norm01(spectral(n, 3.5, hi=18))
-    rough = 0.30 + polish * 0.28 + norm01(strokes) * 0.08 + pores * 0.3
-    save('floor', color, normal_map(h, 1.1), rough, 0.0, cavity(h))
+    rough = 0.34 + polish * 0.12 + norm01(strokes) * 0.04 + pores * 0.3
+    save('floor', color, normal_map(h, 1.1), rough, 0.0, cavity(h) * 0.25 + 0.75)   # впадины на полированном полу почти не темнеют
 
 
 def plaster(name, rgb, strength, rough_base):

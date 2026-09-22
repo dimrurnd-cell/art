@@ -147,7 +147,9 @@ export class World {
       frame: new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.42, metalness: 0 }),
       gap: batch(new THREE.MeshBasicMaterial({ color: 0x9a9995 })),
       reveal: batch(new THREE.MeshStandardMaterial({ color: 0xe6e5e2, roughness: 0.8, metalness: 0 })),
-      light: batch(new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false })),
+      // светящиеся поверхности ярче белого: в постобработке они дают свечение
+      light: batch(new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 2.9, 2.75), fog: false })),
+      lens: new THREE.MeshBasicMaterial({ color: new THREE.Color(9, 8.2, 7.2), fog: false }),
       slot: batch(new THREE.MeshBasicMaterial({ color: 0xd9d8d4 })),
       track: batch(this.pbr.material('metal'), { tile: 0.6 }),
       shadow: new THREE.MeshBasicMaterial({
@@ -572,11 +574,16 @@ export class World {
       frames.castShadow = true;                     // тень рамы на стене от спота
       this.add(frames);
       // споты: корпус на треке, наклонён к работе
-      this.add(instanced(this.geo('spot'), M.track, ws, (it, p, e, s) => {
+      const spotAt = (it, p, e, s) => {
         p.set(it.x - it.side * TRACK, H - 0.15, it.z);
         e.set(0, 0, it.side * 0.62);
         s.set(1, 1, 1);
-      }));
+      };
+      const bodies = instanced(this.geo('spot'), M.track, ws, spotAt);
+      bodies.castShadow = true;
+      this.add(bodies);
+      // линза на торце корпуса — светится
+      this.add(instanced(this.geo('lens'), M.lens, ws, spotAt));
     }
 
     // сами полотна
@@ -605,7 +612,9 @@ export class World {
     this.geos = this.geos || {
       plane: new THREE.PlaneGeometry(1, 1),
       box: new THREE.BoxGeometry(1, 1, 1),
-      spot: new THREE.CylinderGeometry(0.045, 0.055, 0.2, 10),
+      spot: new THREE.CylinderGeometry(0.045, 0.055, 0.2, 16),
+      // диск линзы на нижнем торце корпуса (корпус — вдоль Y, длина 0.2)
+      lens: new THREE.CircleGeometry(0.042, 16).rotateX(Math.PI / 2).translate(0, -0.101, 0),
     };
     return this.geos[kind];
   }

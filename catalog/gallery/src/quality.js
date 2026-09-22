@@ -16,6 +16,27 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+
+/* Последний штрих кадра, как у камеры: мягкая виньетка и едва заметное
+   зерно (движется каждый кадр — картинка «живая», без цифровой гладкости) */
+const FilmShader = {
+  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, grain: { value: 0.035 }, vignette: { value: 0.28 } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `
+    uniform sampler2D tDiffuse; uniform float time; uniform float grain; uniform float vignette; varying vec2 vUv;
+    float rnd(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + time * 7.13) * 43758.5453); }
+    void main(){
+      vec4 c = texture2D(tDiffuse, vUv);
+      vec2 d = vUv - 0.5;
+      c.rgb *= 1.0 - vignette * smoothstep(0.25, 0.85, dot(d, d) * 2.2);
+      float n = rnd(vUv * 1024.0) - 0.5;
+      float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+      c.rgb += n * grain * (1.0 - l * 0.6);          // в тенях зерно заметнее, как у плёнки
+      gl_FragColor = c;
+    }`,
+};
 
 export const LEVELS = ['low', 'medium', 'high'];
 export const NAMES = { auto: 'Авто', high: 'Высокое', medium: 'Среднее', low: 'Низкое' };
@@ -54,6 +75,7 @@ export class Quality {
     if (level === 'high') this.makeComposer(); else this.dropComposer();
     g.world.setDetail(level);
     if (g.spots) g.spots.setShadows(level === 'high');
+    if (g.atmo) g.atmo.setEnabled(level !== 'low');
     g.tex.setQuality(level);
     g.resize();
     if (this.onChange) this.onChange();
@@ -71,8 +93,16 @@ export class Quality {
     ao.updateGtaoMaterial({ radius: 0.45, distanceExponent: 1.5, thickness: 1, scale: 1, samples: 12 });
     ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
     ao.blendIntensity = 0.55;
+    // лучи спотов прозрачны: в проход нормалей GTAO их пускать нельзя
+    const hide = ao.overrideVisibility.bind(ao);
+    ao.overrideVisibility = () => { hide(); g.scene.traverse((o) => { if (o.userData.noAO) o.visible = false; }); };
     c.addPass(ao);
+    // свечение: только то, что ярче белого, — линзы спотов, световые линии и панели
+    const bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.45, 0.45, 2.2);
+    c.addPass(bloom);
     c.addPass(new OutputPass());
+    this.film = new ShaderPass(FilmShader);
+    c.addPass(this.film);
     this.composer = c;
     this.ao = ao;
   }
@@ -93,7 +123,10 @@ export class Quality {
 
   render() {
     const g = this.g;
-    if (this.composer) this.composer.render();
+    if (this.composer) {
+      if (this.film) this.film.uniforms.time.value = (performance.now() / 1000) % 100;
+      this.composer.render();
+    }
     else g.renderer.render(g.scene, g.camera);
   }
 
