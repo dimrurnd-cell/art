@@ -40,6 +40,14 @@ export const CSS = `
 .artg-map__list button.is-here{background:#2a2a2a;color:#fff}
 .artg-map__list button.is-here i{color:#cfcfcb}
 .artg-map__list i{display:block;font-style:normal;font-size:12px;color:#8c8c88;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.artg-qpanel{position:absolute;right:14px;top:60px;width:230px;padding:10px;background:rgba(255,255,255,.97);border-radius:14px;
+  box-shadow:0 10px 40px rgba(0,0,0,.14);display:flex;flex-direction:column;gap:2px}
+.artg-qpanel[hidden]{display:none}
+.artg-qpanel p{margin:2px 8px 6px;font:12px/1 "Helvetica Neue",Arial,sans-serif;text-transform:uppercase;letter-spacing:.08em;color:#8c8c88}
+.artg-qpanel button{border:0;background:none;text-align:left;padding:8px 10px;border-radius:8px;font-size:14px;color:#2a2a2a;cursor:pointer}
+.artg-qpanel button:hover,.artg-qpanel button:focus-visible{background:#f0efec;outline:none}
+.artg-qpanel button.is-on{background:#2a2a2a;color:#fff}
+.artg-qpanel small{margin:6px 8px 2px;font-size:12px;line-height:1.35;color:#8c8c88}
 .artg-hint{position:absolute;left:50%;bottom:86px;transform:translate(-50%,10px);max-width:min(560px,86%);
   padding:10px 16px;border-radius:12px;background:rgba(42,42,42,.82);color:#fff;font-size:14px;line-height:1.35;
   text-align:center;opacity:0;transition:opacity .35s,transform .35s;pointer-events:none}

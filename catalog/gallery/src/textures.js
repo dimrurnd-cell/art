@@ -43,6 +43,12 @@ export class TextureManager {
     this.stats = { ticks: 0, blankTicks: 0, blankMax: 0, loads: 0, evictions: 0, downgrades: 0 };
   }
 
+  /* Низкое качество: крупные картинки ближе, как на телефоне */
+  setQuality(level) {
+    const low = level === 'low' || this.small;
+    this.near = low ? [0, 7, 32] : [3.2, 10, 45];
+  }
+
   levelFor(d) {
     const [n3, n2, n1] = this.near;
     if (d < n3) return 3;

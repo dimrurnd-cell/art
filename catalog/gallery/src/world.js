@@ -21,7 +21,7 @@ import {
   ART_Y, COR_W, COR_H, ARCH_W, ARCH_H, WALL_T, SPINE_T, SPINE_H, DOOR_W, DOOR_H, aisleX,
 } from './layout.js';
 import {
-  concrete, paint, softShadow, textCanvas, wrapText, spaced, canvasTexture, SANS,
+  concrete, paint, softShadow, aoGradient, plantTexture, textCanvas, wrapText, spaced, canvasTexture, SANS,
 } from './materials.js';
 
 export const HAZE = 0xecebe8;        // цвет дымки и фона
@@ -144,6 +144,13 @@ export class World {
       shadow: new THREE.MeshBasicMaterial({
         alphaMap: softShadow(), color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false,
       }),
+      // мягкая тень у стыков: чёрный с прозрачностью по градиенту
+      ao: batch(new THREE.MeshBasicMaterial({
+        color: 0x000000, alphaMap: aoGradient(), transparent: true, opacity: 0.2,
+        depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2,
+      })),
+      pot: batch(new THREE.MeshStandardMaterial({ color: 0xd8d6d1, roughness: 0.85 })),
+      soil: batch(new THREE.MeshLambertMaterial({ color: 0x3b3129 })),
       white: batch(new THREE.MeshLambertMaterial({ color: 0xfafaf8 })),
       oak: batch(new THREE.MeshLambertMaterial({ color: 0xcbb99d })),
       grey: batch(new THREE.MeshLambertMaterial({ color: 0xbdbcb8 })),
@@ -189,6 +196,15 @@ export class World {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
     m.position.set(x, y, z);
     m.rotation.set(rx, ry, 0, 'YXZ');
+    this.add(m);
+    return m;
+  }
+
+  cyl(rt, rb, h, seg, mat, x, y, z) {
+    const g = new THREE.CylinderGeometry(rt, rb, h, seg);
+    g.translate(x, y, z);
+    if (this.batch && mat.userData.batch) { this.push(mat, g); return null; }
+    const m = new THREE.Mesh(g, mat);
     this.add(m);
     return m;
   }
@@ -285,6 +301,31 @@ export class World {
       if (a - x > 0.01) this.blocker(this.box(a - x, H, WALL_T, this.wallMat(a - x, H), (x + a) / 2, H / 2, zN));
       if (b > a) this.box(b - a, H - ARCH_H, WALL_T, this.wallMat(b - a, H - ARCH_H), (a + b) / 2, ARCH_H + (H - ARCH_H) / 2, zN);
       x = b;
+    });
+
+    // мягкие тени у стыков холла; у северной стены — между проёмами
+    this.aoWallX(hall.x0, hall.z1, hall.z0, 1, H);
+    this.aoWallX(hall.x1, hall.z1, hall.z0, -1, H);
+    this.aoWallZ(hall.z1, hall.x0, hall.x1, -1, H);
+    let ax = hall.x0;
+    corridors.map((c) => [c.cx - ARCH_W / 2, c.cx + ARCH_W / 2]).concat([[hall.x1, hall.x1]]).forEach(([a, b]) => {
+      if (a > ax) this.aoWallZ(hall.z0 + WALL_T / 2, ax, a, 1, H);
+      ax = b;
+    });
+
+    // кадки с растениями по углам у северной стены
+    const plant = new THREE.MeshLambertMaterial({ map: plantTexture(), alphaTest: 0.5, side: THREE.DoubleSide });
+    [[hall.x0 + 1.3, hall.z0 + 1.3], [hall.x1 - 1.3, hall.z0 + 1.3]].forEach(([px, pz]) => {
+      this.cyl(0.36, 0.3, 0.72, 28, M.pot, px, 0.36, pz);
+      this.cyl(0.33, 0.33, 0.02, 28, M.soil, px, 0.7, pz);
+      this.plane(1.3, 1.3, M.shadow, px, 0.004, pz, 0, -Math.PI / 2);                 // тень под кадкой
+      for (let k = 0; k < 3; k++) {
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 2.55), plant);
+        m.position.set(px, 0.7 + 1.25, pz);
+        m.rotation.y = k * Math.PI / 3;
+        this.add(m);
+      }
+      this.plan.block.push({ x0: px - 0.8, x1: px + 0.8, z0: pz - 0.8, z1: pz + 0.8 });
     });
 
     // теневой шов у пола вместо плинтуса
@@ -436,12 +477,18 @@ export class World {
 
     // теневой шов у пола и световые линии вдоль наружных стен
     [[xl, 1], [xr, -1]].forEach(([x, s]) => {
+      this.aoWallX(x, z0, z1, s, H);
       this.box(0.01, 0.035, L, M.gap, x + s * 0.004, 0.0175, zMid);
       this.plane(0.12, L, M.slot, x + s * 0.55, H - 0.005, zMid, 0, Math.PI / 2);
       this.plane(0.06, L, M.light, x + s * 0.55, H - 0.008, zMid, 0, Math.PI / 2);
     });
 
+    if (ri === 0) {                                  // стена холла со стороны зала, кроме проёма
+      this.aoWallZ(r.z0, xl, c.cx - ARCH_W / 2, -1, H);
+      this.aoWallZ(r.z0, c.cx + ARCH_W / 2, xr, -1, H);
+    }
     if (last) {
+      this.aoWallZ(c.zEnd, xl, xr, 1, H);
       // торцевая стена последнего зала — выход обратно по правому проходу
       this.blocker(this.plane(COR_W, H, this.wallMat(COR_W, H), c.cx, H / 2, c.zEnd, 0));
       const endCv = textCanvas(1024, 420, (g, w) => {
@@ -462,6 +509,14 @@ export class World {
     const len = r.spine0 - r.spine1;
     const zs = (r.spine0 + r.spine1) / 2;
     this.blocker(this.box(SPINE_T, SPINE_H, len, this.wallMat(len, SPINE_H), c.cx, SPINE_H / 2, zs));
+    // тень у подножия острова — с обеих сторон и у торцов
+    [-1, 1].forEach((s) => {
+      const x = c.cx + s * SPINE_T / 2;
+      this.ao([x + s * 0.003, 0.003, r.spine0], [x + s * 0.003, 0.003, r.spine1], [s * 0.5, 0, 0]);
+      this.ao([x + s * 0.003, 0, r.spine0], [x + s * 0.003, 0, r.spine1], [0, 0.35, 0]);
+    });
+    this.ao([c.cx - SPINE_T / 2, 0.003, r.spine0 + 0.003], [c.cx + SPINE_T / 2, 0.003, r.spine0 + 0.003], [0, 0, 0.45]);
+    this.ao([c.cx - SPINE_T / 2, 0.003, r.spine1 - 0.003], [c.cx + SPINE_T / 2, 0.003, r.spine1 - 0.003], [0, 0, -0.45]);
     this.box(SPINE_T + 0.02, 0.035, len - 0.02, M.gap, c.cx, 0.0175, zs);
 
     // треки: над наружными стенами и над обеими сторонами острова
@@ -549,6 +604,11 @@ export class World {
     });
     this.box(COR_W, 0.035, 0.01, M.gap, c.cx, 0.0175, zw + WALL_T / 2 + 0.004);
     this.box(COR_W, 0.035, 0.01, M.gap, c.cx, 0.0175, zw - WALL_T / 2 - 0.004);
+    // тени по обе стороны перегородки — по кускам стены между проёмами
+    segs.forEach(([a, b]) => {
+      this.aoWallZ(zw + WALL_T / 2, a, b, 1, H);
+      this.aoWallZ(zw - WALL_T / 2, a, b, -1, H);
+    });
 
     const plate = (num, sub, arrow) => textCanvas(1024, 300, (g2, w) => {
       g2.fillStyle = INK; g2.textAlign = 'center';
@@ -566,6 +626,46 @@ export class World {
     this.sign(plate(k + 1, r.label, '↑'), mw, mw * 300 / 1024, c.cx, 3.05, zw - WALL_T / 2 - 0.005, Math.PI);
     this.endBatch();
     this.target = prev;
+  }
+
+  /* Детали, которые снимаются на низком качестве */
+  setDetail(level) {
+    const on = level !== 'low';
+    this.mat.ao.visible = on;
+    this.mat.shadow.visible = on;
+    // на высоком тени считает GTAO — заранее заданные полосы бледнее, чтобы не удваивать
+    this.mat.ao.opacity = level === 'high' ? 0.08 : 0.2;
+  }
+
+  /* Полоса мягкой тени: p0–p1 — линия стыка, off — куда тень спадает.
+     Строится прямо в буфер слияния, отдельных объектов не создаёт. */
+  ao(p0, p1, off) {
+    if (!this.batch) return;
+    const g = new THREE.BufferGeometry();
+    const P = [p0, p1, [p1[0] + off[0], p1[1] + off[1], p1[2] + off[2]], [p0[0] + off[0], p0[1] + off[1], p0[2] + off[2]]];
+    g.setAttribute('position', new THREE.Float32BufferAttribute([].concat(...P), 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 0], 2));
+    g.setIndex([0, 1, 2, 0, 2, 3]);
+    this.push(this.mat.ao, g);
+  }
+
+  /* Тени вдоль стены: у пола (на полу и на стене) и под потолком.
+     Стена — отрезок x = x, z от za до zb, s — в какую сторону от неё зал */
+  aoWallX(x, za, zb, s, H) {
+    const e = 0.003;
+    this.ao([x + s * e, e, za], [x + s * e, e, zb], [s * 0.55, 0, 0]);          // пол у стены
+    this.ao([x + s * e, 0, za], [x + s * e, 0, zb], [0, 0.4, 0]);               // низ стены
+    this.ao([x + s * e, H, za], [x + s * e, H, zb], [0, -0.7, 0]);              // верх стены
+    this.ao([x + s * e, H - e, za], [x + s * e, H - e, zb], [s * 0.6, 0, 0]);   // потолок у стены
+  }
+
+  aoWallZ(z, xa, xb, s, H) {
+    const e = 0.003;
+    this.ao([xa, e, z + s * e], [xb, e, z + s * e], [0, 0, s * 0.55]);
+    this.ao([xa, 0, z + s * e], [xb, 0, z + s * e], [0, 0.4, 0]);
+    this.ao([xa, H, z + s * e], [xb, H, z + s * e], [0, -0.7, 0]);
+    this.ao([xa, H - e, z + s * e], [xb, H - e, z + s * e], [0, 0, s * 0.6]);
   }
 
   /* Видимость: холл и множество залов → группы. Перегородку видно, если

@@ -20,6 +20,7 @@ import { COR_W } from './layout.js';
 const COR_HALF = COR_W / 2;
 import { TextureManager } from './textures.js';
 import { computeVisible } from './visibility.js';
+import { Quality, NAMES } from './quality.js';
 import { CSS } from './ui-css.js';
 
 const VERSION = '1';
@@ -63,6 +64,9 @@ class Gallery {
             '<button type="button" class="artg-btn artg-btn--icon" data-a="share" aria-label="Поделиться ссылкой на это место">' +
               '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">' +
               '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>' +
+            '<button type="button" class="artg-btn artg-btn--icon" data-a="q" aria-label="Качество изображения" aria-expanded="false">' +
+              '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">' +
+              '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>' +
             '<button type="button" class="artg-btn artg-btn--icon" data-a="fs" aria-label="Во весь экран">' +
               '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">' +
               '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>' +
@@ -75,6 +79,11 @@ class Gallery {
         '<div class="artg-map" hidden>' +
           '<canvas class="artg-map__plan" width="600" height="300"></canvas>' +
           '<div class="artg-map__list"></div>' +
+        '</div>' +
+        '<div class="artg-qpanel" hidden role="radiogroup" aria-label="Качество изображения">' +
+          '<p>Качество изображения</p>' +
+          ['auto', 'high', 'medium', 'low'].map((m) => '<button type="button" role="radio" data-q="' + m + '">' + NAMES[m] + '</button>').join('') +
+          '<small></small>' +
         '</div>' +
         '<div class="artg-hint"></div>' +
         '<div class="artg-move">' +
@@ -115,6 +124,8 @@ class Gallery {
     this.camera.rotation.order = 'YXZ';
     this.nav = new Nav(this.plan);
     this.tex = new TextureManager(renderer, bridge, this.small);
+    this.quality = new Quality(this);
+    this.quality.onChange = () => this.fillQuality();
     this.world.onPaintings = (items) => this.tex.attach(items);
     this.allWorks = [].concat(...this.plan.corridors.map((c) => c.works));
     this.cull = true;                 // false — рисовать всё (для сравнения кадров)
@@ -191,6 +202,16 @@ class Gallery {
     });
     st.querySelector('.artg-map__plan').addEventListener('click', (e) => this.mapClick(e));
     st.querySelector('[data-a="fs"]').addEventListener('click', () => this.toggleFullscreen());
+    st.querySelector('[data-a="q"]').addEventListener('click', () => {
+      const p = st.querySelector('.artg-qpanel');
+      p.hidden = !p.hidden;
+      st.querySelector('[data-a="q"]').setAttribute('aria-expanded', String(!p.hidden));
+      this.fillQuality();
+    });
+    st.querySelector('.artg-qpanel').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-q]');
+      if (b) this.quality.choose(b.getAttribute('data-q'));
+    });
     const q = st.querySelector('.artg-panel__q');
     q.addEventListener('input', () => this.fillPanel(q.value));
     q.addEventListener('keydown', (e) => { if (e.key === 'Escape') this.togglePanel(false); e.stopPropagation(); });
@@ -207,6 +228,20 @@ class Gallery {
       b.addEventListener('pointerdown', on);
       ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => b.addEventListener(ev, off));
     });
+  }
+
+  fillQuality() {
+    const p = this.stage && this.stage.querySelector('.artg-qpanel');
+    if (!p || !this.quality) return;
+    const q = this.quality;
+    p.querySelectorAll('[data-q]').forEach((b) => {
+      const on = b.getAttribute('data-q') === q.mode;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-checked', String(on));
+    });
+    p.querySelector('small').textContent = q.mode === 'auto'
+      ? 'Сейчас: ' + NAMES[q.level].toLowerCase() + '. Снижается само, если кадры не успевают'
+      : 'Выбрано вручную';
   }
 
   togglePanel(on) {
@@ -650,26 +685,11 @@ class Gallery {
     const w = this.stage.clientWidth, h = this.stage.clientHeight;
     if (!w || !h) return;
     this.renderer.setSize(w, h, false);
+    if (this.quality) this.quality.resize(w, h);
     this.camera.aspect = w / h;
     // на узком экране шире угол, иначе в кадр не помещается даже одна картина
     this.camera.fov = w / h < 0.9 ? 74 : w / h < 1.3 ? 66 : 60;
     this.camera.updateProjectionMatrix();
-  }
-
-  /* Если кадры не успевают, снижаем плотность пикселей; если запас — поднимаем */
-  adapt(dt) {
-    this.frames.push(dt);
-    if (this.frames.length < 90) return;
-    const avg = this.frames.reduce((a, b) => a + b, 0) / this.frames.length;
-    this.frames.length = 0;
-    let pr = this.pr;
-    if (avg > 26 && pr > 0.75) pr = Math.max(0.75, pr - 0.25);
-    else if (avg < 14 && pr < this.maxPR) pr = Math.min(this.maxPR, pr + 0.25);
-    if (pr !== this.pr) {
-      this.pr = pr;
-      this.renderer.setPixelRatio(pr);
-      this.resize();
-    }
   }
 
   loop(now) {
@@ -718,8 +738,8 @@ class Gallery {
     }
 
     this.updateVisibility();
-    this.renderer.render(this.scene, cam);
-    this.adapt(dt * 1000);
+    this.quality.render();
+    if (this.revealed) this.quality.frame(dt * 1000);
   }
 
   /* Какие залы рисовать: отсечение по проёмам каждый кадр (десяток
@@ -756,6 +776,7 @@ class Gallery {
     if (this.io) this.io.disconnect();
     clearTimeout(this.revealT);
     if (this.fsFake) this.fakeFs(false);
+    if (this.quality) this.quality.dropComposer();
     if (this.renderer) this.renderer.dispose();
   }
 }

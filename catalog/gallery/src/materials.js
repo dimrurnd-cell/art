@@ -125,3 +125,61 @@ export function canvasTexture(c, aniso) {
   t.anisotropy = aniso || 1;
   return t;
 }
+
+/* Мягкая тень у стыка: по v от 1 (у самого стыка) до 0, спадает быстрее
+   линейного — как рассеянный свет, которому стык мешает дойти */
+export function aoGradient() {
+  const c = canvas(4, 128);
+  const g = c.getContext('2d');
+  const img = g.createImageData(4, 128);
+  for (let y = 0; y < 128; y++) {
+    const t = 1 - y / 127;                  // строка 0 — верх текстуры (v = 1)
+    const a = Math.round(255 * Math.pow(t, 2.2));
+    for (let x = 0; x < 4; x++) {
+      const i = (y * 4 + x) * 4;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = a;
+      img.data[i + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  return new THREE.CanvasTexture(c);
+}
+
+/* Растение в кадке для холла: стилизованные листья фикуса на прозрачном */
+export function plantTexture() {
+  const W = 512, H = 768;
+  const c = canvas(W, H);
+  const g = c.getContext('2d');
+  const leaf = (x, y, len, ang, tone) => {
+    g.save();
+    g.translate(x, y);
+    g.rotate(ang);
+    g.fillStyle = tone;
+    g.beginPath();
+    g.moveTo(0, 0);
+    g.bezierCurveTo(len * 0.35, -len * 0.3, len * 0.8, -len * 0.25, len, 0);
+    g.bezierCurveTo(len * 0.8, len * 0.25, len * 0.35, len * 0.3, 0, 0);
+    g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.18)';
+    g.lineWidth = 2;
+    g.beginPath(); g.moveTo(len * 0.08, 0); g.lineTo(len * 0.9, 0); g.stroke();
+    g.restore();
+  };
+  // ствол
+  g.strokeStyle = '#6b5a45';
+  g.lineWidth = 9;
+  g.beginPath(); g.moveTo(W / 2, H); g.bezierCurveTo(W / 2 - 10, H * 0.6, W / 2 + 14, H * 0.35, W / 2, H * 0.12); g.stroke();
+  const tones = ['#2f5e3a', '#3a6f45', '#28512f', '#447a4c', '#335f3b'];
+  // крона: к низу листья длиннее и шире расходятся, к верху — короче и торчат вверх
+  for (let i = 0; i < 90; i++) {
+    const t = i / 90;
+    const y = H * (0.06 + t * 0.68);
+    const side = i % 2 ? 1 : -1;
+    const len = (110 + rnd() * 70) * (0.75 + t * 0.45);
+    const ang = (side > 0 ? 0 : Math.PI) + side * (-1.1 + t * 0.8 + (rnd() - 0.5) * 0.6);
+    leaf(W / 2 + side * 4, y, len, ang, tones[Math.floor(rnd() * tones.length)]);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
