@@ -25,6 +25,7 @@ import { Tour } from './tour.js';
 import { Spots } from './lights.js';
 import { Probe } from './probe.js';
 import { Atmosphere } from './atmosphere.js';
+import { Sound } from './audio.js';
 import { CSS } from './ui-css.js';
 
 const VERSION = '1';
@@ -66,6 +67,9 @@ class Gallery {
             '<button type="button" class="artg-btn" data-a="hall" aria-label="Холл">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg>' + '<span>Холл</span></button>' +
             '<button type="button" class="artg-btn" data-a="map" aria-label="План">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>' + '<span>План</span></button>' +
             '<button type="button" class="artg-btn" data-a="list" aria-label="Художники">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>' + '<span>Художники</span></button>' +
+            '<button type="button" class="artg-btn artg-btn--icon" data-a="snd" aria-label="Звук зала" aria-pressed="false">' +
+              '<i class="artg-snd-on">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>' + '</i>' +
+              '<i class="artg-snd-off">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5zM16 9l6 6M22 9l-6 6"/></svg>' + '</i></button>' +
             '<button type="button" class="artg-btn artg-btn--icon" data-a="share" aria-label="Поделиться ссылкой на это место">' +
               '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">' +
               '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>' +
@@ -133,6 +137,8 @@ class Gallery {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.spots = new Spots(this.scene, this.small);
     this.atmo = new Atmosphere(this.scene, this.spots, this.small);
+    this.sound = new Sound();
+    this.lastPos = { x: 0, z: 0 };
     this.probe = new Probe(renderer, this.scene, this.small);
     this.world.reflectMats().forEach((m) => this.probe.patch(m));
     this.probeKey = '';
@@ -165,15 +171,27 @@ class Gallery {
       this.applyHash();
       this.stage.querySelector('.artg-fade').classList.remove('is-on');
     };
-    this.revealT = setTimeout(reveal, 5000);
-    this.tex.loadAtlas(this.world.paintings, (n, total) => {
-      bar.firstChild.style.width = (total ? n / total * 100 : 100) + '%';
-      if (n >= total) {
+    // Проявляем, когда пришли и атлас превью, и фактуры помещения: пока
+    // фактуры нет, three.js рисует на её месте чёрное. Если сеть медленная —
+    // через 15 с всё равно показываем (что не пришло, дорисуется само).
+    const pbr = this.world.pbr;
+    const texTotal = Object.keys(pbr.cache).length;
+    let atlasN = 0, atlasT = 1, atlasDone = false;
+    const progress = () => {
+      const texDone = texTotal - pbr.pending;
+      bar.firstChild.style.width = ((atlasN + texDone) / (atlasT + texTotal) * 100) + '%';
+      if (atlasDone && pbr.pending <= 0) {
         clearTimeout(this.revealT);
-        // дать кадру отрисоваться с атласом, потом снять завесу
-        setTimeout(reveal, 120);
+        setTimeout(reveal, 120);                 // дать кадру отрисоваться, потом снять завесу
         setTimeout(() => bar.classList.add('is-done'), 300);
       }
+    };
+    pbr.onLoad = progress;
+    this.revealT = setTimeout(() => { reveal(); bar.classList.add('is-done'); }, 15000);
+    this.tex.loadAtlas(this.world.paintings, (n, total) => {
+      atlasN = n; atlasT = total || 1;
+      if (n >= total) atlasDone = true;
+      progress();
     });
 
     if (this.touch) this.stage.classList.add('is-touch');
@@ -221,6 +239,14 @@ class Gallery {
     });
     st.querySelector('.artg-map__plan').addEventListener('click', (e) => this.mapClick(e));
     st.querySelector('[data-a="fs"]').addEventListener('click', () => this.toggleFullscreen());
+    const sndBtn = st.querySelector('[data-a="snd"]');
+    const sndShow = () => { sndBtn.setAttribute('aria-pressed', String(this.sound.on)); sndBtn.classList.toggle('is-on', this.sound.on); };
+    sndBtn.addEventListener('click', () => { this.sound.toggle(); sndShow(); });
+    // звук был включён в прошлый раз — включаем при первом касании сцены (раньше браузер не даст)
+    const resume = () => { if (this.sound.want && !this.sound.on) { this.sound.set(true); sndShow(); } };
+    st.addEventListener('pointerdown', resume, { once: true });
+    st.addEventListener('keydown', resume, { once: true });
+    sndShow();
     st.querySelector('[data-a="tour"]').addEventListener('click', () => {
       if (this.tour.running) { this.tour.stop(); return; }
       this.closePanels();
@@ -812,6 +838,9 @@ class Gallery {
     }
 
     this.spots.update(dt);
+    const moved = Math.hypot(nav.x - this.lastPos.x, nav.z - this.lastPos.z);
+    this.lastPos.x = nav.x; this.lastPos.z = nav.z;
+    this.sound.update(moved, dt, this.room < 0);
     this.atmo.update(cam, this.pr, this.stage.clientHeight);
     this.updateVisibility();
     this.updateProbe();
@@ -878,6 +907,7 @@ class Gallery {
     if (this.fsFake) this.fakeFs(false);
     if (this.quality) this.quality.dropComposer();
     if (this.probe) this.probe.dispose();
+    if (this.sound) this.sound.dispose();
     if (this.renderer) this.renderer.dispose();
   }
 }

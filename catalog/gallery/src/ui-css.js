@@ -19,6 +19,10 @@ export const CSS = `
 .artg-btn--icon{padding:8px 10px;display:flex;align-items:center}
 .artg-btn{display:inline-flex;align-items:center;gap:7px}
 .artg-btn svg{flex-shrink:0}
+.artg-snd-on,.artg-snd-off{display:flex;font-style:normal}
+.artg-btn[data-a="snd"] .artg-snd-on{display:none}
+.artg-btn[data-a="snd"].is-on .artg-snd-on{display:flex}
+.artg-btn[data-a="snd"].is-on .artg-snd-off{display:none}
 .artg-stage.is-touring [data-a="tour"]{background:#2a2a2a;color:#fff}
 .artg-tour{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);width:min(560px,calc(100% - 28px));box-sizing:border-box;
   display:flex;align-items:center;gap:12px;padding:12px 12px 12px 18px;background:rgba(255,255,255,.96);border-radius:14px;
@@ -89,13 +93,13 @@ export const CSS = `
 .artg-fs-host .artg-stage{height:100%;width:100%;max-width:none;border-radius:0}
 @media (max-width:600px){
   .artg-stage{height:clamp(440px,74vh,640px);border-radius:16px}
-  .artg-btn{padding:9px 10px;font-size:13px}
+  .artg-btn,.artg-btn--icon{padding:7px;font-size:13px}
   .artg-btn span{display:none}
   .artg-top{flex-direction:column;align-items:stretch;gap:8px}
   .artg-actions{justify-content:flex-end}
   .artg-panel,.artg-map,.artg-qpanel{top:100px}
   .artg-tour{bottom:140px}
   .artg-tour__txt b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-  .artg-actions{gap:5px}
+  .artg-actions{gap:4px;flex-wrap:wrap}
 }
 `;

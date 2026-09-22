@@ -17,6 +17,7 @@
 /home/develop/donexpo/static/artcatalog/
 ├── catalog.js
 ├── gallery.js         ← 3D-галерея, грузится по кнопке «Войти в галерею»
+├── gallery-assets/    ← фактуры помещения (hi — компьютер, lo — телефон), ~11 МБ
 ├── catalog.css
 ├── hall.css
 ├── artists.json
@@ -94,7 +95,7 @@ ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 | `artists.json` | 329 957 |
 | `artists.js` | 261 991 |
 | `catalog-standalone.css` | 99 444 |
-| `gallery.js` | 608 802 |
+| `gallery.js` | 888 435 |
 | `fonts/parangon.woff2` | 20 328 |
 | `img/logo.webp` | 31 726 |
 
