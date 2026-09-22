@@ -24,6 +24,7 @@ export class Nav {
     this.pitch = -0.02;
     this.keys = {};
     this.hold = 0;            // кнопки шага на экране: +1 / −1
+    this.joy = { x: 0, y: 0 }; // джойстик на сенсорном экране, −1…1
     this.wheel = 0;           // накопленный импульс колеса
     this.path = null;         // очередь точек автоматического движения
     this.onArrive = null;
@@ -101,7 +102,8 @@ export class Nav {
     if (k.KeyD) side += 1;
     if (k.ArrowLeft || k.KeyQ) turn += 1;
     if (k.ArrowRight || k.KeyE) turn -= 1;
-    fwd += this.hold;
+    fwd += this.hold - this.joy.y;
+    side += this.joy.x;
     const run = k.ShiftLeft || k.ShiftRight ? RUN : 1;
 
     if (fwd || side || turn || Math.abs(this.wheel) > 0.01) this.cancel();

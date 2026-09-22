@@ -21,6 +21,7 @@ const COR_HALF = COR_W / 2;
 import { TextureManager } from './textures.js';
 import { computeVisible } from './visibility.js';
 import { Quality, NAMES } from './quality.js';
+import { Tour } from './tour.js';
 import { CSS } from './ui-css.js';
 
 const VERSION = '1';
@@ -58,9 +59,10 @@ class Gallery {
         '<div class="artg-top">' +
           '<div class="artg-where"><b></b><span></span></div>' +
           '<div class="artg-actions">' +
-            '<button type="button" class="artg-btn" data-a="hall">Холл</button>' +
-            '<button type="button" class="artg-btn" data-a="map">План</button>' +
-            '<button type="button" class="artg-btn" data-a="list">Художники</button>' +
+            '<button type="button" class="artg-btn" data-a="tour" aria-label="Провести по залу">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14l11-7z"/></svg>' + '<span>Экскурсия</span></button>' +
+            '<button type="button" class="artg-btn" data-a="hall" aria-label="Холл">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg>' + '<span>Холл</span></button>' +
+            '<button type="button" class="artg-btn" data-a="map" aria-label="План">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>' + '<span>План</span></button>' +
+            '<button type="button" class="artg-btn" data-a="list" aria-label="Художники">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>' + '<span>Художники</span></button>' +
             '<button type="button" class="artg-btn artg-btn--icon" data-a="share" aria-label="Поделиться ссылкой на это место">' +
               '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">' +
               '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>' +
@@ -86,6 +88,8 @@ class Gallery {
           '<small></small>' +
         '</div>' +
         '<div class="artg-hint"></div>' +
+        '<div class="artg-tour" hidden aria-live="polite"></div>' +
+        '<div class="artg-joy" aria-hidden="true"><i></i></div>' +
         '<div class="artg-move">' +
           '<button type="button" class="artg-step" data-step="1" aria-label="Шаг вперёд">' +
             '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 5l7 9H5z" fill="currentColor"/></svg></button>' +
@@ -160,12 +164,15 @@ class Gallery {
       }
     });
 
+    if (this.touch) this.stage.classList.add('is-touch');
     this.bindUi();
+    this.tour = new Tour(this);
     this.bindInput();
     this.resize();
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(this.stage);
-    this.io = new IntersectionObserver((es) => { this.visible = es[0].isIntersecting; });
+    // последняя запись — актуальная (при переносе сцены их приходит несколько)
+    this.io = new IntersectionObserver((es) => { this.visible = es[es.length - 1].isIntersecting; });
     this.io.observe(this.stage);
     this.fsHandler = () => this.onFsChange();
     document.addEventListener('fullscreenchange', this.fsHandler);
@@ -181,7 +188,7 @@ class Gallery {
     this.raf = requestAnimationFrame(this.loop);
     this.updateWhere();
     this.hint(this.touch
-      ? 'Ведите пальцем, чтобы осмотреться. Коснитесь пола — дойдёте туда, коснитесь картины — подойдёте к ней'
+      ? 'Круг слева внизу — идти, палец по сцене — осмотреться. Коснитесь картины — подойдёте к ней'
       : 'Перетаскивайте мышью, чтобы осмотреться. W/S или стрелки — идти, щелчок по полу или картине — подойти');
   }
 
@@ -202,6 +209,13 @@ class Gallery {
     });
     st.querySelector('.artg-map__plan').addEventListener('click', (e) => this.mapClick(e));
     st.querySelector('[data-a="fs"]').addEventListener('click', () => this.toggleFullscreen());
+    st.querySelector('[data-a="tour"]').addEventListener('click', () => {
+      if (this.tour.running) { this.tour.stop(); return; }
+      this.closePanels();
+      const sec = this.room >= 0 ? this.room : (this.bridge.section ? this.bridge.section() : 0);
+      this.tour.start(sec);
+    });
+    this.bindJoystick();
     st.querySelector('[data-a="q"]').addEventListener('click', () => {
       const p = st.querySelector('.artg-qpanel');
       p.hidden = !p.hidden;
@@ -223,11 +237,53 @@ class Gallery {
     });
     st.querySelectorAll('.artg-step').forEach((b) => {
       const dir = +b.getAttribute('data-step');
-      const on = (e) => { e.preventDefault(); e.stopPropagation(); this.nav.hold = dir; b.setPointerCapture && b.setPointerCapture(e.pointerId); };
+      const on = (e) => { e.preventDefault(); e.stopPropagation(); if (this.tour.running) this.tour.stop(); this.nav.hold = dir; b.setPointerCapture && b.setPointerCapture(e.pointerId); };
       const off = () => { if (this.nav.hold === dir) this.nav.hold = 0; };
       b.addEventListener('pointerdown', on);
       ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => b.addEventListener(ev, off));
     });
+  }
+
+  closePanels() {
+    this.togglePanel(false);
+    this.toggleMap(false);
+    const q = this.stage.querySelector('.artg-qpanel');
+    q.hidden = true;
+  }
+
+  /* Джойстик на сенсорном экране: палец в круге — идти (вверх — вперёд,
+     вбок — шагом в сторону), сила — насколько далеко от центра. Второй
+     палец в это время может водить по сцене и осматриваться. */
+  bindJoystick() {
+    const joy = this.stage.querySelector('.artg-joy');
+    const knob = joy.firstChild;
+    let id = null, cx = 0, cy = 0;
+    const R = 44;
+    const set = (x, y) => {
+      const d = Math.hypot(x, y), k = d > R ? R / d : 1;
+      x *= k; y *= k;
+      knob.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+      this.nav.joy.x = x / R;
+      this.nav.joy.y = y / R;
+    };
+    joy.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (this.tour.running) this.tour.stop();
+      id = e.pointerId;
+      const r = joy.getBoundingClientRect();
+      cx = r.left + r.width / 2; cy = r.top + r.height / 2;
+      try { joy.setPointerCapture(id); } catch (err) { /* ok */ }
+      joy.classList.add('is-on');
+      set(e.clientX - cx, e.clientY - cy);
+    });
+    joy.addEventListener('pointermove', (e) => { if (e.pointerId === id) set(e.clientX - cx, e.clientY - cy); });
+    const end = (e) => {
+      if (e.pointerId !== id) return;
+      id = null;
+      joy.classList.remove('is-on');
+      set(0, 0);
+    };
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => joy.addEventListener(ev, end));
   }
 
   fillQuality() {
@@ -457,7 +513,8 @@ class Gallery {
     let down = null;
 
     st.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.artg-top, .artg-panel, .artg-move')) return;
+      if (e.target.closest('.artg-top, .artg-panel, .artg-move, .artg-map, .artg-qpanel, .artg-tour, .artg-joy')) return;
+      if (this.tour.running) this.tour.stop();
       down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, t: performance.now(), id: e.pointerId, moved: false };
       st.focus({ preventScroll: true });
     });
@@ -490,6 +547,7 @@ class Gallery {
     st.addEventListener('wheel', (e) => {
       if (e.ctrlKey) return;
       e.preventDefault();
+      if (this.tour.running) this.tour.stop();
       nav.cancel();
       nav.wheel = Math.max(-14, Math.min(14, nav.wheel - e.deltaY * 0.012));
     }, { passive: false });
@@ -498,6 +556,7 @@ class Gallery {
     this.onKeyDown = (e) => {
       if (typing(e) || this.modalOpen()) return;
       if (!st.contains(document.activeElement) && document.activeElement !== st) return;
+      if (/^(Arrow|Key[WASDQE])/.test(e.code) && this.tour.running) this.tour.stop();
       if (/^(Arrow|Key[WASDQE]|Shift)/.test(e.code)) {
         nav.keys[e.code] = true;
         if (/^Arrow/.test(e.code)) e.preventDefault();
@@ -697,7 +756,9 @@ class Gallery {
     this.raf = requestAnimationFrame(this.loop);
     const dt = Math.min(0.1, (now - this.last) / 1000);
     this.last = now;
-    if (!this.visible || document.hidden || this.modalOpen()) return;
+    // во весь экран сцена видна всегда, что бы ни думал наблюдатель видимости
+    const shown = this.visible || this.fsFake || (document.fullscreenElement || document.webkitFullscreenElement) === this.stage;
+    if (!shown || document.hidden || this.modalOpen()) return;
 
     const nav = this.nav;
     nav.update(dt);

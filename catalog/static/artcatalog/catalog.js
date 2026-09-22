@@ -828,6 +828,7 @@
         self.lbFromHall = false;
         self.openArtist(gi);
       },
+      section: function () { return self.section || 0; },
       onRoom: function (i) {
         if (i >= 0 && i !== self.section) self.switchSection(i, true);
       },

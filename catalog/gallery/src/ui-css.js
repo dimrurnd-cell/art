@@ -17,6 +17,28 @@ export const CSS = `
 .artg-btn:hover{background:#fff}
 .artg-btn:focus-visible{outline:2px solid #2a2a2a;outline-offset:2px}
 .artg-btn--icon{padding:8px 10px;display:flex;align-items:center}
+.artg-btn{display:inline-flex;align-items:center;gap:7px}
+.artg-btn svg{flex-shrink:0}
+.artg-stage.is-touring [data-a="tour"]{background:#2a2a2a;color:#fff}
+.artg-tour{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);width:min(560px,calc(100% - 28px));box-sizing:border-box;
+  display:flex;align-items:center;gap:12px;padding:12px 12px 12px 18px;background:rgba(255,255,255,.96);border-radius:14px;
+  box-shadow:0 10px 40px rgba(0,0,0,.14)}
+.artg-tour[hidden]{display:none}
+.artg-tour__txt{flex:1;min-width:0;line-height:1.3}
+.artg-tour__txt b{display:block;font-weight:500;font-size:15px;color:#2a2a2a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.artg-tour__txt span{font-size:12px;color:#8c8c88}
+.artg-tour__btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.artg-tour__btns button{border:0;background:#f0efec;color:#2a2a2a;min-width:38px;height:38px;border-radius:999px;font-size:18px;cursor:pointer;padding:0 12px}
+.artg-tour__btns button:hover{background:#e4e3df}
+.artg-tour__btns .artg-tour__stop,.artg-tour__btns .artg-tour__wide{font-size:14px}
+.artg-tour__btns .artg-tour__stop{background:#2a2a2a;color:#fff}
+.artg-joy{display:none;position:absolute;left:18px;bottom:18px;width:112px;height:112px;border-radius:50%;
+  background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px rgba(0,0,0,.08),0 4px 14px rgba(0,0,0,.08);touch-action:none}
+.artg-joy i{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:#fff;
+  box-shadow:0 2px 10px rgba(0,0,0,.18);transition:transform .12s}
+.artg-joy.is-on i{transition:none;background:#2a2a2a}
+.artg-stage.is-touch .artg-joy{display:block}
+.artg-stage.is-touch .artg-move{left:auto;right:18px;transform:none}
 .artg-panel{position:absolute;right:14px;top:60px;width:min(340px,calc(100% - 28px));max-height:calc(100% - 140px);
   display:flex;flex-direction:column;background:rgba(255,255,255,.97);border-radius:14px;
   box-shadow:0 10px 40px rgba(0,0,0,.14);overflow:hidden}
@@ -68,6 +90,12 @@ export const CSS = `
 @media (max-width:600px){
   .artg-stage{height:clamp(440px,74vh,640px);border-radius:16px}
   .artg-btn{padding:9px 10px;font-size:13px}
+  .artg-btn span{display:none}
+  .artg-top{flex-direction:column;align-items:stretch;gap:8px}
+  .artg-actions{justify-content:flex-end}
+  .artg-panel,.artg-map,.artg-qpanel{top:100px}
+  .artg-tour{bottom:140px}
+  .artg-tour__txt b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
   .artg-actions{gap:5px}
 }
 `;
