@@ -17,11 +17,14 @@
 import * as THREE from 'three';
 import { project, cut } from './visibility.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { PBR } from './pbr.js';
+import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 import {
   ART_Y, COR_W, COR_H, ARCH_W, ARCH_H, WALL_T, SPINE_T, SPINE_H, DOOR_W, DOOR_H, aisleX,
 } from './layout.js';
 import {
-  concrete, paint, softShadow, aoGradient, plantTexture, textCanvas, wrapText, spaced, canvasTexture, SANS,
+  softShadow, aoGradient, plantTexture, textCanvas, wrapText, spaced, canvasTexture, SANS,
 } from './materials.js';
 
 export const HAZE = 0xecebe8;        // цвет дымки и фона
@@ -112,8 +115,16 @@ export class World {
     this.scene.background = haze;
     this.scene.fog = new THREE.Fog(haze, 30, 120);
 
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0xd6d4cf, 2.7));
-    this.camLight = new THREE.PointLight(0xfffaf2, 7, 14, 1.6);
+    // Рассеянный свет помещения: окружение для отражений и подсветки
+    // физических материалов (пока — нейтральная «комната»; живое окружение
+    // зала подставляется позже) и слабая полусфера — свет от пола и потолка.
+    this.pbr = new PBR(renderer, bridge, renderer.capabilities.maxTextureSize < 8192 || /Mobi|Android|iPhone|iPad/.test(navigator.userAgent));
+    const pm = new THREE.PMREMGenerator(renderer);
+    this.scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environmentIntensity = 0.32;
+    pm.dispose();
+    this.scene.add(new THREE.HemisphereLight(0xfffdf8, 0xc9c6bf, 0.55));
+    this.camLight = new THREE.PointLight(0xfffaf2, 5, 14, 1.6);
     this.scene.add(this.camLight);
 
     this.mat = this.makeMaterials();
@@ -132,15 +143,13 @@ export class World {
   makeMaterials() {
     const a = this.aniso;
     return {
-      wallTex: paint('#f3f3f1', a),
-      ceilTex: paint('#fafaf9', a),
-      floorTex: concrete(a),
-      frame: new THREE.MeshLambertMaterial({ color: 0x1d1d1d }),
+      // рама: чёрная полуматовая краска по дереву
+      frame: new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.42, metalness: 0 }),
       gap: batch(new THREE.MeshBasicMaterial({ color: 0x9a9995 })),
-      reveal: batch(new THREE.MeshLambertMaterial({ color: 0xe6e5e2 })),
+      reveal: batch(new THREE.MeshStandardMaterial({ color: 0xe6e5e2, roughness: 0.8, metalness: 0 })),
       light: batch(new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false })),
       slot: batch(new THREE.MeshBasicMaterial({ color: 0xd9d8d4 })),
-      track: batch(new THREE.MeshLambertMaterial({ color: 0x2b2b2b })),
+      track: batch(this.pbr.material('metal'), { tile: 0.6 }),
       shadow: new THREE.MeshBasicMaterial({
         alphaMap: softShadow(), color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false,
       }),
@@ -151,22 +160,23 @@ export class World {
       })),
       pot: batch(new THREE.MeshStandardMaterial({ color: 0xd8d6d1, roughness: 0.85 })),
       soil: batch(new THREE.MeshLambertMaterial({ color: 0x3b3129 })),
-      white: batch(new THREE.MeshLambertMaterial({ color: 0xfafaf8 })),
-      oak: batch(new THREE.MeshLambertMaterial({ color: 0xcbb99d })),
-      grey: batch(new THREE.MeshLambertMaterial({ color: 0xbdbcb8 })),
+      white: batch(new THREE.MeshStandardMaterial({ color: 0xf6f5f2, roughness: 0.55, metalness: 0 })),
+      oak: batch(this.pbr.material('oak'), { tile: 1.2 }),
+      grey: batch(new THREE.MeshStandardMaterial({ color: 0xb5b4b0, roughness: 0.3, metalness: 0 })),
     };
   }
 
   /* Общие материалы стен, потолка и пола: фактура по мировым координатам */
   get wall() {
-    return this._wall || (this._wall = batch(new THREE.MeshLambertMaterial({ map: this.mat.wallTex }), { tile: 3, blocker: true }));
+    return this._wall || (this._wall = batch(this.pbr.material('wall', { normalScale: new THREE.Vector2(0.6, 0.6) }), { tile: 3, blocker: true }));
   }
   get ceil() {
-    const t = this.mat.ceilTex;
-    return this._ceil || (this._ceil = batch(new THREE.MeshLambertMaterial({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.55 }), { tile: 3 }));
+    // потолок снизу освещён слабее всего — чуть подсвечиваем его сами
+    return this._ceil || (this._ceil = batch(this.pbr.material('ceiling', { emissive: 0xffffff, emissiveIntensity: 0.1 }), { tile: 3 }));
   }
   get floorMat() {
-    return this._floor || (this._floor = batch(new THREE.MeshStandardMaterial({ map: this.mat.floorTex, roughness: 0.62, metalness: 0 }), { tile: 4, floor: true }));
+    // полированный микроцемент: мягкое зеркало, рельеф слабый — иначе вдали искрит
+    return this._floor || (this._floor = batch(this.pbr.material('floor', { envMapIntensity: 1.0, roughness: 0.62, normalScale: new THREE.Vector2(0.35, 0.35) }), { tile: 4, floor: true }));
   }
 
   wallMat() { return this.wall; }
@@ -241,6 +251,9 @@ export class World {
       if (!g) continue;
       const m = new THREE.Mesh(g, mat);
       this.add(m);
+      // тени спотов ложатся на стены, остров, пол и потолок
+      if (mat === this._wall || mat === this._floor || mat === this._ceil) m.receiveShadow = true;
+      if (mat === this._wall) m.castShadow = true;
       if (mat.userData.blocker) this.blocker(m);
       if (mat.userData.floor) { m.userData.floor = true; this.pickables.push(m); }
     }
@@ -276,12 +289,20 @@ export class World {
     this.floor(hall.x0, hall.x1, hall.z0, hall.z1);
     this.plane(W, D, this.ceilMat(W, D), 0, H, 0, 0, Math.PI / 2);
 
-    // световые панели заподлицо с потолком
+    // световые панели заподлицо с потолком; два ряда — настоящие площадные
+    // источники: мягкий свет без резких теней, как от светового короба
+    RectAreaLightUniformsLib.init();
     for (let ix = -1; ix <= 1; ix++) {
       for (let iz = -1; iz <= 1; iz += 2) {
         this.plane(W / 4.2, 1.1, M.light, ix * W / 3.3, H - 0.01, iz * D / 4.5, 0, Math.PI / 2);
       }
     }
+    [-1, 1].forEach((iz) => {
+      const ra = new THREE.RectAreaLight(0xfff6ea, 3.2, W * 0.85, 1.4);
+      ra.position.set(0, H - 0.02, iz * D / 4.5);
+      ra.lookAt(0, 0, iz * D / 4.5);
+      this.add(ra);
+    });
     // световая щель по периметру потолка
     this.plane(W - 1, 0.08, M.light, 0, H - 0.01, hall.z1 - 0.5, 0, Math.PI / 2);
     this.plane(0.08, D - 1, M.light, hall.x0 + 0.5, H - 0.01, 0, 0, Math.PI / 2);
@@ -545,9 +566,11 @@ export class World {
       this.add(instanced(this.geo('plane'), M.shadow, ws, (it, p, e, s) => {
         p.set(it.x - it.side * 0.003, ART_Y - 0.07, it.z); e.set(0, face(it), 0); s.set(it.w * 1.12 + 0.35, it.h * 1.12 + 0.4, 1);
       }));
-      this.add(instanced(this.geo('box'), M.frame, ws, (it, p, e, s) => {
+      const frames = instanced(this.geo('box'), M.frame, ws, (it, p, e, s) => {
         p.set(it.x - it.side * 0.022, ART_Y, it.z); e.set(0, face(it), 0); s.set(it.w + 0.05, it.h + 0.05, 0.044);
-      }));
+      });
+      frames.castShadow = true;                     // тень рамы на стене от спота
+      this.add(frames);
       // споты: корпус на треке, наклонён к работе
       this.add(instanced(this.geo('spot'), M.track, ws, (it, p, e, s) => {
         p.set(it.x - it.side * TRACK, H - 0.15, it.z);
@@ -558,7 +581,15 @@ export class World {
 
     // сами полотна
     ws.forEach((it) => {
-      const mat = new THREE.MeshBasicMaterial({ color: PLACEHOLDER, toneMapped: false });
+      // холст: переплетение нитей и неровный лак — видно вблизи и в бликах
+      const cn = this.pbr.tex('canvas', 'normal').clone();
+      const co = this.pbr.tex('canvas', 'orm').clone();
+      cn.repeat.set(it.w / 0.3, it.h / 0.3);
+      co.repeat.copy(cn.repeat);
+      const mat = new THREE.MeshStandardMaterial({
+        color: PLACEHOLDER, roughness: 1, metalness: 0, normalMap: cn, normalScale: new THREE.Vector2(0.45, 0.45),
+        roughnessMap: co, aoMap: co, aoMapIntensity: 0.6, envMapIntensity: 0.6,
+      });
       const m = this.plane(it.w, it.h, mat, it.x - it.side * 0.046, ART_Y, it.z, face(it));
       m.userData.art = it;
       it.mesh = m;
@@ -626,6 +657,28 @@ export class World {
     this.sign(plate(k + 1, r.label, '↑'), mw, mw * 300 / 1024, c.cx, 3.05, zw - WALL_T / 2 - 0.005, Math.PI);
     this.endBatch();
     this.target = prev;
+  }
+
+  /* Материалы, которые отражают окружение зала (зонд отражений) */
+  reflectMats() {
+    const M = this.mat;
+    return [this.floorMat, M.frame, M.track, M.white, M.grey, M.pot];
+  }
+
+  /* Коробка помещения и точка съёмки зонда: у зала — перед островом */
+  probeSpot(r) {
+    const P = this.plan;
+    if (!r) {
+      const h = P.hall;
+      return { key: 'hall', min: new THREE.Vector3(h.x0, 0, h.z0), max: new THREE.Vector3(h.x1, h.h, h.z1), pos: new THREE.Vector3(0, 1.7, 0) };
+    }
+    const c = r.sectionRef;
+    return {
+      key: c.i + '.' + r.idx, room: r,
+      min: new THREE.Vector3(c.cx - COR_W / 2, 0, r.z1),
+      max: new THREE.Vector3(c.cx + COR_W / 2, COR_H, r.z0),
+      pos: new THREE.Vector3(c.cx, 1.7, (r.z0 + r.spine0) / 2),
+    };
   }
 
   /* Детали, которые снимаются на низком качестве */

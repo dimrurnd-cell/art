@@ -22,6 +22,8 @@ import { TextureManager } from './textures.js';
 import { computeVisible } from './visibility.js';
 import { Quality, NAMES } from './quality.js';
 import { Tour } from './tour.js';
+import { Spots } from './lights.js';
+import { Probe } from './probe.js';
 import { CSS } from './ui-css.js';
 
 const VERSION = '1';
@@ -124,6 +126,14 @@ class Gallery {
     this.world = new World(renderer, this.plan, bridge);
     this.buildMs = Math.round(performance.now() - tb);
     this.scene = this.world.scene;
+    // тени спотов (на компьютере); сама карта теней включена всегда, а
+    // уровни качества включают и выключают тени у спотов
+    renderer.shadowMap.enabled = !this.small;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.spots = new Spots(this.scene, this.small);
+    this.probe = new Probe(renderer, this.scene, this.small);
+    this.world.reflectMats().forEach((m) => this.probe.patch(m));
+    this.probeKey = '';
     this.camera = new THREE.PerspectiveCamera(62, 1, 0.05, 140);
     this.camera.rotation.order = 'YXZ';
     this.nav = new Nav(this.plan);
@@ -769,6 +779,7 @@ class Gallery {
 
     if (this.tick++ % 6 === 0) {
       this.world.update(nav);
+      this.spots.assign(this.world.paintings, cam);
       this.tex.update(this.world.paintings, cam);
       const room = nav.room;
       const sub = subRoomAt(this.plan, nav.x, nav.z);
@@ -798,7 +809,9 @@ class Gallery {
       if (!map.hidden && this.tick % 12 === 1) this.drawMap();
     }
 
+    this.spots.update(dt);
     this.updateVisibility();
+    this.updateProbe();
     this.quality.render();
     if (this.revealed) this.quality.frame(dt * 1000);
   }
@@ -825,6 +838,26 @@ class Gallery {
     }
   }
 
+  /* Вошли в новое помещение — переснять отражения. Снимаем с открытыми
+     соседями (в отражении видны проёмы), через полсекунды после входа,
+     когда споты уже разгорелись. */
+  updateProbe() {
+    if (!this.revealed) return;
+    const spot = this.world.probeSpot(this.sub);
+    if (spot.key === this.probeKey) return;
+    if (spot.key !== this.probeWant) { this.probeWant = spot.key; this.probeAt = performance.now() + 500; return; }
+    if (performance.now() < this.probeAt) return;
+    const rooms = new Set();
+    if (spot.room) {
+      const all = spot.room.sectionRef.rooms;
+      [spot.room.idx - 1, spot.room.idx, spot.room.idx + 1].forEach((i) => { if (all[i]) rooms.add(all[i]); });
+    } else this.plan.corridors.forEach((c) => rooms.add(c.rooms[0]));
+    this.world.setVisible(!spot.room || spot.room.idx === 0, rooms, null, this.camera);
+    this.probe.capture(spot, spot.pos);
+    this.probeKey = spot.key;
+    this.updateVisibility();
+  }
+
   destroy() {
     this.dead = true;
     cancelAnimationFrame(this.raf);
@@ -838,6 +871,7 @@ class Gallery {
     clearTimeout(this.revealT);
     if (this.fsFake) this.fakeFs(false);
     if (this.quality) this.quality.dropComposer();
+    if (this.probe) this.probe.dispose();
     if (this.renderer) this.renderer.dispose();
   }
 }

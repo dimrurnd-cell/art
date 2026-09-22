@@ -53,6 +53,7 @@ export class Quality {
     g.renderer.setPixelRatio(g.pr);
     if (level === 'high') this.makeComposer(); else this.dropComposer();
     g.world.setDetail(level);
+    if (g.spots) g.spots.setShadows(level === 'high');
     g.tex.setQuality(level);
     g.resize();
     if (this.onChange) this.onChange();
