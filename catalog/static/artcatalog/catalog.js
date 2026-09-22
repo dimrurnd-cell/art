@@ -156,6 +156,8 @@
     this.demo = root.getAttribute('data-demo') === '1';
     this.tildaPopup = (root.getAttribute('data-tilda-popup') || '').replace(/^#/, '');
     this.ticketUrl = root.getAttribute('data-ticket-url') || '#';
+    // data-hall: "webgl" | "css" | "" (сам решит по устройству)
+    this.hallMode = root.getAttribute('data-hall') || '';
     var base = this.base;
     // пути в artists.json могут быть относительными (к data-base) или абсолютными
     this.url = function (p) { return /^(https?:)?\/\//.test(p) ? p : base + p; };
@@ -451,6 +453,7 @@
      сцены в CSS). В полноэкранном режиме размеры те же, а пересоздание
      разметки выбросило бы страницу из полного экрана. */
   Widget.prototype.refreshHall = function () {
+    if (this.gl || this.glHost) return;         // WebGL-сцена следит за размером сама
     var h = this.hall;
     if (!h || !h.stage || !document.body.contains(h.stage)) return;
 
@@ -559,7 +562,13 @@
     box.hidden = this.letters().length < 2;
   };
 
-  Widget.prototype.switchSection = function (i) {
+  Widget.prototype.switchSection = function (i, quiet) {
+    // В WebGL-галерее все разделы — залы одного здания: вкладка ведёт зрителя
+    // в нужный зал, а не пересобирает сцену
+    if (this.gl && i === this.section && this.sections[i]) {
+      if (!quiet) this.gl.goToRoom(i);
+      return;
+    }
     if (i === this.section || !this.sections[i]) return;
     this.section = i;
     var btns = this.wrap.querySelectorAll('[data-section]');
@@ -574,6 +583,10 @@
     var input = this.wrap.querySelector('.artc-search__input');
     if (input) { input.value = ''; this.wrap.querySelector('.artc-search__clear').hidden = true; }
     this.buildCarousel();
+    if (this.gl || this.glHost) {
+      if (this.gl && !quiet && !this.glQuiet) this.gl.goToRoom(i);
+      return;
+    }
     this.buildHall();          // коридор всегда показывает один раздел
   };
 
@@ -718,9 +731,125 @@
       '<rect x="44" y="86" width="32" height="9" rx="3" fill="#C9504C"/></svg>' }
   ];
 
+  /* ---------------- WebGL-галерея ----------------
+
+     Холл-развилка и по залу на раздел, настоящий 3D (three.js). Код сцены
+     лежит отдельно в gallery.js (~140 КБ в gzip) и грузится, только когда
+     зритель нажал «Войти в галерею», — остальной странице он не мешает.
+     Если WebGL нет, скрипт не загрузился или картинки нельзя взять в WebGL
+     (чужой домен без CORS), остаётся прежний CSS-зал. Выбор можно
+     закрепить атрибутом data-hall="webgl" | "css", а для проверки —
+     параметром адреса ?hall=css. */
+  Widget.prototype.useGL = function () {
+    if (this.glOff) return false;
+    var m = (location.search.match(/[?&]hall=(css|webgl)\b/) || [])[1] || this.hallMode;
+    if (m === 'css') return false;
+    if (m !== 'webgl' && navigator.deviceMemory && navigator.deviceMemory < 2) return false;
+    // вариант для сервера без CORS (данные из artists.js): картинки с чужого
+    // домена браузер в WebGL не отдаст — сразу CSS-зал
+    if (m !== 'webgl' && window.ARTCATALOG_DATA && /^(https?:)?\/\//.test(this.base) &&
+        this.base.indexOf(location.origin) !== 0) return false;
+    if (window.ArtGallery) return window.ArtGallery.supported();
+    try {
+      var c = document.createElement('canvas');
+      return !!(c.getContext('webgl2') || c.getContext('webgl'));
+    } catch (e) { return false; }
+  };
+
+  Widget.prototype.buildGL = function (host) {
+    if (this.glHost === host) return;            // уже построена или строится
+    var self = this;
+    this.glHost = host;
+    var n = 0;
+    this.sections.forEach(function (sec) { n += sec.list.length; });
+    host.innerHTML =
+      '<div class="artc-glposter">' +
+        '<h3>Виртуальная галерея</h3>' +
+        '<p>Холл выставки и ' + (this.sections.length > 1 ? this.sections.length + ' зала' : 'зал') +
+          ': ' + n + ' художников, все работы на стенах. Ходите, подходите к картинам, ' +
+          'открывайте их во весь экран.</p>' +
+        '<button type="button" class="artc-glposter__go">Войти в галерею</button>' +
+        '<small>Нужен современный браузер. <a href="#" class="artc-glposter__css">Простой режим</a></small>' +
+      '</div>';
+
+    this.loadGL();   // скрипт грузим заранее, чтобы по нажатию войти сразу
+    host.querySelector('.artc-glposter__go').addEventListener('click', function () {
+      this.disabled = true;
+      this.textContent = 'Открываем…';
+      self.loadGL(function (ok) { if (ok) self.startGL(); else self.glFallback('script'); });
+    });
+    host.querySelector('.artc-glposter__css').addEventListener('click', function (e) {
+      e.preventDefault();
+      self.glFallback('user');
+    });
+  };
+
+  Widget.prototype.loadGL = function (cb) {
+    var self = this;
+    if (window.ArtGallery) { if (cb) cb(true); return; }
+    (this.glWait = this.glWait || []).push(cb);
+    if (this.glScript) return;
+    var sc = document.createElement('script');
+    sc.src = this.base + 'gallery.js' + (VERSION !== 'local' ? '?v=' + VERSION : '');
+    sc.async = true;
+    sc.onload = function () { var w = self.glWait; self.glWait = []; w.forEach(function (f) { if (f) f(!!window.ArtGallery); }); };
+    sc.onerror = function () { var w = self.glWait; self.glWait = []; w.forEach(function (f) { if (f) f(false); }); };
+    this.glScript = sc;
+    document.head.appendChild(sc);
+  };
+
+  Widget.prototype.startGL = function () {
+    var self = this;
+    var host = this.glHost;
+    if (!host || this.gl) return;
+    this.gl = window.ArtGallery.create(host, {
+      artists: this.artists,
+      sections: this.sections,
+      url: this.url,
+      ticketUrl: this.ticketUrl,
+      objects: OBJECTS,
+      openWork: function (gi, wi) {
+        self.fromHall = true;
+        self.lbFromHall = true;
+        self.openArtist(gi);
+        self.openWork(wi);
+      },
+      openArtist: function (gi) {
+        self.fromHall = true;
+        self.lbFromHall = false;
+        self.openArtist(gi);
+      },
+      onRoom: function (i) {
+        if (i >= 0 && i !== self.section) self.switchSection(i, true);
+      },
+      onFullscreen: function (fsEl) {
+        var target = fsEl || document.body;
+        [self.artistModal, self.lightbox, self.formModal].forEach(function (m) {
+          if (m && m.parentNode !== target) target.appendChild(m);
+        });
+      },
+      fallback: function (reason) { self.glFallback(reason); }
+    });
+    if (!this.gl) { this.glFallback('webgl'); return; }
+    var stage = host.querySelector('.artg-stage');
+    if (stage) stage.focus({ preventScroll: true });
+  };
+
+  /* Вернуться к CSS-залу (WebGL недоступен или зритель выбрал простой режим) */
+  Widget.prototype.glFallback = function (reason) {
+    if (window.console && console.warn) console.warn('[artcatalog] 3D-галерея недоступна (' + reason + '), CSS-зал');
+    var g = this.gl;
+    this.gl = null;
+    this.glHost = null;
+    this.glOff = true;
+    if (g) g.destroy();
+    this.buildHall();
+  };
+
   Widget.prototype.buildHall = function (rebuild) {
     var host = this.wrap.querySelector('.artc-view--hall');
     if (!host) return;
+    if (this.useGL()) { this.buildGL(host); return; }
     if (this.hall && this.hall.offKey) this.hall.offKey();
     this.stopTour();
     var keep = rebuild && this.hall ? this.hall.progress : 0;
@@ -2085,12 +2214,16 @@
     if ((m === this.lightbox || m === this.artistModal) && this.fromHall &&
         !document.querySelector('.artc-modal.is-open')) {
       this.fromHall = null;
-      this.blurArt();
-      // на телефоне про колесо мыши писать незачем
-      this.showHint(isTouch()
-        ? 'Вы снова в зале — проведите пальцем, чтобы идти дальше'
-        : 'Вы снова в зале — идите дальше: перетаскивайте, крутите колесо ' +
-          'или жмите стрелки на полу');
+      if (this.gl) {
+        this.gl.onReturn();          // WebGL-зал: отступаем на шаг от полотна
+      } else {
+        this.blurArt();
+        // на телефоне про колесо мыши писать незачем
+        this.showHint(isTouch()
+          ? 'Вы снова в зале — проведите пальцем, чтобы идти дальше'
+          : 'Вы снова в зале — идите дальше: перетаскивайте, крутите колесо ' +
+            'или жмите стрелки на полу');
+      }
     }
     var anyOpen = document.querySelector('.artc-modal.is-open');
     if (!anyOpen) {
@@ -2109,7 +2242,7 @@
     // если художник из другого раздела (переход из зала) — переключим раздел
     var target = this.artists[this.artistIdx];
     if (target && target.secIndex !== this.section && this.sections.length > 1) {
-      this.switchSection(target.secIndex);
+      this.switchSection(target.secIndex, true);   // зритель в 3D-зале остаётся на месте
     }
     var a = this.artists[this.artistIdx];
     var self = this;

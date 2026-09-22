@@ -1766,3 +1766,44 @@
 .artc-find__abc button:hover { background: rgba(255, 247, 228, .24); }
 .artc-find__abc button.is-active { background: var(--artc-coral); }
 .artc-find__abc[hidden] { display: none; }
+
+/* ---------- заставка WebGL-галереи (до нажатия «Войти в галерею») ---------- */
+.artc-glposter {
+  position: relative;
+  z-index: 1;
+  max-width: 1160px;
+  margin: 0 auto;
+  height: clamp(480px, 80vh, 760px);
+  box-sizing: border-box;
+  padding: 24px;
+  border-radius: 22px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  text-align: center;
+  color: #FBF5E4;
+  background:
+    radial-gradient(circle at 78% 22%, rgba(228,115,111,.55) 0 90px, transparent 91px),
+    radial-gradient(circle at 18% 76%, rgba(240,180,80,.45) 0 70px, transparent 71px),
+    radial-gradient(ellipse at 50% 40%, #4A3C2B 0%, #221C15 72%);
+  box-shadow: var(--artc-shadow);
+}
+.artc-glposter h3 { margin: 0; font: clamp(28px, 5vw, 46px)/1.1 'Parangon', Georgia, serif; font-weight: normal; }
+.artc-glposter p { margin: 0; max-width: 520px; font-size: 15px; line-height: 1.45; opacity: .88; }
+.artc-glposter__go {
+  appearance: none; border: 0; border-radius: 999px; cursor: pointer;
+  padding: 15px 28px; font: 600 17px/1 Arial, sans-serif;
+  background: var(--artc-coral, #E4736F); color: #fff;
+  box-shadow: 0 6px 20px rgba(0,0,0,.3);
+}
+.artc-glposter__go:hover { background: #D65F5B; }
+.artc-glposter__go:focus-visible { outline: 3px solid #FBF5E4; outline-offset: 3px; }
+.artc-glposter__go[disabled] { opacity: .75; cursor: progress; }
+.artc-glposter small { font-size: 12px; opacity: .7; }
+.artc-glposter small a { color: inherit; }
+@media (max-width: 600px) {
+  .artc-glposter { height: clamp(440px, 74vh, 640px); border-radius: 16px; }
+}

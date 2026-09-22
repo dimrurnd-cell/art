@@ -16,6 +16,7 @@
 ```
 /home/develop/donexpo/static/artcatalog/
 ├── catalog.js
+├── gallery.js         ← 3D-галерея, грузится по кнопке «Войти в галерею»
 ├── catalog.css
 ├── hall.css
 ├── artists.json
@@ -77,12 +78,13 @@ ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 
 | Файл | Байт |
 |---|---|
-| `catalog.js` | 110 445 |
-| `catalog.css` | 21 257 |
-| `hall.css` | 42 693 |
-| `artists.json` | 13 282 |
-| `artists.js` | 11 113 |
-| `catalog-standalone.css` | 91 318 |
+| `catalog.js` | 136 655 |
+| `catalog.css` | 22 321 |
+| `hall.css` | 49 755 |
+| `artists.json` | 329 957 |
+| `artists.js` | 261 991 |
+| `catalog-standalone.css` | 99 444 |
+| `gallery.js` | 529 516 |
 | `fonts/parangon.woff2` | 20 328 |
 | `img/logo.webp` | 31 726 |
 
