@@ -50,7 +50,10 @@ export class Probe {
   /* Материал получает отражения зонда с коррекцией по коробке помещения */
   patch(mat) {
     const u = this.u;
-    mat.onBeforeCompile = (sh) => {
+    // у материала может быть своя доработка шейдера (мебель) — она выполняется первой
+    const own = mat.onBeforeCompile, ownKey = mat.customProgramCacheKey.call(mat);
+    mat.onBeforeCompile = (sh, r) => {
+      own.call(mat, sh, r);
       Object.assign(sh.uniforms, u);
       sh.vertexShader = 'varying vec3 vBpWorld;\n' + sh.vertexShader
         .replace('#include <project_vertex>', '#include <project_vertex>\n' + PATCH_VERT);
@@ -59,7 +62,7 @@ export class Probe {
           THREE.ShaderChunk.envmap_physical_pars_fragment
             .replace('reflectVec = inverseTransformDirection( reflectVec, viewMatrix );', PATCH_FRAG));
     };
-    mat.customProgramCacheKey = () => 'artg-bp';
+    mat.customProgramCacheKey = () => 'artg-bp' + ownKey;
     mat.needsUpdate = true;
     this.mats.push(mat);
   }

@@ -38,6 +38,7 @@ export class Spots {
       this.pool.push({ l, it: null, cur: 0, next: null });
     }
     this.tmp = new THREE.Vector3();
+    this.factor = null;
   }
 
   setShadows(on) {
@@ -86,7 +87,8 @@ export class Spots {
       }
       // спот не прячем (visible = false), а гасим: иначе менялось бы число
       // источников света и пересобирались бы шейдеры всей сцены
-      s.l.intensity = s.cur * this.power;
+      // сила — ещё и по освещённости зала (свет по датчику движения)
+      s.l.intensity = s.cur * this.power * (s.it && this.factor ? this.factor(s.it) : 1);
     }
   }
 }

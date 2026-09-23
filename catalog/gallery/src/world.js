@@ -72,6 +72,41 @@ function instanced(geo, mat, items, fn) {
   return im;
 }
 
+/* Багетный профиль: планка единичной длины вдоль X. Сечение в плоскости
+   YZ: Y — от края работы наружу (0 — край полотна), Z — от стены к зрителю.
+   Внутренняя ступенька чуть заходит на край холста, внешний край скруглён. */
+function mouldingGeometry() {
+  const s = new THREE.Shape();
+  s.moveTo(-0.004, 0);          // у стены, чуть под краем холста
+  s.lineTo(-0.004, 0.056);      // внутренняя ступенька — поверх края работы
+  s.lineTo(0.006, 0.056);
+  s.lineTo(0.01, 0.05);
+  s.lineTo(0.036, 0.05);
+  s.quadraticCurveTo(0.045, 0.05, 0.045, 0.041);   // скругление внешнего края
+  s.lineTo(0.045, 0);
+  s.lineTo(-0.004, 0);
+  const g = new THREE.ExtrudeGeometry(s, { depth: 1, bevelEnabled: false, curveSegments: 4 });
+  // выдавливание идёт по Z — переводим в X: сечение (x,y) → (y,z)
+  g.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, -0.5, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1));
+  g.computeVertexNormals();
+  return g;
+}
+
+/* Запил планок рамы под 45°: концы планки сдвигаются по мере удаления от
+   края работы, и в углах планки сходятся по диагонали, как у настоящего
+   багета. Длина планки — масштаб по X в матрице экземпляра. */
+function mitred(mat) {
+  mat.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      #ifdef USE_INSTANCING
+        float barLen = length(instanceMatrix[0].xyz);
+        transformed.x = sign(position.x) * (0.5 + (position.y - 0.045) / barLen);
+      #endif`);
+  };
+  mat.customProgramCacheKey = () => 'artg-mitre';
+  return mat;
+}
+
 /* Рамка работы на экране (плоскость вдоль стены, по Z) */
 function projectArt(camera, x, it) {
   const a = project(camera, x, x, ART_Y - it.h / 2, ART_Y + it.h / 2, it.z - it.w / 2);
@@ -81,7 +116,7 @@ function projectArt(camera, x, it) {
 }
 
 /* Материал, куски которого при сборке сливаются в один меш */
-function batch(mat, opts) {
+export function batch(mat, opts) {
   Object.assign(mat.userData, { batch: true }, opts || {});
   return mat;
 }
@@ -129,6 +164,13 @@ export class World {
 
     this.mat = this.makeMaterials();
     this.onPaintings = null;          // сюда менеджер текстур подписывается на новые работы
+    this.props = null;                // мебель и оборудование (props.js), подключается до build()
+  }
+
+  /* Сборка: холл и первые залы разделов. Отдельно от конструктора — чтобы
+     до неё успели подключить мебель (props.js), которой нужен сам мир. */
+  build() {
+    const plan = this.plan;
     this.hallGroup = this.group();
     this.hallNorth = this.group();    // стена холла с проёмами: видна и из холла, и из первых залов
     this.target = this.hallGroup;
@@ -144,17 +186,18 @@ export class World {
     const a = this.aniso;
     return {
       // рама: чёрная полуматовая краска по дереву
-      frame: new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.42, metalness: 0 }),
+      frame: mitred(new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.42, metalness: 0 })),
       gap: batch(new THREE.MeshBasicMaterial({ color: 0x9a9995 })),
-      reveal: batch(new THREE.MeshStandardMaterial({ color: 0xe6e5e2, roughness: 0.8, metalness: 0 })),
+      // откосы проёмов — шлифованный алюминий, отражает зал
+      reveal: batch(new THREE.MeshStandardMaterial({ color: 0xd2d4d6, roughness: 0.34, metalness: 1 })),
       // светящиеся поверхности ярче белого: в постобработке они дают свечение
       light: batch(new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 2.9, 2.75), fog: false })),
       lens: new THREE.MeshBasicMaterial({ color: new THREE.Color(9, 8.2, 7.2), fog: false }),
       slot: batch(new THREE.MeshBasicMaterial({ color: 0xd9d8d4 })),
       track: batch(this.pbr.material('metal'), { tile: 0.6 }),
-      shadow: new THREE.MeshBasicMaterial({
+      shadow: batch(new THREE.MeshBasicMaterial({
         alphaMap: softShadow(), color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false,
-      }),
+      })),
       // мягкая тень у стыков: чёрный с прозрачностью по градиенту
       ao: batch(new THREE.MeshBasicMaterial({
         color: 0x000000, alphaMap: aoGradient(), transparent: true, opacity: 0.2,
@@ -221,6 +264,15 @@ export class World {
     return m;
   }
 
+  /* Произвольная геометрия (уже в мировых координатах) в текущую группу:
+     при сборке зала неподвижное сливается по материалу */
+  geoMesh(g, mat) {
+    if (this.batch && mat.userData.batch) { this.push(mat, g); return null; }
+    const m = new THREE.Mesh(g, mat);
+    this.add(m);
+    return m;
+  }
+
   /* Всё строится в текущую группу (зал, перегородку, холл) */
   add(obj) { (this.target || this.scene).add(obj); }
 
@@ -248,6 +300,8 @@ export class World {
     this.batch = null;
     if (!b) return;
     for (const [mat, list] of b) {
+      // экструзия и вращение дают геометрию без индекса — тогда все без индекса
+      if (list.some((x) => !x.index)) list.forEach((x, i) => { if (x.index) { list[i] = x.toNonIndexed(); x.dispose(); } });
       const g = mergeGeometries(list, false);
       list.forEach((x) => x.dispose());
       if (!g) continue;
@@ -449,6 +503,8 @@ export class World {
     });
     const hm = this.sign(hint, 4.2, 0.82, 0, 0.005, hall.z0 + 3.2, 0);
     hm.rotation.set(-Math.PI / 2, 0, 0);
+    this.plantMat = plant;
+    if (this.props) this.props.hall();
   }
 
   /* ---------------- анфилада раздела ---------------- */
@@ -492,6 +548,11 @@ export class World {
     const xl = c.cx - COR_W / 2, xr = c.cx + COR_W / 2;
     const z0 = r.z0, z1 = last ? r.z1 : r.z1 - WALL_T;   // вместе с полосой под перегородкой
     const L = z0 - z1, zMid = (z0 + z1) / 2;
+    // свой материал световых линий и линз у каждого зала: свет по датчику движения
+    r.lightMat = M.light.clone();
+    r.lensMat = M.lens.clone();
+    r.lightBase = M.light.color.clone();
+    r.lensBase = M.lens.color.clone();
 
     this.floor(xl, xr, z1, z0);
     this.plane(COR_W, L, this.ceilMat(COR_W, L), c.cx, H, zMid, 0, Math.PI / 2);
@@ -503,7 +564,7 @@ export class World {
       this.aoWallX(x, z0, z1, s, H);
       this.box(0.01, 0.035, L, M.gap, x + s * 0.004, 0.0175, zMid);
       this.plane(0.12, L, M.slot, x + s * 0.55, H - 0.005, zMid, 0, Math.PI / 2);
-      this.plane(0.06, L, M.light, x + s * 0.55, H - 0.008, zMid, 0, Math.PI / 2);
+      this.plane(0.06, L, r.lightMat, x + s * 0.55, H - 0.008, zMid, 0, Math.PI / 2);
     });
 
     if (ri === 0) {                                  // стена холла со стороны зала, кроме проёма
@@ -568,9 +629,25 @@ export class World {
       this.add(instanced(this.geo('plane'), M.shadow, ws, (it, p, e, s) => {
         p.set(it.x - it.side * 0.003, ART_Y - 0.07, it.z); e.set(0, face(it), 0); s.set(it.w * 1.12 + 0.35, it.h * 1.12 + 0.4, 1);
       }));
-      const frames = instanced(this.geo('box'), M.frame, ws, (it, p, e, s) => {
-        p.set(it.x - it.side * 0.022, ART_Y, it.z); e.set(0, face(it), 0); s.set(it.w + 0.05, it.h + 0.05, 0.044);
+      // багет: четыре планки из профиля с внутренней ступенькой; планка
+      // растягивается только по длине — профиль не искажается
+      const bars = [];
+      ws.forEach((it) => {
+        const fw = 0.045;
+        bars.push([it, 0, it.h / 2, it.w + fw * 2, 0], [it, 0, -it.h / 2, it.w + fw * 2, Math.PI],
+          [it, -it.w / 2, 0, it.h + fw * 2, Math.PI / 2], [it, it.w / 2, 0, it.h + fw * 2, -Math.PI / 2]);
       });
+      const frames = new THREE.InstancedMesh(this.geo('moulding'), M.frame, bars.length);
+      const mw = new THREE.Matrix4(), ml = new THREE.Matrix4(), q = new THREE.Quaternion();
+      bars.forEach(([it, lx, ly, len, rz], i) => {
+        // рама на стене: поворот к залу, сдвиг к центру работы
+        q.setFromEuler(_e.set(0, face(it), 0));
+        mw.compose(_p.set(it.x, ART_Y, it.z), q, _s.set(1, 1, 1));
+        ml.compose(_p.set(lx, ly, 0), q.setFromEuler(_e.set(0, 0, rz)), _s.set(len, 1, 1));
+        frames.setMatrixAt(i, mw.multiply(ml));
+      });
+      frames.instanceMatrix.needsUpdate = true;
+      frames.computeBoundingSphere();
       frames.castShadow = true;                     // тень рамы на стене от спота
       this.add(frames);
       // споты: корпус на треке, наклонён к работе
@@ -583,7 +660,7 @@ export class World {
       bodies.castShadow = true;
       this.add(bodies);
       // линза на торце корпуса — светится
-      this.add(instanced(this.geo('lens'), M.lens, ws, spotAt));
+      this.add(instanced(this.geo('lens'), r.lensMat, ws, spotAt));
     }
 
     // сами полотна
@@ -604,6 +681,7 @@ export class World {
       this.paintings.push(it);
       this.pickables.push(m);
     });
+    if (this.props) this.props.room(c, r);
     if (this.onPaintings && ws.length) this.onPaintings(ws);
   }
 
@@ -613,6 +691,7 @@ export class World {
       plane: new THREE.PlaneGeometry(1, 1),
       box: new THREE.BoxGeometry(1, 1, 1),
       spot: new THREE.CylinderGeometry(0.045, 0.055, 0.2, 16),
+      moulding: mouldingGeometry(),
       // диск линзы на нижнем торце корпуса (корпус — вдоль Y, длина 0.2)
       lens: new THREE.CircleGeometry(0.042, 16).rotateX(Math.PI / 2).translate(0, -0.101, 0),
     };
@@ -671,7 +750,7 @@ export class World {
   /* Материалы, которые отражают окружение зала (зонд отражений) */
   reflectMats() {
     const M = this.mat;
-    return [this.floorMat, M.frame, M.track, M.white, M.grey, M.pot];
+    return [this.floorMat, M.frame, M.track, M.white, M.grey, M.pot, M.reveal];
   }
 
   /* Коробка помещения и точка съёмки зонда: у зала — перед островом */

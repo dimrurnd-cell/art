@@ -139,6 +139,48 @@ export class Sound {
     o.start(t); o.stop(t + 0.14);
   }
 
+  /* Привод раздвижной двери: мягкий нарастающий шорох и щелчок в конце */
+  door(open, dist) {
+    if (!this.on || !this.ctx || dist > 9) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const vol = Math.max(0.15, 1 - dist / 9);
+    const src = ctx.createBufferSource();
+    src.buffer = this.white;
+    src.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(open ? 500 : 700, t);
+    bp.frequency.linearRampToValueAtTime(open ? 900 : 400, t + 0.9); bp.Q.value = 1.6;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.05 * vol, t + 0.15);
+    g.gain.linearRampToValueAtTime(0.035 * vol, t + 0.75);
+    g.gain.linearRampToValueAtTime(0, t + 0.95);
+    src.connect(bp).connect(g);
+    g.connect(this.master); g.connect(this.send);
+    src.start(t); src.stop(t + 1);
+  }
+
+  /* Свет по датчику: тихий щелчок реле и короткий гул разгорания */
+  lightsOn() {
+    if (!this.on || !this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = 100;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.012, t + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + 1.2);
+    o.connect(g); g.connect(this.master);
+    o.start(t); o.stop(t + 1.25);
+    const src = ctx.createBufferSource();
+    src.buffer = this.white;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3000;
+    const cg = ctx.createGain();
+    cg.gain.setValueAtTime(0.06, t); cg.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+    src.connect(hp).connect(cg); cg.connect(this.master); cg.connect(this.send);
+    src.start(t); src.stop(t + 0.05);
+  }
+
   /* moved — сколько прошли за кадр (м), dt — длительность кадра (с) */
   update(moved, dt, inHall) {
     if (!this.on || !this.ctx) return;

@@ -26,6 +26,7 @@ import { Spots } from './lights.js';
 import { Probe } from './probe.js';
 import { Atmosphere } from './atmosphere.js';
 import { Sound } from './audio.js';
+import { Props } from './props.js';
 import { CSS } from './ui-css.js';
 
 const VERSION = '1';
@@ -129,6 +130,9 @@ class Gallery {
     this.plan = buildLayout(bridge.artists, bridge.sections);
     const tb = performance.now();
     this.world = new World(renderer, this.plan, bridge);
+    this.props = new Props(this.world);
+    this.world.props = this.props;
+    this.world.build();
     this.buildMs = Math.round(performance.now() - tb);
     this.scene = this.world.scene;
     // тени спотов (на компьютере); сама карта теней включена всегда, а
@@ -139,6 +143,8 @@ class Gallery {
     this.atmo = new Atmosphere(this.scene, this.spots, this.small);
     this.sound = new Sound();
     this.lastPos = { x: 0, z: 0 };
+    this.bobAmp = 0;
+    this.bobPhase = 0;
     this.probe = new Probe(renderer, this.scene, this.small);
     this.world.reflectMats().forEach((m) => this.probe.patch(m));
     this.probeKey = '';
@@ -146,6 +152,15 @@ class Gallery {
     this.camera.rotation.order = 'YXZ';
     this.nav = new Nav(this.plan);
     this.tex = new TextureManager(renderer, bridge, this.small);
+    // мебель и оборудование: отражения, растения, экран, скульптура, свет по датчику, звуки
+    const pr = this.props;
+    pr.reflectMats().forEach((m) => this.probe.patch(m));
+    if (this.world.plantMat) pr.swayPlants(this.world.plantMat);
+    pr.screen(bridge, this.tex);
+    pr.sculpture();
+    this.spots.factor = (it) => pr.spotFactor(it);
+    pr.onDoor = (open, dist) => this.sound.door(open, dist);
+    pr.onWake = () => this.sound.lightsOn();
     this.quality = new Quality(this);
     this.quality.onChange = () => this.fillQuality();
     this.world.onPaintings = (items) => this.tex.attach(items);
@@ -801,8 +816,21 @@ class Gallery {
     const nav = this.nav;
     nav.update(dt);
     const cam = this.camera;
-    cam.position.set(nav.x, EYE, nav.z);
-    cam.rotation.set(nav.pitch, nav.yaw, 0);
+    const moved = Math.hypot(nav.x - this.lastPos.x, nav.z - this.lastPos.z);
+    this.lastPos.x = nav.x; this.lastPos.z = nav.z;
+    const speed = dt > 0 ? moved / dt : 0;
+    // «Живая» камера: в ходьбе голова чуть опускается на каждом шаге и
+    // покачивается с ноги на ногу; на месте — едва заметное дыхание.
+    // На быстром перелёте по маршруту покачивания нет — это не шаги.
+    const walking = !nav.path && speed > 0.3 && speed < 6;
+    this.bobAmp += ((walking ? 1 : 0) - this.bobAmp) * Math.min(1, dt * 4);
+    if (speed < 6) this.bobPhase += moved / 0.72 * Math.PI;
+    const tt = now / 1000;
+    const dip = -0.014 * (1 - Math.cos(2 * this.bobPhase)) / 2 * this.bobAmp;
+    const sway = 0.007 * Math.sin(this.bobPhase) * this.bobAmp;
+    const breath = 0.0035 * Math.sin(tt * 1.5);
+    cam.position.set(nav.x + Math.cos(nav.yaw) * sway, EYE + dip + breath, nav.z - Math.sin(nav.yaw) * sway);
+    cam.rotation.set(nav.pitch + 0.0012 * Math.sin(tt * 1.5 + 1), nav.yaw, 0.0028 * Math.sin(this.bobPhase) * this.bobAmp);
     this.world.camLight.position.set(nav.x, EYE + 0.6, nav.z);
 
     if (this.tick++ % 6 === 0) {
@@ -837,9 +865,8 @@ class Gallery {
       if (!map.hidden && this.tick % 12 === 1) this.drawMap();
     }
 
+    this.props.update(dt, nav, speed, this.sub);
     this.spots.update(dt);
-    const moved = Math.hypot(nav.x - this.lastPos.x, nav.z - this.lastPos.z);
-    this.lastPos.x = nav.x; this.lastPos.z = nav.z;
     this.sound.update(moved, dt, this.room < 0);
     this.atmo.update(cam, this.pr, this.stage.clientHeight);
     this.updateVisibility();
@@ -877,7 +904,8 @@ class Gallery {
     if (!this.revealed) return;
     const spot = this.world.probeSpot(this.sub);
     if (spot.key === this.probeKey) return;
-    if (spot.key !== this.probeWant) { this.probeWant = spot.key; this.probeAt = performance.now() + 500; return; }
+    // снимаем, когда свет по датчику уже разгорелся
+    if (spot.key !== this.probeWant) { this.probeWant = spot.key; this.probeAt = performance.now() + 1900; return; }
     if (performance.now() < this.probeAt) return;
     const rooms = new Set();
     if (spot.room) {
