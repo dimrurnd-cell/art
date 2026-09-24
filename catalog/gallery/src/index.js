@@ -85,23 +85,36 @@ class Gallery {
             '<button type="button" class="artg-btn artg-btn--icon" data-a="q" aria-label="Качество изображения" aria-expanded="false">' +
               '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">' +
               '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>' +
+            '<button type="button" class="artg-btn artg-btn--icon" data-a="more" aria-label="Ещё: звук, свет, ссылка, качество" aria-expanded="false">' +
+              '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>' +
             '<button type="button" class="artg-btn artg-btn--icon" data-a="fs" aria-label="Во весь экран">' +
               '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">' +
               '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>' +
           '</div>' +
         '</div>' +
         '<div class="artg-panel" hidden>' +
+          '<div class="artg-phead"><b>Художники</b><button type="button" class="artg-close" data-close aria-label="Закрыть">' +
+            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
           '<input type="search" class="artg-panel__q" placeholder="Фамилия или город" aria-label="Поиск художника">' +
           '<div class="artg-panel__list"></div>' +
         '</div>' +
         '<div class="artg-map" hidden>' +
+          '<div class="artg-phead"><b>План</b><button type="button" class="artg-close" data-close aria-label="Закрыть">' +
+            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
           '<canvas class="artg-map__plan" width="600" height="300"></canvas>' +
           '<div class="artg-map__list"></div>' +
         '</div>' +
         '<div class="artg-qpanel" hidden role="radiogroup" aria-label="Качество изображения">' +
-          '<p>Качество изображения</p>' +
+          '<div class="artg-phead"><b>Качество изображения</b><button type="button" class="artg-close" data-close aria-label="Закрыть">' +
+            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
           ['auto', 'high', 'medium', 'low'].map((m) => '<button type="button" role="radio" data-q="' + m + '">' + NAMES[m] + '</button>').join('') +
           '<small></small>' +
+        '</div>' +
+        '<div class="artg-more" hidden role="menu">' +
+          '<button type="button" role="menuitem" data-proxy="snd"></button>' +
+          '<button type="button" role="menuitem" data-proxy="light"></button>' +
+          '<button type="button" role="menuitem" data-proxy="share">Скопировать ссылку на это место</button>' +
+          '<button type="button" role="menuitem" data-proxy="q">Качество изображения…</button>' +
         '</div>' +
         '<div class="artg-hint"></div>' +
         '<div class="artg-tour" hidden aria-live="polite"></div>' +
@@ -301,10 +314,38 @@ class Gallery {
     this.bindJoystick();
     st.querySelector('[data-a="q"]').addEventListener('click', () => {
       const p = st.querySelector('.artg-qpanel');
-      p.hidden = !p.hidden;
-      st.querySelector('[data-a="q"]').setAttribute('aria-expanded', String(!p.hidden));
-      this.fillQuality();
+      const show = p.hidden;
+      this.closePanels();
+      p.hidden = !show;
+      st.querySelector('[data-a="q"]').setAttribute('aria-expanded', String(show));
+      if (show) { this.placePanels(); this.fillQuality(); }
+      st.classList.toggle('has-panel', this.anyPanel());
     });
+    // на узкой сцене редкие кнопки (звук, свет, ссылка, качество) — в меню «⋯»
+    const more = st.querySelector('.artg-more');
+    const moreFill = () => {
+      more.querySelector('[data-proxy="snd"]').textContent = 'Звук зала: ' + (this.sound.on ? 'включён' : 'выключен');
+      more.querySelector('[data-proxy="light"]').textContent = 'Свет: ' + (this.naturalLight ? 'естественный' : 'выставочный (споты)');
+    };
+    st.querySelector('[data-a="more"]').addEventListener('click', () => {
+      const show = more.hidden;
+      this.closePanels();
+      more.hidden = !show;
+      st.querySelector('[data-a="more"]').setAttribute('aria-expanded', String(show));
+      if (show) { this.placePanels(); moreFill(); }
+      this.stage.classList.toggle('has-panel', this.anyPanel());
+    });
+    more.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-proxy]');
+      if (!b) return;
+      const a = b.getAttribute('data-proxy');
+      if (a === 'q') { this.closePanels(); st.querySelector('[data-a="q"]').click(); return; }
+      st.querySelector('[data-a="' + a + '"]').click();
+      if (a === 'share') this.closePanels(); else moreFill();
+    });
+    // у каждой панели своя кнопка «закрыть» — на телефоне кнопки над сценой
+    // переносятся в два ряда, и панель не должна их закрывать
+    st.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => this.closePanels()));
     st.querySelector('.artg-qpanel').addEventListener('click', (e) => {
       const b = e.target.closest('[data-q]');
       if (b) this.quality.choose(b.getAttribute('data-q'));
@@ -325,13 +366,6 @@ class Gallery {
       b.addEventListener('pointerdown', on);
       ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => b.addEventListener(ev, off));
     });
-  }
-
-  closePanels() {
-    this.togglePanel(false);
-    this.toggleMap(false);
-    const q = this.stage.querySelector('.artg-qpanel');
-    q.hidden = true;
   }
 
   /* Джойстик на сенсорном экране: палец в круге — идти (вверх — вперёд,
@@ -383,11 +417,50 @@ class Gallery {
       : 'Выбрано вручную';
   }
 
+  /* Закрыть все панели (художники, план, качество) */
+  closePanels() {
+    const st = this.stage;
+    st.querySelector('.artg-panel').hidden = true;
+    st.querySelector('.artg-map').hidden = true;
+    st.querySelector('.artg-qpanel').hidden = true;
+    st.querySelector('.artg-more').hidden = true;
+    st.querySelector('[data-a="q"]').setAttribute('aria-expanded', 'false');
+    st.querySelector('[data-a="more"]').setAttribute('aria-expanded', 'false');
+    st.classList.remove('has-panel');
+  }
+
+  /* убрать всплывающую подсказку (например, когда открывается панель) */
+  hideHint() {
+    const h = this.stage.querySelector('.artg-hint');
+    if (h) h.classList.remove('is-on');
+  }
+
+  anyPanel() {
+    return ['.artg-panel', '.artg-map', '.artg-qpanel', '.artg-more'].some((s) => !this.stage.querySelector(s).hidden);
+  }
+
+  /* Панели — сразу под кнопками, сколько бы рядов кнопок ни было */
+  placePanels() {
+    const top = this.stage.querySelector('.artg-top');
+    const y = top.offsetTop + top.offsetHeight + 8;
+    ['.artg-panel', '.artg-map', '.artg-qpanel', '.artg-more'].forEach((s) => {
+      const p = this.stage.querySelector(s);
+      p.style.top = y + 'px';
+      p.style.maxHeight = 'calc(100% - ' + (y + 16) + 'px)';
+    });
+    // пока открыта панель, джойстик и кнопки шага её не перекрывают
+    this.stage.classList.toggle('has-panel', this.anyPanel());
+    if (this.anyPanel()) this.hideHint();
+  }
+
   togglePanel(on) {
     const p = this.stage.querySelector('.artg-panel');
     const show = on == null ? p.hidden : on;
+    if (show) this.closePanels();
     p.hidden = !show;
+    this.stage.classList.toggle('has-panel', this.anyPanel());
     if (show) {
+      this.placePanels();
       const q = p.querySelector('.artg-panel__q');
       q.value = '';
       this.fillPanel('');
@@ -452,8 +525,10 @@ class Gallery {
   toggleMap(on) {
     const p = this.stage.querySelector('.artg-map');
     const show = on == null ? p.hidden : on;
+    if (show) this.closePanels();
     p.hidden = !show;
-    if (show) { this.fillMap(); this.drawMap(); }
+    this.stage.classList.toggle('has-panel', this.anyPanel());
+    if (show) { this.placePanels(); this.fillMap(); this.drawMap(); }
   }
 
   fillMap() {
@@ -614,6 +689,8 @@ class Gallery {
 
     st.addEventListener('pointerdown', (e) => {
       if (e.target.closest('.artg-top, .artg-panel, .artg-move, .artg-map, .artg-qpanel, .artg-tour, .artg-joy')) return;
+      // открыта панель — касание сцены её закрывает, а не ведёт по залу
+      if (this.anyPanel()) { this.closePanels(); return; }
       if (this.tour.running) this.tour.stop();
       down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, t: performance.now(), id: e.pointerId, moved: false };
       st.focus({ preventScroll: true });
@@ -635,14 +712,29 @@ class Gallery {
         this.hoverAt(e);
       }
     });
+    // Нажатие обрабатываем по событию click, а не по отпусканию пальца: иначе
+    // окно работы открылось бы раньше, и следом пришедший клик попал бы в
+    // кнопку этого окна. Если click не пришёл (бывает на сенсорных экранах) —
+    // через 400 мс срабатываем сами.
     const up = (e) => {
       if (!down || down.id !== e.pointerId) return;
       const click = !down.moved && performance.now() - down.t < 700;
       down = null;
-      if (click && e.type === 'pointerup') this.clickAt(e);
+      if (!click || e.type !== 'pointerup') return;
+      const tap = { clientX: e.clientX, clientY: e.clientY };
+      this.pendingTap = tap;
+      clearTimeout(this.tapT);
+      this.tapT = setTimeout(() => { if (this.pendingTap === tap) { this.pendingTap = null; this.clickAt(tap); } }, 400);
     };
     st.addEventListener('pointerup', up);
     st.addEventListener('pointercancel', up);
+    st.addEventListener('click', () => {
+      const tap = this.pendingTap;
+      if (!tap) return;
+      this.pendingTap = null;
+      clearTimeout(this.tapT);
+      this.clickAt(tap);
+    });
 
     st.addEventListener('wheel', (e) => {
       if (e.ctrlKey) return;
@@ -704,7 +796,8 @@ class Gallery {
     if (!h) return;
     const u = h.object.userData;
     if (u.art) {
-      if (this.focus === u.art && !this.nav.path) this.bridge.openWork(u.art.gi, u.art.wi);
+      // та же картина, к которой уже подходим или подошли, — открыть сразу
+      if (this.focus === u.art) this.bridge.openWork(u.art.gi, u.art.wi);
       else this.focusArt(u.art, () => {
         if (this.touch) return;
         this.hint('Щёлкните по картине ещё раз, чтобы открыть её во весь экран');
@@ -834,7 +927,9 @@ class Gallery {
     const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
     const on = fsEl === this.stage || this.fsFake;
     this.stage.classList.toggle('is-fs', !!on);
-    if (this.bridge.onFullscreen) this.bridge.onFullscreen(fsEl === this.stage ? this.stage : null);
+    // окна работы и карточки — внутри полноэкранного слоя, иначе они
+    // открываются под ним (на iPhone полноэкранный режим — это слой поверх страницы)
+    if (this.bridge.onFullscreen) this.bridge.onFullscreen(fsEl === this.stage ? this.stage : (this.fsFake ? this.fsHost : null));
     this.resize();
   }
 
@@ -843,6 +938,11 @@ class Gallery {
   resize() {
     const w = this.stage.clientWidth, h = this.stage.clientHeight;
     if (!w || !h) return;
+    // узкая сцена (телефон вертикально): редкие кнопки уходят в меню «⋯»
+    this.stage.classList.toggle('is-narrow', w < 560);
+    // средняя ширина (телефон горизонтально, планшет): кнопки только значками
+    this.stage.classList.toggle('is-compact', w < 960);
+    if (this.anyPanel && this.stage.querySelector('.artg-top')) this.placePanels();
     this.renderer.setSize(w, h, false);
     if (this.quality) this.quality.resize(w, h);
     this.camera.aspect = w / h;

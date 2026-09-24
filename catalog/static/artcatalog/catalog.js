@@ -2337,6 +2337,12 @@
       m.style.overflow = 'auto';
       document.body.appendChild(m);
       trapFocus(m);
+      // «призрачный» клик: на сенсорном экране окно открывается по касанию,
+      // а следом браузер шлёт клик в ту же точку — он не должен нажать кнопку
+      // только что открытого окна («Хочу купить», крестик, фон)
+      m.addEventListener('click', function (e) {
+        if (Date.now() - (m.openedAt || 0) < 400) { e.stopPropagation(); e.preventDefault(); }
+      }, true);
       m.addEventListener('click', function (e) { if (e.target === m) self.closeModal(m); });
     });
 
@@ -2364,6 +2370,7 @@
     if (!m.classList.contains('is-open')) {
       this.lastFocus = this.lastFocus || document.activeElement;
       m.classList.add('is-open');
+      m.openedAt = Date.now();
     }
     if (!document.body.hasAttribute('data-artc-lock')) {
       document.body.setAttribute('data-artc-lock', document.body.style.overflow || '');

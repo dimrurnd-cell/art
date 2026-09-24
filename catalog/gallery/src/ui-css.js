@@ -10,7 +10,7 @@ export const CSS = `
   align-items:flex-start;gap:10px;pointer-events:none}
 .artg-where{pointer-events:none;color:#2a2a2a;line-height:1.25;min-width:0}
 .artg-where b{display:block;font:500 13px/1.3 "Inter","Helvetica Neue",Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase}
-.artg-simple{pointer-events:auto;margin-top:8px;display:inline-flex;align-items:center;gap:6px;appearance:none;border:1px solid rgba(42,42,42,.22);
+.artg-simple{pointer-events:auto;margin-top:8px;min-height:34px;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;appearance:none;border:1px solid rgba(42,42,42,.22);
   background:rgba(255,255,255,.82);color:#2a2a2a;border-radius:999px;padding:6px 12px 6px 10px;font:500 13px/1 "Inter","Helvetica Neue",Arial,sans-serif;
   cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .artg-simple:hover{background:#fff;border-color:rgba(42,42,42,.4)}
@@ -30,6 +30,32 @@ export const CSS = `
 .artg-btn[data-a="snd"].is-on .artg-snd-on{display:flex}
 .artg-btn[data-a="snd"].is-on .artg-snd-off{display:none}
 .artg-btn[data-a="light"].is-on{background:#2a2a2a;color:#fff}
+.artg-stage.is-compact .artg-btn span{display:none}
+.artg-stage.is-compact .artg-btn{padding:8px 10px}
+.artg-simple{white-space:nowrap}
+.artg-where b{white-space:nowrap}
+/* низкий экран (телефон горизонтально): сцена не выше экрана */
+@media (max-height:520px){.artg-stage{height:calc(100vh - 24px);height:calc(100svh - 24px);min-height:260px}}
+.artg-stage.is-narrow [data-a="snd"],.artg-stage.is-narrow [data-a="light"],.artg-stage.is-narrow [data-a="share"],.artg-stage.is-narrow [data-a="q"]{display:none}
+.artg-stage:not(.is-narrow) [data-a="more"]{display:none}
+.artg-more{position:absolute;right:14px;top:60px;width:min(300px,calc(100% - 28px));padding:8px;background:rgba(255,255,255,.97);border-radius:14px;
+  box-shadow:0 10px 40px rgba(0,0,0,.14);display:flex;flex-direction:column;gap:2px;z-index:3}
+.artg-more[hidden]{display:none}
+.artg-more button{appearance:none;border:0;background:none;text-align:left;padding:12px 12px;border-radius:8px;font:400 15px/1.2 "Inter","Helvetica Neue",Arial,sans-serif;color:#2a2a2a;cursor:pointer}
+.artg-more button:hover,.artg-more button:focus-visible{background:#f0efec;outline:none}
+/* пока открыта панель — джойстик и кнопки шага не лезут поверх неё */
+.artg-stage.has-panel .artg-move,.artg-stage.has-panel .artg-joy{visibility:hidden}
+/* подсказка на сенсорном экране — над джойстиком, а не на нём */
+.artg-stage.is-touch .artg-hint{bottom:148px}
+/* экскурсия ведёт сама — джойстик и шаги не нужны (любое касание её и так
+   остановит); карточка экскурсии — внизу */
+.artg-stage.is-touring .artg-move,.artg-stage.is-touring .artg-joy{visibility:hidden}
+.artg-stage.is-touch.is-touring .artg-tour{bottom:max(16px,env(safe-area-inset-bottom))}
+/* узкая сцена: текст экскурсии — строкой сверху, кнопки — под ним */
+.artg-stage.is-narrow .artg-tour{flex-wrap:wrap;padding:12px 12px 12px 14px;gap:10px}
+.artg-stage.is-narrow .artg-tour__txt{flex:1 1 100%}
+.artg-stage.is-narrow .artg-tour__btns{flex:1 1 100%;justify-content:space-between}
+.artg-stage.is-narrow .artg-tour__txt b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .artg-stage.is-touring [data-a="tour"]{background:#2a2a2a;color:#fff}
 .artg-tour{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);width:min(560px,calc(100% - 28px));box-sizing:border-box;
   display:flex;align-items:center;gap:12px;padding:12px 12px 12px 18px;background:rgba(255,255,255,.96);border-radius:14px;
@@ -54,7 +80,8 @@ export const CSS = `
   display:flex;flex-direction:column;background:rgba(255,255,255,.97);border-radius:14px;
   box-shadow:0 10px 40px rgba(0,0,0,.14);overflow:hidden}
 .artg-panel[hidden]{display:none}
-.artg-panel__q{margin:12px;padding:10px 12px;border:1px solid #dcdbd7;border-radius:10px;font-size:15px;background:#fafaf9}
+.artg-panel__q{margin:8px 12px 12px;padding:10px 12px;border:1px solid #dcdbd7;border-radius:10px;font-size:16px;background:#fafaf9}
+.artg-stage button{touch-action:manipulation}
 .artg-panel__list{overflow:auto;padding:0 6px 10px}
 .artg-panel__list button{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;
   border-radius:8px;font-size:14px;color:#2a2a2a;cursor:pointer}
@@ -76,7 +103,13 @@ export const CSS = `
 .artg-qpanel{position:absolute;right:14px;top:60px;width:230px;padding:10px;background:rgba(255,255,255,.97);border-radius:14px;
   box-shadow:0 10px 40px rgba(0,0,0,.14);display:flex;flex-direction:column;gap:2px}
 .artg-qpanel[hidden]{display:none}
-.artg-qpanel p{margin:2px 8px 6px;font:12px/1 "Helvetica Neue",Arial,sans-serif;text-transform:uppercase;letter-spacing:.08em;color:#8c8c88}
+.artg-phead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 10px 2px 16px;flex-shrink:0}
+.artg-qpanel .artg-phead{padding:2px 0 4px 8px}
+.artg-phead b{font:500 12px/1.2 "Inter","Helvetica Neue",Arial,sans-serif;text-transform:uppercase;letter-spacing:.08em;color:#8c8c88}
+.artg-close{appearance:none;border:0;width:36px;height:36px;flex-shrink:0;border-radius:50%;background:#f0efec;color:#2a2a2a;
+  display:flex;align-items:center;justify-content:center;cursor:pointer}
+.artg-close:hover{background:#e4e3df}
+.artg-close:focus-visible{outline:2px solid #2a2a2a;outline-offset:2px}
 .artg-qpanel button{border:0;background:none;text-align:left;padding:8px 10px;border-radius:8px;font-size:14px;color:#2a2a2a;cursor:pointer}
 .artg-qpanel button:hover,.artg-qpanel button:focus-visible{background:#f0efec;outline:none}
 .artg-qpanel button.is-on{background:#2a2a2a;color:#fff}
@@ -98,13 +131,17 @@ export const CSS = `
 .artg-stage.is-fs{max-width:none;height:100%;border-radius:0}
 .artg-fs-host{position:fixed;inset:0;z-index:2147483000;background:#ecebe8;padding:0!important}
 .artg-fs-host .artg-stage{height:100%;width:100%;max-width:none;border-radius:0}
+/* во весь экран на телефоне — не под «чёлкой» и не под полоской «домой» */
+.artg-stage.is-fs .artg-top{top:max(12px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));right:max(14px,env(safe-area-inset-right))}
+.artg-stage.is-fs .artg-move{bottom:max(16px,env(safe-area-inset-bottom))}
+.artg-stage.is-fs .artg-joy{bottom:max(18px,env(safe-area-inset-bottom));left:max(18px,env(safe-area-inset-left))}
+.artg-stage.is-fs.is-touch .artg-move{right:max(18px,env(safe-area-inset-right))}
 @media (max-width:600px){
   .artg-stage{height:clamp(440px,74vh,640px);border-radius:16px}
   .artg-btn,.artg-btn--icon{padding:7px;font-size:13px}
   .artg-btn span{display:none}
   .artg-top{flex-direction:column;align-items:stretch;gap:8px}
   .artg-actions{justify-content:flex-end}
-  .artg-panel,.artg-map,.artg-qpanel{top:100px}
   .artg-tour{bottom:140px}
   .artg-tour__txt b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
   .artg-actions{gap:4px;flex-wrap:wrap}

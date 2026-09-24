@@ -3,8 +3,9 @@
    Фон — тихий «воздух» помещения: бурый шум через фильтр низких частот,
    как далёкая вентиляция и гул большого пространства. Шаги — по пройденному
    пути (шаг ~0.72 м), а не по времени: стоишь — тишина, идёшь быстрее —
-   чаще. Шаг — короткий щелчок каблука (полосовой шум) и глухой удар
-   (низкий тон), у каждого шага своя громкость и высота. Эхо — свёртка с
+   чаще. Шаг — еле слышный мягкий шорох мягкой подошвы (приглушённый шум)
+   и едва заметный низкий толчок, без стука каблука; у каждого шага своя
+   громкость и высота. Эхо — свёртка с
    синтезированным откликом помещения: в высоком холле длиннее (2.8 с),
    в зале короче (1.5 с), при переходе одно плавно сменяет другое.
 
@@ -113,30 +114,30 @@ export class Sound {
 
   step(speed) {
     const ctx = this.ctx, t = ctx.currentTime;
-    const loud = Math.min(1, 0.55 + speed * 0.12) * (0.8 + Math.random() * 0.4);
-    // щелчок каблука по бетону
+    const loud = (0.7 + Math.random() * 0.3) * Math.min(1, 0.6 + speed * 0.08);
+    // мягкий шорох подошвы: приглушённый шум, плавное нарастание и затухание
     const src = ctx.createBufferSource();
     src.buffer = this.white;
-    src.playbackRate.value = 0.85 + Math.random() * 0.3;
-    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1500 + Math.random() * 700; bp.Q.value = 0.9;
+    src.playbackRate.value = 0.7 + Math.random() * 0.2;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500 + Math.random() * 150; lp.Q.value = 0.5;
     const g = ctx.createGain();
     g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.22 * loud, t + 0.004);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
-    src.connect(bp).connect(g);
-    g.connect(this.master); g.connect(this.send);
-    src.start(t); src.stop(t + 0.12);
-    // глухой удар всей стопой
+    g.gain.linearRampToValueAtTime(0.022 * loud, t + 0.025);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + 0.16);
+    src.connect(lp).connect(g);
+    g.connect(this.master);
+    src.start(t); src.stop(t + 0.2);
+    // едва заметный низкий толчок
     const o = ctx.createOscillator();
     o.type = 'sine';
-    o.frequency.setValueAtTime(95 + Math.random() * 15, t);
-    o.frequency.exponentialRampToValueAtTime(55, t + 0.08);
+    o.frequency.setValueAtTime(70 + Math.random() * 10, t);
+    o.frequency.exponentialRampToValueAtTime(48, t + 0.1);
     const og = ctx.createGain();
     og.gain.setValueAtTime(0, t);
-    og.gain.linearRampToValueAtTime(0.28 * loud, t + 0.006);
-    og.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-    o.connect(og); og.connect(this.master); og.connect(this.send);
-    o.start(t); o.stop(t + 0.14);
+    og.gain.linearRampToValueAtTime(0.018 * loud, t + 0.02);
+    og.gain.exponentialRampToValueAtTime(0.0005, t + 0.14);
+    o.connect(og); og.connect(this.master);
+    o.start(t); o.stop(t + 0.16);
   }
 
   /* Привод раздвижной двери: мягкий нарастающий шорох и щелчок в конце */

@@ -104,6 +104,7 @@ export class Atmosphere {
     }));
     this.dust.frustumCulled = false;
     this.dust.renderOrder = 6;
+    this.dust.visible = false;
     scene.add(this.dust);
     this.on = true;
     this.v = new THREE.Vector3();
@@ -111,7 +112,7 @@ export class Atmosphere {
 
   setEnabled(on) {
     this.on = on;
-    this.dust.visible = on;
+    this.dust.visible = false;          // пылинки в воздухе отвлекали — выключены
     this.beams.forEach((b) => { b.visible = on; });
   }
 

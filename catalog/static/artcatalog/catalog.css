@@ -39,7 +39,7 @@
 }
 .artc-root *, .artc-root *::before, .artc-root *::after { box-sizing: border-box; }
 .artc-root img { max-width: 100%; display: block; }
-.artc-root button { font-family: inherit; }
+.artc-root button { font-family: inherit; touch-action: manipulation; }
 
 /* зернистая текстура «крафта» */
 .artc-root::after {
@@ -522,7 +522,7 @@
 .artc-search__input {
   flex: 1 1 auto; min-width: 0;
   border: none; background: none;
-  font: inherit; font-size: 15px;
+  font: inherit; font-size: 16px;   /* мельче 16 px iPhone приближает страницу при вводе */
   color: var(--artc-ink);
   padding: 12px 0;
 }
@@ -563,7 +563,7 @@
 
 @media (max-width: 600px) {
   .artc-abc button { min-width: 26px; height: 26px; font-size: 13px; border-radius: 8px; }
-  .artc-search__input { font-size: 14px; padding: 10px 0; }
+  .artc-search__input { font-size: 16px; padding: 10px 0; }
 }
 
 .artc-dots:empty { display: none; }
