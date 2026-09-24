@@ -35,7 +35,9 @@ export const CSS = `
 .artg-simple{white-space:nowrap}
 .artg-where b{white-space:nowrap}
 /* низкий экран (телефон горизонтально): сцена не выше экрана */
-@media (max-height:520px){.artg-stage{height:calc(100vh - 24px);height:calc(100svh - 24px);min-height:260px}}
+@media (max-height:520px){.artg-stage{height:calc(100vh - 24px);height:calc(100svh - 24px);min-height:260px}
+  .artg-stage .artg-map__plan{width:auto;height:96px;align-self:center}}
+.artg-stage.is-narrow .artg-hint{font-size:13px;padding:8px 12px;max-width:calc(100% - 28px)}
 .artg-stage.is-narrow [data-a="snd"],.artg-stage.is-narrow [data-a="light"],.artg-stage.is-narrow [data-a="share"],.artg-stage.is-narrow [data-a="q"]{display:none}
 .artg-stage:not(.is-narrow) [data-a="more"]{display:none}
 .artg-more{position:absolute;right:14px;top:60px;width:min(300px,calc(100% - 28px));padding:8px;background:rgba(255,255,255,.97);border-radius:14px;

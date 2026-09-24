@@ -1273,7 +1273,6 @@
 @media (prefers-reduced-motion: reduce) {
   .artc-glload__glass, .artc-glload__stream { animation: none; }
 }
-}
 
 /* низкий экран (телефон горизонтально): зал и загрузчик не выше экрана,
    иначе кнопки внизу уходят за край */

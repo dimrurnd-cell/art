@@ -110,7 +110,9 @@ if ( uInvTM > 0.5 ) {
   vec3 c = max( gl_FragColor.rgb, vec3( 0.0 ) );
   float pk = max( c.r, max( c.g, c.b ) );
   if ( pk > 0.76 ) {
-    float np = min( pk, 0.995 );
+    // не выше 0.955: иначе чисто белое уходило бы в яркость ×12, и свечение
+    // (bloom) заливало бы светлые работы белым ореолом
+    float np = min( pk, 0.955 );
     float p0 = 0.0576 / ( 1.0 - np ) - 0.24 + 0.76;
     c *= p0 / pk;
   }

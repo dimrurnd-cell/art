@@ -3836,7 +3836,9 @@ if ( uInvTM > 0.5 ) {
   vec3 c = max( gl_FragColor.rgb, vec3( 0.0 ) );
   float pk = max( c.r, max( c.g, c.b ) );
   if ( pk > 0.76 ) {
-    float np = min( pk, 0.995 );
+    // \u043D\u0435 \u0432\u044B\u0448\u0435 0.955: \u0438\u043D\u0430\u0447\u0435 \u0447\u0438\u0441\u0442\u043E \u0431\u0435\u043B\u043E\u0435 \u0443\u0445\u043E\u0434\u0438\u043B\u043E \u0431\u044B \u0432 \u044F\u0440\u043A\u043E\u0441\u0442\u044C \xD712, \u0438 \u0441\u0432\u0435\u0447\u0435\u043D\u0438\u0435
+    // (bloom) \u0437\u0430\u043B\u0438\u0432\u0430\u043B\u043E \u0431\u044B \u0441\u0432\u0435\u0442\u043B\u044B\u0435 \u0440\u0430\u0431\u043E\u0442\u044B \u0431\u0435\u043B\u044B\u043C \u043E\u0440\u0435\u043E\u043B\u043E\u043C
+    float np = min( pk, 0.955 );
     float p0 = 0.0576 / ( 1.0 - np ) - 0.24 + 0.76;
     c *= p0 / pk;
   }
@@ -4557,7 +4559,9 @@ totalEmissiveRadiance += vColor.rgb * vRM.z * uGlow;`)},t.customProgramCacheKey=
 .artg-simple{white-space:nowrap}
 .artg-where b{white-space:nowrap}
 /* \u043D\u0438\u0437\u043A\u0438\u0439 \u044D\u043A\u0440\u0430\u043D (\u0442\u0435\u043B\u0435\u0444\u043E\u043D \u0433\u043E\u0440\u0438\u0437\u043E\u043D\u0442\u0430\u043B\u044C\u043D\u043E): \u0441\u0446\u0435\u043D\u0430 \u043D\u0435 \u0432\u044B\u0448\u0435 \u044D\u043A\u0440\u0430\u043D\u0430 */
-@media (max-height:520px){.artg-stage{height:calc(100vh - 24px);height:calc(100svh - 24px);min-height:260px}}
+@media (max-height:520px){.artg-stage{height:calc(100vh - 24px);height:calc(100svh - 24px);min-height:260px}
+  .artg-stage .artg-map__plan{width:auto;height:96px;align-self:center}}
+.artg-stage.is-narrow .artg-hint{font-size:13px;padding:8px 12px;max-width:calc(100% - 28px)}
 .artg-stage.is-narrow [data-a="snd"],.artg-stage.is-narrow [data-a="light"],.artg-stage.is-narrow [data-a="share"],.artg-stage.is-narrow [data-a="q"]{display:none}
 .artg-stage:not(.is-narrow) [data-a="more"]{display:none}
 .artg-more{position:absolute;right:14px;top:60px;width:min(300px,calc(100% - 28px));padding:8px;background:rgba(255,255,255,.97);border-radius:14px;
