@@ -29,6 +29,7 @@ import { Sound } from './audio.js';
 import { Props } from './props.js';
 import { CSS } from './ui-css.js';
 
+const LIGHT_KEY = 'artg-light';
 const VERSION = '1';
 
 function isTouch() {
@@ -74,6 +75,10 @@ class Gallery {
             '<button type="button" class="artg-btn artg-btn--icon" data-a="snd" aria-label="Звук зала" aria-pressed="false">' +
               '<i class="artg-snd-on">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>' + '</i>' +
               '<i class="artg-snd-off">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5zM16 9l6 6M22 9l-6 6"/></svg>' + '</i></button>' +
+            '<button type="button" class="artg-btn artg-btn--icon" data-a="light" aria-pressed="false" ' +
+              'aria-label="Естественный свет: картины в исходных цветах, без спотов" title="Естественный свет — картины в исходных цветах">' +
+              '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+              '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg></button>' +
             '<button type="button" class="artg-btn artg-btn--icon" data-a="share" aria-label="Поделиться ссылкой на это место">' +
               '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">' +
               '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>' +
@@ -148,6 +153,9 @@ class Gallery {
     this.lastPos = { x: 0, z: 0 };
     this.bobAmp = 0;
     this.bobPhase = 0;
+    let lightPref = '';
+    try { lightPref = localStorage.getItem(LIGHT_KEY) || ''; } catch (e) { /* приватный режим */ }
+    this.naturalLight = lightPref === 'natural';
     this.probe = new Probe(renderer, this.scene, this.small);
     this.world.reflectMats().forEach((m) => this.probe.patch(m));
     this.probeKey = '';
@@ -264,6 +272,21 @@ class Gallery {
     const sndBtn = st.querySelector('[data-a="snd"]');
     const sndShow = () => { sndBtn.setAttribute('aria-pressed', String(this.sound.on)); sndBtn.classList.toggle('is-on', this.sound.on); };
     sndBtn.addEventListener('click', () => { this.sound.toggle(); sndShow(); });
+    // свет: выставочный (споты) или естественный (картины как в оригинале)
+    const lightBtn = st.querySelector('[data-a="light"]');
+    const lightShow = () => {
+      lightBtn.setAttribute('aria-pressed', String(this.naturalLight));
+      lightBtn.classList.toggle('is-on', this.naturalLight);
+      lightBtn.title = this.naturalLight ? 'Выставочный свет — споты над работами' : 'Естественный свет — картины в исходных цветах';
+    };
+    lightBtn.addEventListener('click', () => {
+      this.setNaturalLight(!this.naturalLight);
+      lightShow();
+      this.hint(this.naturalLight
+        ? 'Естественный свет: споты погашены, картины — в цветах исходных изображений'
+        : 'Выставочный свет: споты над работами');
+    });
+    lightShow();
     // звук был включён в прошлый раз — включаем при первом касании сцены (раньше браузер не даст)
     const resume = () => { if (this.sound.want && !this.sound.on) { this.sound.set(true); sndShow(); } };
     st.addEventListener('pointerdown', resume, { once: true });
@@ -389,8 +412,35 @@ class Gallery {
     this.stage.querySelector('.artg-panel__list').innerHTML = html || '<p class="artg-panel__none">Никого не нашлось</p>';
   }
 
+  /* Естественный свет: выбор запоминается в браузере */
+  setNaturalLight(on) {
+    this.naturalLight = on;
+    try { localStorage.setItem(LIGHT_KEY, on ? 'natural' : 'spots'); } catch (e) { /* приватный режим */ }
+    if (!on) { this.world.setNatural(false); this.applyToneMap(); }   // тон-маппинг вернуть сразу, свет — плавно
+  }
+
+  /* На высоком качестве тон-маппинг делает последний проход по всему кадру;
+     при естественном свете он выключен, чтобы светлые места картин не
+     сжимались (стены почти не меняются: до ~0.8 он и так почти прямой) */
+  applyToneMap() {
+    const off = !!(this.quality && this.quality.composer) && this.world.naturalOn;
+    this.renderer.toneMapping = off ? THREE.NoToneMapping : THREE.NeutralToneMapping;
+  }
+
+  /* Плавный переход между спотами и естественным светом (~0.6 с) */
+  stepNatural(dt) {
+    const u = this.world.natural, target = this.naturalLight ? 1 : 0;
+    if (u.value === target) return;
+    u.value = target > u.value ? Math.min(1, u.value + dt / 0.6) : Math.max(0, u.value - dt / 0.6);
+    this.spots.dim = 1 - u.value;
+    // без спотов зал чуть светлее за счёт рассеянного света
+    this.world.hemi.intensity = 0.55 + 0.35 * u.value;
+    if (u.value === 1) { this.world.setNatural(true); this.applyToneMap(); }
+  }
+
   hint(text) {
     const h = this.stage.querySelector('.artg-hint');
+    if (!h) return;
     h.textContent = text;
     h.classList.add('is-on');
     clearTimeout(this.hintT);
@@ -873,6 +923,7 @@ class Gallery {
     }
 
     this.props.update(dt, nav, speed, this.sub);
+    this.stepNatural(dt);
     this.spots.update(dt);
     this.sound.update(moved, dt, this.room < 0);
     this.atmo.update(cam, this.pr, this.stage.clientHeight);

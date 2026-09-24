@@ -39,6 +39,7 @@ export class Spots {
     }
     this.tmp = new THREE.Vector3();
     this.factor = null;
+    this.dim = 1;          // 0 — споты погашены («естественный свет»)
   }
 
   setShadows(on) {
@@ -88,7 +89,7 @@ export class Spots {
       // спот не прячем (visible = false), а гасим: иначе менялось бы число
       // источников света и пересобирались бы шейдеры всей сцены
       // сила — ещё и по освещённости зала (свет по датчику движения)
-      s.l.intensity = s.cur * this.power * (s.it && this.factor ? this.factor(s.it) : 1);
+      s.l.intensity = s.cur * this.dim * this.power * (s.it && this.factor ? this.factor(s.it) : 1);
     }
   }
 }

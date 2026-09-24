@@ -123,7 +123,7 @@ export class Atmosphere {
     u.px.value = 0.012 * height * pixelRatio;            // пылинка около сантиметра — не в фокусе, как в кадре
     this.spots.pool.forEach((s, i) => {
       const beam = this.beams[i];
-      const on = s.it ? s.cur : 0;
+      const on = s.it ? s.cur * this.spots.dim : 0;
       if (i < MAX) {
         u.spotOn.value[i] = on;
         u.spotPos.value[i].copy(s.l.position);

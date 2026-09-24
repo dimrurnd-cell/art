@@ -158,7 +158,12 @@ export class World {
     this.scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
     this.scene.environmentIntensity = 0.32;
     pm.dispose();
-    this.scene.add(new THREE.HemisphereLight(0xfffdf8, 0xc9c6bf, 0.55));
+    this.hemi = new THREE.HemisphereLight(0xfffdf8, 0xc9c6bf, 0.55);
+    this.scene.add(this.hemi);
+    // «естественный свет»: 0 — картины под спотами, 1 — в цветах исходного
+    // изображения, без бликов и пересвета (см. paintingMat)
+    this.natural = { value: 0 };
+    this.naturalOn = false;
     this.camLight = new THREE.PointLight(0xfffaf2, 5, 14, 1.6);
     this.scene.add(this.camLight);
 
@@ -671,10 +676,10 @@ export class World {
       const co = this.pbr.tex('canvas', 'orm').clone();
       cn.repeat.set(it.w / 0.3, it.h / 0.3);
       co.repeat.copy(cn.repeat);
-      const mat = new THREE.MeshStandardMaterial({
+      const mat = this.paintingMat(new THREE.MeshStandardMaterial({
         color: PLACEHOLDER, roughness: 1, metalness: 0, normalMap: cn, normalScale: new THREE.Vector2(0.45, 0.45),
         roughnessMap: co, aoMap: co, aoMapIntensity: 0.6, envMapIntensity: 0.6,
-      });
+      }));
       const m = this.plane(it.w, it.h, mat, it.x - it.side * 0.046, ART_Y, it.z, face(it));
       m.userData.art = it;
       it.mesh = m;
@@ -684,6 +689,30 @@ export class World {
     });
     if (this.props) this.props.room(c, r);
     if (this.onPaintings && ws.length) this.onPaintings(ws);
+  }
+
+  /* Материал картины: при «естественном свете» цвет берётся прямо из
+     изображения — без света, бликов и тон-маппинга, как в оригинале */
+  paintingMat(mat) {
+    const u = this.natural;
+    mat.onBeforeCompile = (sh) => {
+      sh.uniforms.uNatural = u;
+      sh.fragmentShader = 'uniform float uNatural;\n' + sh.fragmentShader.replace('#include <opaque_fragment>',
+        '#include <opaque_fragment>\ngl_FragColor.rgb = mix( gl_FragColor.rgb, diffuseColor.rgb, uNatural );');
+    };
+    mat.customProgramCacheKey = () => 'artg-painting';
+    mat.toneMapped = !this.naturalOn;
+    return mat;
+  }
+
+  /* Включить / выключить естественный свет: тон-маппинг картин меняем,
+     когда переход закончен (это пересборка шейдера — одна на все картины) */
+  setNatural(on) {
+    this.naturalOn = on;
+    this.paintings.forEach((it) => {
+      const m = it.mesh && it.mesh.material;
+      if (m && m.toneMapped === on) { m.toneMapped = !on; m.needsUpdate = true; }
+    });
   }
 
   /* Общая геометрия для InstancedMesh всех залов */

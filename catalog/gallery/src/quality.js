@@ -88,6 +88,7 @@ export class Quality {
     g.world.setDetail(level);
     if (g.spots) g.spots.setShadows(level === 'high');
     if (g.atmo) g.atmo.setEnabled(level !== 'low');
+    if (g.applyToneMap) g.applyToneMap();
     // свет от экрана в холле — площадной источник, на низком его нет
     if (g.props && g.props.screenLight) g.props.screenLight.visible = level !== 'low';
     g.tex.setQuality(level);

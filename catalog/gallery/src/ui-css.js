@@ -29,6 +29,7 @@ export const CSS = `
 .artg-btn[data-a="snd"] .artg-snd-on{display:none}
 .artg-btn[data-a="snd"].is-on .artg-snd-on{display:flex}
 .artg-btn[data-a="snd"].is-on .artg-snd-off{display:none}
+.artg-btn[data-a="light"].is-on{background:#2a2a2a;color:#fff}
 .artg-stage.is-touring [data-a="tour"]{background:#2a2a2a;color:#fff}
 .artg-tour{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);width:min(560px,calc(100% - 28px));box-sizing:border-box;
   display:flex;align-items:center;gap:12px;padding:12px 12px 12px 18px;background:rgba(255,255,255,.96);border-radius:14px;
