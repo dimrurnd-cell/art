@@ -62,7 +62,10 @@ class Gallery {
         'aria-label="Виртуальная галерея: ходьба стрелками или W/S, полотна открываются нажатием">' +
         '<canvas class="artg-canvas"></canvas>' +
         '<div class="artg-top">' +
-          '<div class="artg-where"><b></b><span></span></div>' +
+          '<div class="artg-where"><b></b><span></span>' +
+            '<button type="button" class="artg-simple" data-a="simple" title="Плоский зал без 3D — для слабых устройств">' +
+              '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>' +
+              'Простой режим</button></div>' +
           '<div class="artg-actions">' +
             '<button type="button" class="artg-btn" data-a="tour" aria-label="Провести по залу">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14l11-7z"/></svg>' + '<span>Экскурсия</span></button>' +
             '<button type="button" class="artg-btn" data-a="hall" aria-label="Холл">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg>' + '<span>Холл</span></button>' +
@@ -185,6 +188,7 @@ class Gallery {
       this.tex.resetStats();
       this.applyHash();
       this.stage.querySelector('.artg-fade').classList.remove('is-on');
+      if (bridge.onReady) bridge.onReady();
     };
     // Проявляем, когда пришли и атлас превью, и фактуры помещения: пока
     // фактуры нет, three.js рисует на её месте чёрное. Если сеть медленная —
@@ -194,7 +198,9 @@ class Gallery {
     let atlasN = 0, atlasT = 1, atlasDone = false;
     const progress = () => {
       const texDone = texTotal - pbr.pending;
-      bar.firstChild.style.width = ((atlasN + texDone) / (atlasT + texTotal) * 100) + '%';
+      const frac = (atlasN + texDone) / (atlasT + texTotal);
+      bar.firstChild.style.width = (frac * 100) + '%';
+      if (bridge.onProgress) bridge.onProgress(frac);
       if (atlasDone && pbr.pending <= 0) {
         clearTimeout(this.revealT);
         setTimeout(reveal, 120);                 // дать кадру отрисоваться, потом снять завесу
@@ -242,6 +248,7 @@ class Gallery {
   bindUi() {
     const st = this.stage;
     st.querySelector('[data-a="hall"]').addEventListener('click', () => this.goHall());
+    st.querySelector('[data-a="simple"]').addEventListener('click', () => { if (this.bridge.simple) this.bridge.simple(); });
     st.querySelector('[data-a="list"]').addEventListener('click', () => { this.toggleMap(false); this.togglePanel(); });
     st.querySelector('[data-a="map"]').addEventListener('click', () => { this.togglePanel(false); this.toggleMap(); });
     st.querySelector('[data-a="share"]').addEventListener('click', () => this.share());

@@ -1192,14 +1192,20 @@
 .artc-find__abc button.is-active { background: var(--artc-coral); }
 .artc-find__abc[hidden] { display: none; }
 
-/* ---------- заставка WebGL-галереи (до нажатия «Войти в галерею») ----------
-   Светлая, как сама галерея: белые стены, серый пол, чёрный текст. */
-.artc-glposter {
+/* ---------- загрузчик WebGL-галереи ----------
+   Сразу вместо заставки: песочные часы пересыпаются по ходу загрузки,
+   рядом проценты и сколько осталось. Светлый, как сама галерея. */
+.artc-glwrap {
   position: relative;
   z-index: 1;
   max-width: 1160px;
   margin: 0 auto;
-  height: clamp(480px, 80vh, 760px);
+  min-height: clamp(480px, 80vh, 760px);
+}
+.artc-glload {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
   box-sizing: border-box;
   padding: 24px;
   border-radius: 22px;
@@ -1208,46 +1214,59 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: 10px;
   text-align: center;
   color: #2A2A2A;
   font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
-  background:
-    linear-gradient(180deg, #F7F7F5 0%, #F1F0EE 62%, #D9D8D4 62.2%, #E4E3E0 100%);
+  background: linear-gradient(180deg, #F7F7F5 0%, #F1F0EE 62%, #D9D8D4 62.2%, #E4E3E0 100%);
   box-shadow: 0 18px 50px rgba(0,0,0,.12);
+  transition: opacity .5s ease, visibility .5s;
 }
-.artc-glposter::before {                 /* проём в следующий зал */
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 38%;
-  width: min(34%, 300px);
-  height: 46%;
-  transform: translateX(-50%);
-  background: linear-gradient(180deg, #FFFFFF 0%, #ECEBE8 100%);
-  box-shadow: inset 0 0 0 1px #E2E1DE;
-  z-index: -1;
-  opacity: .8;
-}
-.artc-glposter h3 {
+.artc-glload.is-done { opacity: 0; visibility: hidden; pointer-events: none; }
+.artc-glload__glass { width: 64px; height: 96px; margin-bottom: 6px; animation: artc-hg-tilt 3.2s ease-in-out infinite; }
+.artc-glload__frame { fill: none; stroke: #2A2A2A; stroke-width: 2; stroke-linejoin: round; }
+.artc-glload__cap { fill: #2A2A2A; }
+.artc-glload__sand { fill: #E4736F; transition: y .4s ease, height .4s ease; }
+.artc-glload__stream { stroke: #E4736F; stroke-width: 1.6; stroke-dasharray: 3 4; animation: artc-hg-flow .5s linear infinite; }
+.artc-glload.is-done .artc-glload__stream { display: none; }
+@keyframes artc-hg-flow { to { stroke-dashoffset: -7; } }
+@keyframes artc-hg-tilt { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+.artc-glload h3 {
   margin: 0;
-  font: 300 clamp(26px, 4.4vw, 42px)/1.1 "Inter", "Helvetica Neue", Arial, sans-serif;
+  font: 300 clamp(22px, 3.6vw, 34px)/1.1 "Inter", "Helvetica Neue", Arial, sans-serif;
   letter-spacing: .16em;
   text-transform: uppercase;
 }
-.artc-glposter p { margin: 0; max-width: 500px; font-size: 15px; line-height: 1.5; color: #6F6F6B; }
-.artc-glposter__go {
-  appearance: none; border: 0; border-radius: 999px; cursor: pointer;
-  padding: 15px 30px; font: 500 16px/1 "Inter", "Helvetica Neue", Arial, sans-serif;
-  letter-spacing: .04em;
-  background: #2A2A2A; color: #fff;
-  box-shadow: 0 8px 22px rgba(0,0,0,.16);
+.artc-glload__txt { margin: 0; font-size: 15px; color: #6F6F6B; min-height: 1.5em; }
+.artc-glload__num { font: 300 44px/1 "Inter", "Helvetica Neue", Arial, sans-serif; letter-spacing: .02em; }
+.artc-glload__num b { font-weight: 400; }
+.artc-glload__bar { width: min(320px, 70%); height: 4px; border-radius: 4px; background: rgba(0,0,0,.08); overflow: hidden; }
+.artc-glload__bar i { display: block; height: 100%; width: 0; background: #2A2A2A; border-radius: 4px; transition: width .4s ease; }
+.artc-glload__eta { margin: 0; font-size: 13px; color: #8C8C88; min-height: 1.4em; }
+.artc-glload__css,
+.artc-mode {
+  appearance: none;
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid rgba(42,42,42,.28); border-radius: 999px;
+  background: rgba(255,255,255,.85); color: #2A2A2A;
+  padding: 10px 18px; cursor: pointer;
+  font: 500 14px/1 "Inter", "Helvetica Neue", Arial, sans-serif;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
-.artc-glposter__go:hover { background: #000; }
-.artc-glposter__go:focus-visible { outline: 2px solid #2A2A2A; outline-offset: 3px; }
-.artc-glposter__go[disabled] { opacity: .7; cursor: progress; }
-.artc-glposter small { font-size: 12px; color: #8C8C88; }
-.artc-glposter small a { color: inherit; }
+.artc-glload__css { margin-top: 10px; }
+.artc-glload__css svg, .artc-mode svg { width: 17px; height: 17px; flex-shrink: 0; }
+.artc-glload__css:hover, .artc-mode:hover { background: #fff; border-color: rgba(42,42,42,.5); }
+.artc-glload__css:focus-visible, .artc-mode:focus-visible { outline: 2px solid #2A2A2A; outline-offset: 3px; }
+.artc-glload small { max-width: 360px; font-size: 12px; color: #8C8C88; }
+/* кнопка «3D-галерея» в простом зале — слева сверху, всегда на виду */
+.artc-mode { position: absolute; left: 14px; top: 14px; z-index: 7; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
 @media (max-width: 600px) {
-  .artc-glposter { height: clamp(440px, 74vh, 640px); border-radius: 16px; }
+  .artc-glwrap { min-height: clamp(440px, 74vh, 640px); }
+  .artc-glload { border-radius: 16px; gap: 8px; }
+  .artc-glload__num { font-size: 36px; }
+  .artc-mode { padding: 8px 12px; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .artc-glload__glass, .artc-glload__stream { animation: none; }
+}
 }

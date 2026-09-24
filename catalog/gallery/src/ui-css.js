@@ -10,6 +10,11 @@ export const CSS = `
   align-items:flex-start;gap:10px;pointer-events:none}
 .artg-where{pointer-events:none;color:#2a2a2a;line-height:1.25;min-width:0}
 .artg-where b{display:block;font:500 13px/1.3 "Inter","Helvetica Neue",Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase}
+.artg-simple{pointer-events:auto;margin-top:8px;display:inline-flex;align-items:center;gap:6px;appearance:none;border:1px solid rgba(42,42,42,.22);
+  background:rgba(255,255,255,.82);color:#2a2a2a;border-radius:999px;padding:6px 12px 6px 10px;font:500 13px/1 "Inter","Helvetica Neue",Arial,sans-serif;
+  cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.artg-simple:hover{background:#fff;border-color:rgba(42,42,42,.4)}
+.artg-simple:focus-visible{outline:2px solid #2a2a2a;outline-offset:2px}
 .artg-where span{display:block;font-size:14px;color:#6f6f6b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48vw}
 .artg-actions{display:flex;gap:8px;pointer-events:auto;flex-shrink:0}
 .artg-btn{appearance:none;border:0;border-radius:999px;background:rgba(255,255,255,.9);color:#2a2a2a;

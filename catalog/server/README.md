@@ -16,7 +16,7 @@
 ```
 /home/develop/donexpo/static/artcatalog/
 ├── catalog.js
-├── gallery.js         ← 3D-галерея, грузится по кнопке «Войти в галерею»
+├── gallery.js         ← 3D-галерея, грузится, когда зритель долистал до неё
 ├── gallery-assets/    ← фактуры помещения (hi — компьютер, lo — телефон), ~11 МБ
 ├── catalog.css
 ├── hall.css
@@ -89,13 +89,13 @@ ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 
 | Файл | Байт |
 |---|---|
-| `catalog.js` | 137 212 |
+| `catalog.js` | 145 683 |
 | `catalog.css` | 22 321 |
-| `hall.css` | 50 240 |
+| `hall.css` | 51 990 |
 | `artists.json` | 329 957 |
 | `artists.js` | 261 991 |
-| `catalog-standalone.css` | 99 444 |
-| `gallery.js` | 947 492 |
+| `catalog-standalone.css` | 101 679 |
+| `gallery.js` | 948 750 |
 | `fonts/parangon.woff2` | 20 328 |
 | `img/logo.webp` | 31 726 |
 
@@ -229,8 +229,7 @@ sudo systemctl reload nginx
    опубликуйте страницу.
 4. Откройте страницу, нажмите F12 → Console: должна появиться строка
    `[artcatalog] версия …` и не быть красных сообщений про CORS.
-5. «Виртуальный зал» → «Войти в галерею»: холл появляется после тонкой полосы
-   загрузки, дальние работы в залах сразу с картинками (это атлас). Если вместо
+5. «Виртуальный зал»: загрузчик с песочными часами и процентами, затем холл; дальние работы в залах сразу с картинками (это атлас). Если вместо
    3D показался простой зал, а в консоли — `3D-галерея недоступна (cors)`,
    заголовок CORS не доходит до картинок: проверьте
    `curl -I https://donexpocentre.ru/static/artcatalog/img/logo.png | grep -i access-control`.
