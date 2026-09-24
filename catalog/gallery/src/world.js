@@ -92,6 +92,34 @@ function mouldingGeometry() {
   return g;
 }
 
+/* Цвет картины: доля uNatural — собственный цвет изображения, остальное —
+   освещённый. При uInvTM — обратное преобразование к нейтральному
+   тон-маппингу (Khronos PBR Neutral): последний проход кадра вернёт цвет
+   ровно к исходному. Сначала снимается сжатие светлых, потом — «носок» тёмных. */
+const PAINTING_FRAG = `
+{
+  // освещённость: во сколько раз свет в этой точке ярче «нормального» (uLit.x);
+  // цвет всегда из изображения, свет только слегка меняет яркость — в пределах uLit.zw
+  vec3 src = diffuseColor.rgb;
+  const vec3 LW = vec3( 0.2126, 0.7152, 0.0722 );
+  float ratio = dot( gl_FragColor.rgb, LW ) / max( dot( src, LW ), 1e-3 );
+  float f = clamp( 1.0 + ( ratio / uLit.x - 1.0 ) * uLit.y, uLit.z, uLit.w );
+  gl_FragColor.rgb = mix( src * f, src, uNatural );
+}
+if ( uInvTM > 0.5 ) {
+  vec3 c = max( gl_FragColor.rgb, vec3( 0.0 ) );
+  float pk = max( c.r, max( c.g, c.b ) );
+  if ( pk > 0.76 ) {
+    float np = min( pk, 0.995 );
+    float p0 = 0.0576 / ( 1.0 - np ) - 0.24 + 0.76;
+    c *= p0 / pk;
+  }
+  float m = min( c.r, min( c.g, c.b ) );
+  float m0 = m < 0.04 ? sqrt( m / 6.25 ) : m + 0.04;
+  gl_FragColor.rgb = c + ( m0 - m );
+}
+`;
+
 /* Запил планок рамы под 45°: концы планки сдвигаются по мере удаления от
    края работы, и в углах планки сходятся по диагонали, как у настоящего
    багета. Длина планки — масштаб по X в матрице экземпляра. */
@@ -163,7 +191,16 @@ export class World {
     // «естественный свет»: 0 — картины под спотами, 1 — в цветах исходного
     // изображения, без бликов и пересвета (см. paintingMat)
     this.natural = { value: 0 };
-    this.naturalOn = false;
+    // на высоком качестве тон-маппинг делает последний проход по всему кадру;
+    // картины заранее «разжимаются» обратным преобразованием, чтобы их цвет
+    // остался как в изображении (на других уровнях они просто без тон-маппинга)
+    this.invTM = { value: 0 };
+    // выставочный свет на картине: x — освещённость, принятая за «как в
+    // изображении», y — насколько заметен спот, z/w — пределы яркости
+    // (замер: спот даёт в 1.3 раза больше света у низа картины, в 1.8 — в
+    // центре, в 2.7 — у верха; после калибровки центр как в изображении,
+    // верх +12 %, низ −7 %, работы в приглушённых залах — до −15 %)
+    this.lit = { value: new THREE.Vector4(1.8, 0.24, 0.85, 1.12) };
     this.camLight = new THREE.PointLight(0xfffaf2, 5, 14, 1.6);
     this.scene.add(this.camLight);
 
@@ -694,25 +731,17 @@ export class World {
   /* Материал картины: при «естественном свете» цвет берётся прямо из
      изображения — без света, бликов и тон-маппинга, как в оригинале */
   paintingMat(mat) {
-    const u = this.natural;
+    const u = this.natural, inv = this.invTM, lit = this.lit;
     mat.onBeforeCompile = (sh) => {
       sh.uniforms.uNatural = u;
-      sh.fragmentShader = 'uniform float uNatural;\n' + sh.fragmentShader.replace('#include <opaque_fragment>',
-        '#include <opaque_fragment>\ngl_FragColor.rgb = mix( gl_FragColor.rgb, diffuseColor.rgb, uNatural );');
+      sh.uniforms.uInvTM = inv;
+      sh.uniforms.uLit = lit;
+      sh.fragmentShader = 'uniform float uNatural;\nuniform float uInvTM;\nuniform vec4 uLit;\n' + sh.fragmentShader.replace('#include <opaque_fragment>',
+        '#include <opaque_fragment>\n' + PAINTING_FRAG);
     };
     mat.customProgramCacheKey = () => 'artg-painting';
-    mat.toneMapped = !this.naturalOn;
+    mat.toneMapped = false;
     return mat;
-  }
-
-  /* Включить / выключить естественный свет: тон-маппинг картин меняем,
-     когда переход закончен (это пересборка шейдера — одна на все картины) */
-  setNatural(on) {
-    this.naturalOn = on;
-    this.paintings.forEach((it) => {
-      const m = it.mesh && it.mesh.material;
-      if (m && m.toneMapped === on) { m.toneMapped = !on; m.needsUpdate = true; }
-    });
   }
 
   /* Общая геометрия для InstancedMesh всех залов */

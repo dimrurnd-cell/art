@@ -416,15 +416,6 @@ class Gallery {
   setNaturalLight(on) {
     this.naturalLight = on;
     try { localStorage.setItem(LIGHT_KEY, on ? 'natural' : 'spots'); } catch (e) { /* приватный режим */ }
-    if (!on) { this.world.setNatural(false); this.applyToneMap(); }   // тон-маппинг вернуть сразу, свет — плавно
-  }
-
-  /* На высоком качестве тон-маппинг делает последний проход по всему кадру;
-     при естественном свете он выключен, чтобы светлые места картин не
-     сжимались (стены почти не меняются: до ~0.8 он и так почти прямой) */
-  applyToneMap() {
-    const off = !!(this.quality && this.quality.composer) && this.world.naturalOn;
-    this.renderer.toneMapping = off ? THREE.NoToneMapping : THREE.NeutralToneMapping;
   }
 
   /* Плавный переход между спотами и естественным светом (~0.6 с) */
@@ -435,7 +426,6 @@ class Gallery {
     this.spots.dim = 1 - u.value;
     // без спотов зал чуть светлее за счёт рассеянного света
     this.world.hemi.intensity = 0.55 + 0.35 * u.value;
-    if (u.value === 1) { this.world.setNatural(true); this.applyToneMap(); }
   }
 
   hint(text) {

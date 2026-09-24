@@ -19,11 +19,12 @@ export class Spots {
     this.n = small ? 6 : 16;
     this.shadowN = small ? 0 : 4;
     this.shadows = !small;
-    this.power = 95;          // сила света, кандел
+    this.power = 75;          // сила света, кандел
     this.pool = [];
     for (let i = 0; i < this.n; i++) {
-      // тёплый белый, как у музейных светодиодов 3000–3500 K
-      const l = new THREE.SpotLight(0xfff0dc, 0, 9, 0.34, 0.85, 2);
+      // мягкий тёплый белый, как у музейных светодиодов ~4000 K: цвета
+      // работ почти не сдвигает в жёлтое
+      const l = new THREE.SpotLight(0xfff5e8, 0, 9, 0.38, 0.9, 2);
       l.target = new THREE.Object3D();
       if (i < this.shadowN) {
         l.castShadow = true;
@@ -50,8 +51,8 @@ export class Spots {
   place(s, it) {
     s.it = it;
     s.l.position.set(it.x - it.side * TRACK, COR_H - 0.3, it.z);
-    // целимся чуть ниже центра: верх картины не пересвечен, пятно уходит на стену под ней
-    s.l.target.position.set(it.x - it.side * 0.05, ART_Y - it.h * 0.18, it.z);
+    // целимся ниже центра: верх картины ближе к лампе, пятно уходит на стену под ней
+    s.l.target.position.set(it.x - it.side * 0.05, ART_Y - it.h * 0.35, it.z);
     s.l.target.updateMatrixWorld();
   }
 
