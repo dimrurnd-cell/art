@@ -15,7 +15,8 @@ export const CSS = `
   cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .artg-simple:hover{background:#fff;border-color:rgba(42,42,42,.4)}
 .artg-simple:focus-visible{outline:2px solid #2a2a2a;outline-offset:2px}
-.artg-where span{display:block;font-size:14px;color:#6f6f6b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48vw}
+.artg-where span{font-size:14px;color:#6f6f6b;max-width:min(48vw,520px);line-height:1.3;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .artg-actions{display:flex;gap:8px;pointer-events:auto;flex-shrink:0}
 .artg-btn{appearance:none;border:0;border-radius:999px;background:rgba(255,255,255,.9);color:#2a2a2a;
   font:500 14px/1 "Inter","Helvetica Neue",Arial,sans-serif;padding:10px 15px;cursor:pointer;box-shadow:0 1px 0 rgba(0,0,0,.06),0 4px 14px rgba(0,0,0,.08);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}

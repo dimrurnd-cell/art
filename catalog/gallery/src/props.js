@@ -24,7 +24,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { batch } from './world.js';
-import { textCanvas, canvasTexture, spaced, SANS } from './materials.js';
+import { textCanvas, canvasTexture, spaced, fitLines, SANS } from './materials.js';
 import {
   COR_W, COR_H, ARCH_W, ARCH_H, WALL_T, DOOR_W, aisleX,
 } from './layout.js';
@@ -562,14 +562,9 @@ export class Props {
       g.fillStyle = 'rgba(255,255,255,0.6)';
       spaced(g, 'СЕЙЧАС НА ЭКРАНЕ', 50, cv.height - 118, 3);
       g.fillStyle = 'rgba(255,255,255,0.95)';
-      g.font = '400 28px ' + SANS;
-      // длинное ФИО — в две строки, чтобы не заходить на картину
-      const words = name.split(' '), lines = [''];
-      words.forEach((wd) => {
-        const tryL = lines[lines.length - 1] ? lines[lines.length - 1] + ' ' + wd : wd;
-        if (g.measureText(tryL).width > 370 && lines[lines.length - 1]) lines.push(wd); else lines[lines.length - 1] = tryL;
-      });
-      lines.slice(0, 2).forEach((l, i) => g.fillText(l, 48, cv.height - 80 + i * 34 - (lines.length > 1 ? 0 : -16)));
+      // длинное имя — меньше и в две строки, чтобы не заходить на картину
+      const f = fitLines(g, name, 380, { size: 28, min: 20, maxLines: 2 });
+      f.lines.forEach((l, i) => g.fillText(l, 48, cv.height - 80 + i * (f.size + 6) - (f.lines.length > 1 ? 0 : -16)));
     }
     this.scr.U.tText.value.needsUpdate = true;
   }

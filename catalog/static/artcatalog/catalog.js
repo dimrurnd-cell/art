@@ -1228,8 +1228,9 @@
       });
 
       // имя художника — на левой стене, город — на правой
-      var sign = el('div', 'artc-sign');
-      sign.innerHTML = esc(a.name.split(' ').slice(0, 2).join(' '));
+      // имя целиком: длинное — мельче и в несколько строк, но без обрезки
+      var sign = el('div', 'artc-sign' + (a.name.length > 44 ? ' artc-sign--xlong' : a.name.length > 26 ? ' artc-sign--long' : ''));
+      sign.innerHTML = esc(a.name);
       sign.style.transform = 'translate(-50%, -50%) translate3d(' + (-HW + 4) + 'px, ' +
         (-HH + 96) + 'px, ' + roomEntry + 'px) rotateY(90deg)';
       world.appendChild(sign);

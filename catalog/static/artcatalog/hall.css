@@ -290,6 +290,8 @@
   text-shadow: 0 2px 0 rgba(255, 250, 232, .35);
   pointer-events: none;
 }
+.artc-sign--long { font-size: .78em; }
+.artc-sign--xlong { font-size: .62em; line-height: 1.1; }
 .artc-sign small {
   display: block;
   font-family: var(--artc-font-body);
@@ -402,18 +404,17 @@
 .artc-art__ava img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .artc-art__meta { min-width: 0; }
 .artc-art__title {
-  display: block;
   font-family: var(--artc-font-head);
   font-size: 19px;
   line-height: 1.2;
   color: var(--artc-ink);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* длинное название — в две строки, а не многоточием */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
 }
 .artc-art__author {
-  display: block;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
   font-size: 12px;
   color: var(--artc-muted);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   margin-top: 1px;
 }
 

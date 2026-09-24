@@ -24,7 +24,7 @@ import {
   ART_Y, COR_W, COR_H, ARCH_W, ARCH_H, WALL_T, SPINE_T, SPINE_H, DOOR_W, DOOR_H, aisleX,
 } from './layout.js';
 import {
-  softShadow, aoGradient, plantTexture, textCanvas, wrapText, spaced, canvasTexture, SANS,
+  softShadow, aoGradient, plantTexture, textCanvas, wrapText, spaced, canvasTexture, SANS, fitLines,
 } from './materials.js';
 
 export const HAZE = 0xecebe8;        // цвет дымки и фона
@@ -578,8 +578,9 @@ export class World {
       const endCv = textCanvas(1024, 420, (g, w) => {
         g.textAlign = 'center';
         g.fillStyle = MUTED;
+        const f = fitLines(g, 'Последний зал раздела «' + (c.title || 'Экспозиция') + '»', w - 60, { size: 44, min: 30, maxLines: 1 });
+        g.fillText(f.lines[0], w / 2, 120);
         g.font = '400 44px ' + SANS;
-        g.fillText('Последний зал раздела «' + (c.title || 'Экспозиция') + '»', w / 2, 120);
         g.fillText('Обратно к холлу — по правой стороне', w / 2, 190);
         g.fillStyle = ACCENT;
         g.font = '500 60px ' + SANS;
@@ -734,10 +735,8 @@ export class World {
       g2.font = '300 88px ' + SANS;
       spaced(g2, 'ЗАЛ ' + num, w / 2, 120, 16);
       g2.fillStyle = MUTED;
-      g2.font = '400 38px ' + SANS;
-      let t = sub;
-      while (g2.measureText(t).width > w - 60 && t.length > 4) t = t.slice(0, -2);
-      g2.fillText(t, w / 2, 200);
+      const f = fitLines(g2, sub, w - 60, { size: 38, min: 26, maxLines: 2 });
+      f.lines.forEach((l, i) => g2.fillText(l, w / 2, (f.lines.length > 1 ? 180 : 200) + i * f.size * 1.15));
       if (arrow) { g2.font = '400 40px ' + SANS; g2.fillText(arrow, w / 2, 268); }
     });
     const mw = (xb - DOOR_W / 2) - (xa + DOOR_W / 2) - 0.6;
@@ -847,15 +846,26 @@ export class World {
     const a = this.bridge.artists[it.gi];
     const cv = textCanvas(512, 256, (g, w, h) => {
       g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h);
+      // имя и название целиком: общий масштаб уменьшается, пока оба не
+      // поместятся над ссылкой «О художнике →»
+      const title = it.work.title ? it.work.title : 'Без названия';
+      let nm, tt;
+      for (let k = 1; k >= 0.62; k -= 0.04) {
+        nm = fitLines(g, a.name, w - 48, { size: Math.round(32 * k), min: Math.round(32 * k), weight: 600, maxLines: 3 });
+        tt = fitLines(g, title, w - 48, { size: Math.round(29 * k), min: Math.round(29 * k), maxLines: 4 });
+        if (!nm.cut && !tt.cut && nm.lines.length * nm.size * 1.18 + 10 + tt.lines.length * tt.size * 1.18 <= h - 70) break;
+      }
       g.fillStyle = INK;
-      g.font = '600 32px ' + SANS;
-      const nm = wrapText(g, a.name, w - 48).slice(0, 2);
-      nm.forEach((l, i) => g.fillText(l, 24, 54 + i * 38));
-      g.font = '400 29px ' + SANS;
+      g.font = '600 ' + nm.size + 'px ' + SANS;
+      let y = 22 + nm.size;
+      nm.lines.forEach((l) => { g.fillText(l, 24, y); y += nm.size * 1.18; });
+      g.font = '400 ' + tt.size + 'px ' + SANS;
       g.fillStyle = '#55554f';
-      const y0 = 54 + nm.length * 38 + 12;
-      wrapText(g, it.work.title ? it.work.title : 'Без названия', w - 48).slice(0, 2)
-        .forEach((l, i) => g.fillText(l, 24, y0 + i * 34));
+      y += 10 - nm.size * 0.18;
+      const room = Math.max(1, Math.floor((h - 58 - y + tt.size) / (tt.size * 1.18)));
+      const tl = tt.lines.length > room ? fitLines(g, title, w - 48, { size: tt.size, min: tt.size, maxLines: room }).lines : tt.lines;
+      g.font = '400 ' + tt.size + 'px ' + SANS;
+      tl.forEach((l) => { g.fillText(l, 24, y); y += tt.size * 1.18; });
       g.font = '500 23px ' + SANS;
       g.fillStyle = ACCENT;
       g.fillText('О художнике →', 24, h - 26);
@@ -876,21 +886,24 @@ export class World {
   banner(b) {
     const a = this.bridge.artists[b.gi];
     const len = Math.min(4.4, Math.max(1.8, b.z0 - b.z1 - 0.6));
-    const cv = textCanvas(1024, 160, (g, w) => {
+    // имя целиком: сначала уменьшаем кегль, потом переносим на вторую строку
+    const CH = 240;
+    const cv = textCanvas(1024, CH, (g, w) => {
       g.fillStyle = INK; g.textAlign = 'center';
-      g.font = '300 62px ' + SANS;
-      let t = a.name;
-      while (g.measureText(t).width > w - 40 && t.length > 4) t = t.slice(0, -2);
-      g.fillText(t, w / 2, 74);
+      let f = fitLines(g, a.name, w - 40, { size: 62, min: 46, weight: 300, maxLines: 1 });
+      if (f.cut) f = fitLines(g, a.name, w - 40, { size: 56, min: 34, weight: 300, maxLines: 2 });
+      const lh = f.size * 1.12;
+      const top = f.lines.length > 1 ? 58 : 92;
+      f.lines.forEach((l, i) => g.fillText(l, w / 2, top + i * lh));
       if (a.city) {
         g.font = '400 30px ' + SANS; g.fillStyle = MUTED;
-        spaced(g, a.city.toUpperCase(), w / 2, 130, 6);
+        spaced(g, a.city.toUpperCase(), w / 2, top + (f.lines.length - 1) * lh + 58, 6);
       }
     });
     const tex = canvasTexture(cv, this.aniso);
     const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, toneMapped: false });
     const zc = (b.z0 + b.z1) / 2;
-    const h = len * 160 / 1024;
+    const h = len * CH / 1024;
     // над работами художника — и на наружной стене, и на острове напротив
     const ai = b.aisle;
     const prev = this.target;

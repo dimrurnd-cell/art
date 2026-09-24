@@ -110,6 +110,46 @@ export function wrapText(g, text, maxW) {
   return lines;
 }
 
+/* Подобрать кегль и перенос так, чтобы текст целиком влез в ширину maxW
+   и не больше чем в maxLines строк. Кегль перебирается от size до min;
+   если не влезает и на min — последняя строка обрезается по словам с «…».
+   Возвращает { size, lines, cut } и оставляет в g.font найденный шрифт. */
+export function fitLines(g, text, maxW, o) {
+  const size = o.size, min = o.min || Math.round(size * 0.6), weight = o.weight || 400;
+  const maxLines = o.maxLines || 1;
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  const font = (s) => { g.font = weight + ' ' + s + 'px ' + SANS; };
+  for (let s = size; s >= min; s -= 1) {
+    font(s);
+    const lines = wrapHard(g, t, maxW);
+    if (lines.length <= maxLines) return { size: s, lines, cut: false };
+  }
+  font(min);
+  const lines = wrapHard(g, t, maxW).slice(0, maxLines);
+  let last = lines[maxLines - 1];
+  while (last && g.measureText(last + '…').width > maxW) {
+    const i = last.lastIndexOf(' ');
+    last = i > 0 && last.length - i < 12 ? last.slice(0, i) : last.slice(0, -1);
+  }
+  lines[maxLines - 1] = last.replace(/[\s,.;:«(—-]+$/, '') + '…';
+  return { size: min, lines, cut: true };
+}
+
+/* Перенос по словам; слово шире строки режется по буквам */
+function wrapHard(g, text, maxW) {
+  const out = [];
+  wrapText(g, text, maxW).forEach((l) => {
+    while (g.measureText(l).width > maxW && l.length > 1) {
+      let n = l.length - 1;
+      while (n > 1 && g.measureText(l.slice(0, n)).width > maxW) n--;
+      out.push(l.slice(0, n));
+      l = l.slice(n);
+    }
+    out.push(l);
+  });
+  return out;
+}
+
 /* Разрядка для заглавных надписей */
 export function spaced(g, text, x, y, spacing) {
   if ('letterSpacing' in g) {
