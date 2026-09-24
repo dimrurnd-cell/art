@@ -22,11 +22,14 @@ vBpWorld = ( modelMatrix * bpWorld ).xyz;
 const PATCH_FRAG = `
 reflectVec = inverseTransformDirection( reflectVec, viewMatrix );
 if ( all( greaterThan( vBpWorld, bpMin - 0.3 ) ) && all( lessThan( vBpWorld, bpMax + 0.3 ) ) ) {
-  vec3 bt1 = ( bpMax - vBpWorld ) / reflectVec;
-  vec3 bt2 = ( bpMin - vBpWorld ) / reflectVec;
+  // без деления на ноль: у строго осевого луча компонента бывает ровно 0
+  vec3 rv = reflectVec + vec3( equal( reflectVec, vec3( 0.0 ) ) ) * 1e-4;
+  vec3 bt1 = ( bpMax - vBpWorld ) / rv;
+  vec3 bt2 = ( bpMin - vBpWorld ) / rv;
   vec3 btf = max( bt1, bt2 );
-  float bt = min( min( btf.x, btf.y ), btf.z );
-  reflectVec = normalize( vBpWorld + reflectVec * bt - bpPos );
+  float bt = clamp( min( min( btf.x, btf.y ), btf.z ), 0.0, 1e4 );
+  vec3 bd = vBpWorld + reflectVec * bt - bpPos;
+  if ( dot( bd, bd ) > 1e-8 ) reflectVec = normalize( bd );
 }
 `;
 

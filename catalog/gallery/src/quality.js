@@ -19,6 +19,18 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 
+/* Чистка кадра: не-числа и бесконечности → 0, яркость не выше 64 */
+const SANITIZE = {
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+    void main() {
+      vec4 c = texture2D(tDiffuse, vUv);
+      if (any(isnan(c)) || any(isinf(c)) || c.r != c.r || c.g != c.g || c.b != c.b) c = vec4(0.0, 0.0, 0.0, 1.0);
+      gl_FragColor = clamp(c, 0.0, 64.0);
+    }`,
+};
+
 /* Последний штрих кадра, как у камеры: мягкая виньетка и едва заметное
    зерно (движется каждый кадр — картинка «живая», без цифровой гладкости) */
 const FilmShader = {
@@ -90,6 +102,9 @@ export class Quality {
     const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: 4 });
     const c = new EffectComposer(g.renderer, rt);
     c.addPass(new RenderPass(g.scene, g.camera));
+    // блики на металле под спотом бывают ярче предела 16-битного кадра:
+    // «бесконечность» в пикселе свечение размазало бы в чёрные прямоугольники
+    c.addPass(new ShaderPass(SANITIZE));
     const ao = new GTAOPass(g.scene, g.camera, size.x, size.y);
     // мягко и близко: тени в стыках, у рам и под островом, а не грязь по стенам
     ao.updateGtaoMaterial({ radius: 0.45, distanceExponent: 1.5, thickness: 1, scale: 1, samples: 12 });
@@ -99,6 +114,7 @@ export class Quality {
     const hide = ao.overrideVisibility.bind(ao);
     ao.overrideVisibility = () => { hide(); g.scene.traverse((o) => { if (o.userData.noAO) o.visible = false; }); };
     c.addPass(ao);
+    c.addPass(new ShaderPass(SANITIZE));
     // свечение: только то, что ярче белого, — линзы спотов, световые линии и панели
     const bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.45, 0.45, 2.2);
     c.addPass(bloom);

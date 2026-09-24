@@ -96,17 +96,17 @@ export class Props {
     const D = (color, r, m, e = 0) => ({ desc: true, color: new THREE.Color(color), r, m, e });
     return {
       steel: D(0xbfc2c4, 0.32, 1),
-      alu: D(0xd4d6d8, 0.26, 1),
-      chrome: D(0xeeeeee, 0.1, 1),
+      alu: D(0xd4d6d8, 0.3, 1),
+      chrome: D(0xeeeeee, 0.24, 1),
       white: D(0xf1f0ec, 0.48, 0),
       black: D(0x1c1c1c, 0.45, 0),
       rubber: D(0x232323, 0.92, 0),
       red: D(0xb3171d, 0.3, 0),
-      smoke: D(0x151719, 0.08, 0.3),
+      smoke: D(0x151719, 0.2, 0.3),
       wire: D(0x202020, 0.4, 1),
       disc: [0xe4736f, 0x3e7d95, 0xf0b450, 0xf4f1ea, 0x2a2a2a].map((c) => D(c, 0.28, 0)),
       // стекло: прозрачное, но с отражениями зала
-      glass: batch(S({ color: 0xe8f0ee, roughness: 0.03, transparent: true, opacity: 0.16, depthWrite: false, envMapIntensity: 2.2 })),
+      glass: batch(S({ color: 0xe8f0ee, roughness: 0.12, transparent: true, opacity: 0.16, depthWrite: false, envMapIntensity: 2.2 })),
       frosted: batch(S({ color: 0xf4f4f0, roughness: 0.6, emissive: 0xfffaf0, emissiveIntensity: 0.55 })),
       led: D(0xff3a2a, 0.4, 0, 1),
     };
