@@ -201,7 +201,7 @@ def _faq_match(q):
     for item in _load()["faq"].get("items", []):
         n = 0
         for k in item.get("keys") or []:
-            parts = [_stem(p) for p in _norm(k).split()]
+            parts = [_stem(p) for p in _norm(k).split() if len(p) > 1]
             if parts and all(_has(words, p) for p in parts):
                 n += 1
         if n:
