@@ -24,6 +24,7 @@ import { Quality, NAMES } from './quality.js';
 import { Tour } from './tour.js';
 import { Spots } from './lights.js';
 import { Probe } from './probe.js';
+import { FloorMarks } from './markers.js';
 import { PBR_OPTS } from './pbr.js';
 import { Atmosphere } from './atmosphere.js';
 import { Sound } from './audio.js';
@@ -159,6 +160,7 @@ class Gallery {
     this.world = new World(renderer, this.plan, bridge);
     this.props = new Props(this.world);
     this.world.props = this.props;
+    this.marks = new FloorMarks(this.world.scene);
     this.world.build();
     this.buildMs = Math.round(performance.now() - tb);
     this.scene = this.world.scene;
@@ -281,6 +283,8 @@ class Gallery {
   bindUi() {
     const st = this.stage;
     st.querySelector('[data-a="hall"]').addEventListener('click', () => this.goHall());
+    // имя художника в заголовке — карточка художника
+    st.querySelector('.artg-where span').addEventListener('click', () => { if (this.bay) this.bridge.openArtist(this.bay.gi); });
     st.querySelector('[data-a="simple"]').addEventListener('click', () => { if (this.bridge.simple) this.bridge.simple(); });
     st.querySelector('[data-a="list"]').addEventListener('click', () => { this.toggleMap(false); this.togglePanel(); });
     st.querySelector('[data-a="map"]').addEventListener('click', () => { this.togglePanel(false); this.toggleMap(); });
@@ -578,11 +582,13 @@ class Gallery {
   updateWhere() {
     const b = this.stage.querySelector('.artg-where b');
     const s = this.stage.querySelector('.artg-where span');
-    if (this.room < 0) { b.textContent = 'Холл'; s.textContent = 'выберите зал'; return; }
+    if (this.room < 0) { b.textContent = 'Холл'; s.textContent = 'выберите зал'; s.classList.remove('is-link'); return; }
     const c = this.plan.corridors[this.room];
     const r = this.sub;
     b.textContent = (c.title || 'Экспозиция') + (r ? ' · зал ' + (r.idx + 1) + ' из ' + c.rooms.length : '');
-    s.textContent = this.bay ? this.bridge.artists[this.bay.gi].name : '';
+    s.textContent = this.bay ? this.bridge.artists[this.bay.gi].name + ' →' : '';
+    s.classList.toggle('is-link', !!this.bay);
+    s.title = this.bay ? 'Карточка художника' : '';
   }
 
   /* ---------------- план ---------------- */
@@ -792,6 +798,7 @@ class Gallery {
       this.tapT = setTimeout(() => { if (this.pendingTap === tap) { this.pendingTap = null; this.clickAt(tap); } }, 400);
     };
     st.addEventListener('pointerup', up);
+    st.addEventListener('pointerleave', () => { this.marks.hover(null); this.setHover(null); });
     st.addEventListener('pointercancel', up);
     st.addEventListener('click', () => {
       const tap = this.pendingTap;
@@ -853,7 +860,54 @@ class Gallery {
     this.hoverT = now;
     const h = this.pick(e);
     const u = h && h.object.userData;
-    this.stage.style.cursor = u && (u.art || u.plaque || u.action) ? 'pointer' : (u && u.floor ? 'crosshair' : '');
+    const link = u && (u.art || u.plaque || u.action || u.banner);
+    this.stage.style.cursor = link ? 'pointer' : '';
+    // табличка или имя на стене под курсором — чуть крупнее: видно, что это ссылка
+    this.setHover(u && (u.plaque || u.banner) ? h.object : null);
+    // метка на полу: сюда можно перейти щелчком
+    let spot = null;
+    if (u && u.floor && !this.nav.path && canStand(this.plan, h.point.x, h.point.z)) spot = h.point;
+    this.marks.hover(spot);
+    if (spot) this.stage.style.cursor = 'pointer';
+  }
+
+  /* Сенсорный экран: бледные кольца на полу по осям проходов впереди, в
+     2.5–13 м и в кадре. В пути и в холле их нет — только в зале, где
+     пол и есть дорога вдоль работ. */
+  placeHints() {
+    const nav = this.nav, pts = [];
+    if (!nav.path && !this.tour.running && this.room >= 0) {
+      const c = this.plan.corridors[this.room];
+      const cam = this.camera, v = new THREE.Vector3();
+      for (const a of [-1, 1]) {
+        const x = aisleX(c, a);
+        for (let k = -4; k <= 4; k++) {
+          const z = Math.round(nav.z / 3) * 3 + k * 3;
+          const d = Math.hypot(x - nav.x, z - nav.z);
+          if (d < 2.5 || d > 13 || !canStand(this.plan, x, z)) continue;
+          v.set(x, 0, z).project(cam);
+          if (v.z > 1 || Math.abs(v.x) > 0.9 || v.y > 0.2 || v.y < -0.95) continue;
+          pts.push([x, z, d]);
+        }
+      }
+      pts.sort((p, q) => p[2] - q[2]);
+    }
+    this.marks.showHints(pts.slice(0, 6));
+  }
+
+  setHover(m) {
+    if (m === this.hovered) return;
+    const set = (o, on) => {
+      if (!o) return;
+      const k = on ? 1.06 : 1;
+      // у имени на стене две копии (наружная стена и остров) — обе
+      const all = o.userData.banner ? this.world.banners.get(o.userData.banner) || [o] : [o];
+      all.forEach((x) => { x.scale.set(k, k, 1); });
+      if (o.material.emissive) o.material.emissive.setHex(on ? 0x1c1c1c : 0x000000);
+    };
+    set(this.hovered, false);
+    this.hovered = m;
+    set(m, true);
   }
 
   clickAt(e) {
@@ -869,6 +923,8 @@ class Gallery {
       });
     } else if (u.plaque) {
       this.focusArt(u.plaque, () => this.bridge.openArtist(u.plaque.gi));
+    } else if (u.banner) {
+      this.bridge.openArtist(u.banner.gi);
     } else if (u.action) {
       const a = u.action;
       if (a.type === 'enter') this.goToRoom(a.room);
@@ -877,7 +933,7 @@ class Gallery {
     } else if (u.floor) {
       this.focus = null;
       const p = this.nav.clampToPlan(h.point.x, h.point.z);
-      if (p) this.nav.goTo(p.x, p.z, null);
+      if (p) { this.nav.goTo(p.x, p.z, null); this.marks.target(p.x, p.z); }
     }
   }
 
@@ -1082,12 +1138,14 @@ class Gallery {
         if (Math.hypot(sp.x - nav.x, sp.z - nav.z) > 2.5) this.focus = null;   // отошёл сам
       }
       if (!nav.path) this.syncHash();
+      if (this.touch) this.placeHints();
       const map = this.stage.querySelector('.artg-map');
       if (!map.hidden && this.tick % 12 === 1) this.drawMap();
     }
 
     let t1 = performance.now();
     this.tex.flush();
+    this.marks.update(dt, !!nav.path);
     P.tex += performance.now() - t1;
     this.props.update(dt, nav, speed, this.sub);
     this.stepNatural(dt);

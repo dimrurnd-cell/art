@@ -22,6 +22,9 @@ export const CSS = `
 .artg-btn{display:inline-flex;align-items:center;gap:7px}
 .artg-btn svg{flex-shrink:0}
 .artg-where b{white-space:nowrap}
+/* имя художника в заголовке — ссылка на его карточку */
+.artg-where span.is-link{pointer-events:auto;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(42,42,42,.3);text-underline-offset:3px}
+.artg-where span.is-link:hover{color:#2a2a2a;text-decoration-color:#2a2a2a}
 /* низкий экран (телефон горизонтально): сцена не выше экрана */
 @media (max-height:520px){.artg-stage{height:calc(100vh - 24px);height:calc(100svh - 24px);min-height:260px}
   .artg-stage .artg-map__plan{width:auto;height:96px;align-self:center}}

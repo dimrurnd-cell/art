@@ -956,9 +956,15 @@ export class World {
       const tl = tt.lines.length > room ? fitLines(g, title, w - 48, { size: tt.size, min: tt.size, maxLines: room }).lines : tt.lines;
       g.font = '400 ' + tt.size + 'px ' + SANS;
       tl.forEach((l) => { g.fillText(l, 24, y); y += tt.size * 1.18; });
-      g.font = '500 23px ' + SANS;
+      // ссылка — кнопкой: видно, что табличку можно нажать
+      g.font = '600 22px ' + SANS;
+      const lw = g.measureText('О художнике →').width + 30;
       g.fillStyle = ACCENT;
-      g.fillText('О художнике →', 24, h - 26);
+      g.beginPath();
+      if (g.roundRect) g.roundRect(20, h - 54, lw, 38, 19); else g.rect(20, h - 54, lw, 38);
+      g.fill();
+      g.fillStyle = '#ffffff';
+      g.fillText('О художнике →', 35, h - 28);
     });
     const mat = new THREE.MeshLambertMaterial({ map: canvasTexture(cv, this.aniso) });
     const face = it.side < 0 ? Math.PI / 2 : -Math.PI / 2;
@@ -981,14 +987,24 @@ export class World {
     const cv = textCanvas(1024, CH, (g, w) => {
       g.fillStyle = INK; g.textAlign = 'center';
       let f = fitLines(g, a.name, w - 40, { size: 62, min: 46, weight: 300, maxLines: 1 });
-      if (f.cut) f = fitLines(g, a.name, w - 40, { size: 56, min: 34, weight: 300, maxLines: 2 });
+      if (f.cut) f = fitLines(g, a.name, w - 40, { size: 50, min: 34, weight: 300, maxLines: 2 });
       const lh = f.size * 1.12;
-      const top = f.lines.length > 1 ? 58 : 92;
+      const top = f.lines.length > 1 ? 50 : 76;
       f.lines.forEach((l, i) => g.fillText(l, w / 2, top + i * lh));
-      if (a.city) {
-        g.font = '400 30px ' + SANS; g.fillStyle = MUTED;
-        spaced(g, a.city.toUpperCase(), w / 2, top + (f.lines.length - 1) * lh + 58, 6);
-      }
+      // город и ссылка на карточку: имя на стене можно нажать
+      const y2 = top + (f.lines.length - 1) * lh + 52;
+      g.font = '400 28px ' + SANS; g.fillStyle = MUTED;
+      const city = a.city ? a.city.toUpperCase() : '';
+      const link = 'О ХУДОЖНИКЕ →';
+      g.textAlign = 'center';
+      const cw = city ? g.measureText(city).width + city.length * 6 : 0;
+      g.font = '600 28px ' + SANS;
+      const lw2 = g.measureText(link).width + link.length * 4;
+      const gap = city ? 44 : 0;
+      let x = (w - cw - gap - lw2) / 2;
+      if (city) { g.font = '400 28px ' + SANS; g.fillStyle = MUTED; spaced(g, city, x + cw / 2, y2, 6); x += cw + gap; }
+      g.font = '600 28px ' + SANS; g.fillStyle = ACCENT;
+      spaced(g, link, x + lw2 / 2, y2, 4);
     });
     const tex = canvasTexture(cv, this.aniso);
     const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, toneMapped: false });
@@ -1003,6 +1019,7 @@ export class World {
       this.plane(len * 0.8, h * 0.8, mat, b.xSpine + ai * 0.006, 3.3, zc, ai < 0 ? -Math.PI / 2 : Math.PI / 2),
     ];
     this.target = prev;
+    out.forEach((m) => { m.userData.banner = b; this.pickables.push(m); });
     return out;
   }
 
@@ -1032,7 +1049,12 @@ export class World {
       if (!bn && d < BANNER_NEAR) this.banners.set(b, this.banner(b));
       else if (bn && d > BANNER_FAR) {
         bn[0].material.map.dispose();
-        bn.forEach((m) => { if (m.parent) m.parent.remove(m); m.geometry.dispose(); });
+        bn.forEach((m) => {
+          if (m.parent) m.parent.remove(m);
+          const i = this.pickables.indexOf(m);
+          if (i >= 0) this.pickables.splice(i, 1);
+          m.geometry.dispose();
+        });
         bn[0].material.dispose();
         this.banners.delete(b);
       }
