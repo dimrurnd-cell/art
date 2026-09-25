@@ -102,8 +102,8 @@ ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 | `img/logo.webp` | 31 726 |
 | `curator/figure.webp` | 42 828 |
 | `curator/face.webp` | 3 276 |
-| `curator/faq.json` | 7 993 |
-| `curator/kb.md` | 3 465 |
+| `curator/faq.json` | 9 128 |
+| `curator/kb.md` | 3 539 |
 | `curator/idle.mp4` | 461 748 |
 | `curator/idle.webm` | 392 123 |
 | `curator/idle.webp` | 822 682 |
