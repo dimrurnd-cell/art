@@ -332,6 +332,45 @@
     });
   };
 
+  /* Закреплённая сверху шапка сайта (на Tilda — своя, position: fixed):
+     её нижний край в окне, 0 — шапки нет или она сейчас спрятана */
+  function fixedHeaderBottom(except) {
+    if (!document.elementsFromPoint) return 0;
+    var w = window.innerWidth, best = 0, xs = [w / 2, 12, w - 12];
+    for (var i = 0; i < xs.length; i++) {
+      var els = document.elementsFromPoint(xs[i], 2);
+      for (var j = 0; j < els.length; j++) {
+        var e = els[j];
+        if (except.contains(e) || e === document.body || e === document.documentElement) continue;
+        for (var a = e; a && a !== document.body; a = a.parentElement) {
+          var pos = getComputedStyle(a).position;
+          if (pos !== 'fixed' && pos !== 'sticky') continue;
+          var r = a.getBoundingClientRect();
+          if (r.top <= 1 && r.bottom > 0 && r.bottom < window.innerHeight * 0.4 && r.width > w * 0.5) best = Math.max(best, r.bottom);
+          break;
+        }
+      }
+    }
+    return best;
+  }
+
+  /* Каталог — первый блок страницы под закреплённой шапкой сайта: без
+     этого шапка накрывала логотип и заголовок каталога. Отступ сверху
+     растёт ровно на ту часть шапки, что наезжает на каталог. Шапка,
+     спрятанная на время прокрутки, — помним её прежнюю высоту. */
+  Widget.prototype.clearFixedHeader = function () {
+    var wrap = this.wrap;
+    if (!wrap) return;
+    var h = fixedHeaderBottom(this.root);
+    if (h > 0) this.headerH = h;
+    wrap.style.paddingTop = '';
+    var hh = this.headerH || 0;
+    if (!hh) return;
+    var top = wrap.getBoundingClientRect().top + (window.pageYOffset || document.documentElement.scrollTop || 0);
+    var over = hh - top;
+    if (over > 0) wrap.style.paddingTop = (parseFloat(getComputedStyle(wrap).paddingTop) + over) + 'px';
+  };
+
   Widget.prototype.render = function () {
     var r = this.root;
     r.innerHTML = '';
@@ -444,8 +483,14 @@
       });
     }
 
+    this.clearFixedHeader();
+    // шапка сайта может появиться позже каталога — перемерить после загрузки
+    window.addEventListener('load', function () { self.clearFixedHeader(); });
+    setTimeout(function () { self.clearFixedHeader(); }, 1500);
+
     var resizeT = null;
     window.addEventListener('resize', function () {
+      self.clearFixedHeader();
       self.goTo(self.index, true);
       clearTimeout(resizeT);
       resizeT = setTimeout(function () { self.refreshHall(); }, 260);
