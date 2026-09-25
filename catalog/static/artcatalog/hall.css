@@ -617,7 +617,8 @@
   background: linear-gradient(180deg, #FAF9F6 0%, #F4F2ED 70%, #ECE9E2 100%);
 }
 .artc-hw__seg.is-shade { background: linear-gradient(180deg, #F2F0EB 0%, #ECE9E3 70%, #E4E1D9 100%); }
-.artc-hw__seg::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 10px; background: #DCD8CF; }
+.artc-hw__seg::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 10px; background: #DCD8CF; z-index: 0; }
+.artc-hw__seg > * { z-index: 1; }   /* плинтус — под табличками, а не поверх */
 .artc-hw__name {
   position: absolute; left: 34px; top: 26px; right: 34px;
   appearance: none; border: 0; background: none; padding: 0; margin: 0; text-align: left; cursor: pointer;
@@ -640,9 +641,8 @@
   background: #fff; padding: 8px 10px 9px; box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
   font: 400 13px/1.25 "Inter", "Helvetica Neue", Arial, sans-serif; color: #2A2A2A;
 }
-.artc-hw__plq b { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; font-weight: 600; }
-.artc-hw__plq span { overflow-wrap: anywhere; }
-.artc-hw__plq span { display: block; color: #6F6F6B; }
+.artc-hw__plq b { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; overflow-wrap: anywhere; font-weight: 600; }
+.artc-hw__plq span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; color: #6F6F6B; }
 .artc-hw__plq i { display: inline-block; margin-top: 6px; background: #D4574F; color: #fff; font-style: normal; font-weight: 600; font-size: 11px; padding: 3px 8px; border-radius: 99px; }
 .artc-hw__art:focus-visible, .artc-hw__plq:focus-visible, .artc-hw__name:focus-visible { outline: 3px solid #2A2A2A; outline-offset: 4px; }
 .artc-hw__end { display: flex; align-items: center; justify-content: center; }

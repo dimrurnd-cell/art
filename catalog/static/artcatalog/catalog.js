@@ -991,7 +991,8 @@
      Картинки — только у ближних отрезков (±W_NEAR), дальше ±W_KEEP они
      выгружаются, дальше ±W_SHOW отрезок не рисуется совсем. */
   var W_ART = 250;      // высота полотна, px мира
-  var W_H = 520;        // высота стены
+  var W_H = 520;        // высота стены от потолка до уровня под полотнами
+  var W_FOOT = 120;     // и ещё ниже, до пола: место для таблички с длинным названием
   var W_GAP = 150;      // между работами
   var W_PAD = 120;      // от краёв отрезка до работ
   var W_MIN = 560;      // самый короткий отрезок
@@ -1101,10 +1102,11 @@
     segs.forEach(function (sg) {
       var e = el('div', 'artc-hw__seg' + (sg.ang > 0 ? ' is-shade' : '') + (sg.end || sg.intro ? ' artc-hw__end' : ''));
       e.style.width = sg.L + 'px';
-      e.style.height = W_H + 'px';
+      e.style.height = (W_H + W_FOOT) + 'px';
       var mx = sg.x0 + sg.dx * sg.L / 2, mz = sg.z0 + sg.dz * sg.L / 2;
-      // стена слева от зрителя: ось плоскости — вперёд вдоль отрезка, лицо — вправо
-      e.style.transform = 'translate(-50%, -50%) translate3d(' + mx.toFixed(1) + 'px, 0, ' + mz.toFixed(1) +
+      // стена слева от зрителя: ось плоскости — вперёд вдоль отрезка, лицо — вправо;
+      // верх стены на прежнем месте, нижняя часть (W_FOOT) — ниже
+      e.style.transform = 'translate(-50%, -50%) translate3d(' + mx.toFixed(1) + 'px, ' + (W_FOOT / 2) + 'px, ' + mz.toFixed(1) +
         'px) rotateY(' + (90 - sg.ang) + 'deg)';
       var html;
       if (sg.intro) {
