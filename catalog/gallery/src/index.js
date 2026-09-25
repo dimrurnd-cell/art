@@ -159,7 +159,8 @@ class Gallery {
     // отражения снимаются в формат с плавающей точкой — не все видеочипы это умеют
     const gl = renderer.getContext();
     this.floatRT = !!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));
-    this.diag = { shaderErrors: [], glErrors: 0, lost: 0 };
+    this.diag = { shaderErrors: [], glErrors: 0, lost: 0, hitches: [] };
+    this.prof = { on: false };
     renderer.debug.onShaderError = (g, program, vs, fs) => {
       const log = (g.getProgramInfoLog(program) || '') + ' ' + (g.getShaderInfoLog(fs) || '') + ' ' + (g.getShaderInfoLog(vs) || '');
       this.diag.shaderErrors.push(log.trim().slice(0, 300));
@@ -223,7 +224,9 @@ class Gallery {
     // так зритель не видит ни одной пустой рамы даже в первые секунды.
     const bar = this.stage.querySelector('.artg-load');
     const reveal = () => {
-      if (this.revealed) return;
+      if (this.revealed || this.warming) return;
+      // сначала прогрев за завесой, потом показ
+      if (!this.warmed) { this.warming = true; this.warm().then(() => { this.warming = false; reveal(); }); return; }
       this.revealed = true;
       this.tex.resetStats();
       this.applyHash();
@@ -240,7 +243,8 @@ class Gallery {
       const texDone = texTotal - pbr.pending;
       const frac = (atlasN + texDone) / (atlasT + texTotal);
       bar.firstChild.style.width = (frac * 100) + '%';
-      if (bridge.onProgress) bridge.onProgress(frac);
+      // последние 8 % — прогрев шейдеров (warm): загрузчик не стоит на 100 %
+      if (bridge.onProgress) bridge.onProgress(frac * 0.92);
       if (atlasDone && pbr.pending <= 0) {
         clearTimeout(this.revealT);
         setTimeout(reveal, 120);                 // дать кадру отрисоваться, потом снять завесу
@@ -535,9 +539,11 @@ class Gallery {
           ' · рендер ×' + this.pr.toFixed(2),
         'качество: ' + this.quality.level + (this.quality.mode === 'auto' ? ' (авто)' : '') + ' · бережный: ' + (this.lean ? 'да' : 'нет') +
           ' · отражения: ' + (this.floatRT ? 'да' : 'нет') + ' · highp: ' + (hp && hp.precision > 0 ? 'да' : 'нет'),
-        'макс. текстура ' + r.capabilities.maxTextureSize + ' · текстур ' + m.textures + ' · геометрий ' + m.geometries + ' · шейдеров ' + (r.info.programs || []).length,
+        'макс. текстура ' + r.capabilities.maxTextureSize + ' · текстур ' + m.textures + ' · геометрий ' + m.geometries + ' · шейдеров ' + (r.info.programs || []).length +
+          (this.diag.warm ? ' (заранее +' + this.diag.warm.programs + ' за ' + this.diag.warm.ms + ' мс)' : ''),
         'картины ' + t.gpuMB + '/' + t.budgetMB + ' МБ · атлас ' + t.atlasMB + ' МБ · уровни ' + t.byLevel.join('/') + ' · без картинки ' + t.noImage,
         'кадров/с ' + fps.toFixed(0) + ' · вызовов ' + r.info.render.calls,
+        this.hitchLine(now),
         'ошибки GL: ' + this.diag.glErrors + (this.diag.lastGl ? ' (' + this.diag.lastGl + ')' : '') + ' · потеря контекста: ' + this.diag.lost,
         'ошибки шейдеров: ' + (this.diag.shaderErrors.length ? '\n' + this.diag.shaderErrors.join('\n') : 'нет'),
       ].join('\n');
@@ -1015,12 +1021,19 @@ class Gallery {
   loop(now) {
     if (this.dead) return;
     this.raf = requestAnimationFrame(this.loop);
-    const dt = Math.min(0.1, (now - this.last) / 1000);
+    const gap = now - this.last;
+    const dt = Math.min(0.1, gap / 1000);
     this.last = now;
+    // рывок — кадр дольше 50 мс; виноват участок, дольше всех занявший
+    // прошлый вызов (его работа и задержала этот кадр)
+    const P = this.prof;
+    if (this.revealed && gap > 50 && P.on) this.noteHitch(gap, P);
+    P.on = false; P.build = P.tex = P.probe = P.render = P.prog = 0;
     // во весь экран сцена видна всегда, что бы ни думал наблюдатель видимости
     const shown = this.visible || this.fsFake || (document.fullscreenElement || document.webkitFullscreenElement) === this.stage;
     if (!shown || document.hidden || this.modalOpen()) return;
 
+    P.on = true;
     const nav = this.nav;
     nav.update(dt);
     const cam = this.camera;
@@ -1044,7 +1057,9 @@ class Gallery {
     if (this.tick++ % 6 === 0) {
       this.world.update(nav);
       this.spots.assign(this.world.paintings, cam);
+      const tt = performance.now();
       this.tex.update(this.world.paintings, cam);
+      P.tex += performance.now() - tt;
       const room = nav.room;
       const sub = subRoomAt(this.plan, nav.x, nav.z);
       let bay = null;
@@ -1073,19 +1088,119 @@ class Gallery {
       if (!map.hidden && this.tick % 12 === 1) this.drawMap();
     }
 
+    let t1 = performance.now();
     this.tex.flush();
+    P.tex += performance.now() - t1;
     this.props.update(dt, nav, speed, this.sub);
     this.stepNatural(dt);
     this.spots.update(dt);
     this.sound.update(moved, dt, this.room < 0);
     this.atmo.update(cam, this.pr, this.stage.clientHeight);
+    t1 = performance.now();
     this.updateVisibility();
+    const t2 = performance.now();
     this.updateProbe();
+    const t3 = performance.now();
+    const progs = (this.renderer.info.programs || []).length;
     this.quality.render();
+    P.build += t2 - t1; P.probe += t3 - t2; P.render += performance.now() - t3;
+    P.prog += (this.renderer.info.programs || []).length - progs;
     // движение для подстройки чёткости: шаг или поворот камеры
     const turn = Math.abs(nav.yaw - (this.lastYaw || 0)) + Math.abs(nav.pitch - (this.lastPitch || 0));
     this.lastYaw = nav.yaw; this.lastPitch = nav.pitch;
     if (this.revealed) this.quality.frame(dt * 1000, moved > 1e-4 || turn > 1e-4 || !!nav.path);
+  }
+
+  /* Строка панели: рывки за 30 с — сколько, худший и причины по частоте */
+  hitchLine(now) {
+    const h = this.diag.hitches.filter((x) => now - x.t < 30000);
+    if (!h.length) return 'рывков за 30 с: 0';
+    const by = {};
+    h.forEach((x) => { const k = x.cause.replace(/ \+\d+$/, ''); by[k] = (by[k] || 0) + 1; });
+    const worst = h.reduce((a, b) => (b.ms > a.ms ? b : a));
+    return 'рывков за 30 с: ' + h.length + ' · худший ' + Math.round(worst.ms) + ' мс (' + worst.cause + ')\n  ' +
+      Object.keys(by).sort((a, b) => by[b] - by[a]).map((k) => k + ' ' + by[k]).join(' · ');
+  }
+
+  noteHitch(ms, P) {
+    const parts = { 'сборка зала': P.build, 'картинки': P.tex, 'отражения': P.probe, 'отрисовка': P.render };
+    let cause = 'видеочип/браузер', worst = 8;
+    for (const k in parts) if (parts[k] > worst) { worst = parts[k]; cause = k; }
+    if (P.prog > 0) cause = 'шейдеры +' + P.prog;
+    const h = this.diag.hitches;
+    h.push({ t: performance.now(), ms, cause });
+    if (h.length > 200) h.shift();
+  }
+
+  /* Прогрев, пока сцену закрывает загрузчик: первый снимок отражений
+     холла (материалы сразу получают карту отражений — иначе первая съёмка
+     после показа пересобирала десятки шейдеров посреди ходьбы) и сборка
+     всех шейдеров холла и первых залов заранее, параллельно, где браузер
+     это умеет (KHR_parallel_shader_compile). Не дольше 4 с. */
+  warm() {
+    this.warmed = true;
+    const t0 = performance.now();
+    if (this.bridge.onProgress) this.bridge.onProgress(0.95);
+    const R = this.renderer, scene = this.scene;
+    const progs = () => (R.info.programs || []).length;
+    const p0 = progs();
+    const compile = () => (R.compileAsync ? R.compileAsync(scene, this.camera) : Promise.resolve());
+    const shown = [], lights = [];
+    const restore = () => { shown.forEach((o) => { o.visible = false; }); shown.length = 0; };
+    try {
+      // залы 1–2 каждого раздела: в них появляются варианты материалов,
+      // которых нет в холле (инстансы, цвета вершин, мебель)
+      const rooms = new Set();
+      this.plan.corridors.forEach((c) => c.rooms.slice(0, 2).forEach((r) => { this.world.ensureRoom(r); rooms.add(r); }));
+      this.world.setVisible(true, rooms, null, this.camera);
+      const spot = this.world.probeSpot(null);
+      const atmoOn = this.atmo.on;
+      this.atmo.setEnabled(false);
+      this.probe.capture(spot, spot.pos);        // до сборки шейдеров: карта отражений входит в их вариант
+      this.atmo.setEnabled(true);                // лучи — тоже шейдер
+      // всё скрытое внутри собранных помещений — временно видно (двери,
+      // подсветки, объекты по уровню качества)
+      scene.traverse((o) => {
+        if (o.isRectAreaLight) lights.push(o);
+        if (!o.visible && !o.isLight && o.parent && o.parent.visible) { o.visible = true; shown.push(o); }
+      });
+      // два варианта: с площадными светильниками холла и без них (холл
+      // скрыт за стеной — их число в сцене меняется, а с ним и все шейдеры)
+      const on = lights.map((l) => l.visible);
+      // три цели отрисовки — у каждой свой вариант шейдера: экран; буфер
+      // постобработки HD (без тон-маппинга); куб отражений (без тон-маппинга
+      // и без дымки). Сборка синхронная, ожидание готовности — общее.
+      const q = this.quality;
+      const targets = [q.composer ? q.composer.readBuffer : null];
+      if (!this.probe.off) targets.push(this.probe.rt);
+      const all = () => {
+        const prev = R.getRenderTarget(), fog = scene.fog;
+        const jobs = targets.map((t) => {
+          R.setRenderTarget(t);
+          if (t === this.probe.rt) scene.fog = null;
+          const j = compile();
+          scene.fog = fog;
+          return j;
+        });
+        R.setRenderTarget(prev);
+        return Promise.all(jobs);
+      };
+      const job = all()
+        .then(() => { lights.forEach((l) => { l.visible = false; }); return all(); })
+        .then(() => { lights.forEach((l, i) => { l.visible = on[i]; }); });
+      return Promise.race([job, new Promise((r) => setTimeout(r, 6000))]).catch(() => {}).then(() => {
+        restore();
+        lights.forEach((l, i) => { l.visible = on[i]; });
+        this.atmo.setEnabled(atmoOn);
+        this.quality.render();                   // проходы постобработки HD — тоже заранее
+        this.updateVisibility();
+        this.diag.warm = { ms: Math.round(performance.now() - t0), programs: progs() - p0 };
+        if (this.bridge.onProgress) this.bridge.onProgress(1);
+      });
+    } catch (e) {
+      restore();
+      return Promise.resolve();
+    }
   }
 
   /* Какие залы рисовать: отсечение по проёмам каждый кадр (десяток
@@ -1100,12 +1215,22 @@ class Gallery {
       if (!this.allRooms) this.allRooms = new Set([].concat(...this.plan.corridors.map((c) => c.rooms)));
       this.world.setVisible(true, this.allRooms);
     }
+    // не больше одного шага сборки за кадр: мебель отложенного зала или
+    // следующий зал по ходу (без мебели — она следующим шагом)
+    const W = this.world;
+    if (W.pendingProps.length) {
+      const n = W.pendingProps[0];
+      const vis = n.group.visible;
+      W.roomProps(n, false);
+      n.group.visible = vis;
+      return;
+    }
     const r = this.sub;
     if (r && this.tick % 3 === 0) {
       const rooms = this.plan.corridors[r.sec].rooms;
       for (const d of [1, -1, 2, -2]) {
         const n = rooms[r.idx + d];
-        if (n && this.world.ensureRoom(n)) { n.group.visible = false; break; }
+        if (n && W.ensureRoom(n, false)) { n.group.visible = false; break; }
       }
     }
   }

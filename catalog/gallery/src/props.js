@@ -75,6 +75,8 @@ function merge(list) {
   return mergeGeometries(list, false);
 }
 
+const GEO = new Map();          // общий кеш деталей (см. Props.G)
+
 export class Props {
   constructor(world) {
     this.w = world;
@@ -156,11 +158,21 @@ export class Props {
 
   /* Скруглённая коробка; seg — сегментов на скругление (мелочи хватает одного) */
   rbox(w, h, d, r, mat, x, y, z, ry = 0, rx = 0, seg = 1) {
-    return this.put(new RoundedBoxGeometry(w, h, d, seg, r), mat, x, y, z, ry, rx);
+    return this.put(this.G(RoundedBoxGeometry, w, h, d, seg, r), mat, x, y, z, ry, rx);
+  }
+
+  /* Одинаковые детали (коробки, цилиндры, шланг…) строятся один раз:
+     put и piece всё равно кладут в сцену копию. Сборка мебели зала была
+     самой долгой частью сборки зала (~10 мс из 16 на компьютере). */
+  G(C, ...args) {
+    const k = C.name + JSON.stringify(args);
+    let g = GEO.get(k);
+    if (!g) { g = new C(...args); GEO.set(k, g); }
+    return g;
   }
 
   box(w, h, d, mat, x, y, z, ry = 0, rx = 0) {
-    return this.put(new THREE.BoxGeometry(w, h, d), mat, x, y, z, ry, rx);
+    return this.put(this.G(THREE.BoxGeometry, w, h, d), mat, x, y, z, ry, rx);
   }
 
   /* ---------------- модели ---------------- */
@@ -206,10 +218,10 @@ export class Props {
       new THREE.Vector3(0.03, 1.17, 0), new THREE.Vector3(0.1, 1.12, 0),
       new THREE.Vector3(0.12, 0.95, 0), new THREE.Vector3(0.11, 0.78, 0),
     ]);
-    this.put(new THREE.TubeGeometry(hose, 10, 0.009, 6), M.rubber, x - 0.03, 0, zc, ry);
-    this.put(new THREE.CylinderGeometry(0.018, 0.012, 0.09, 12), M.black, x + 0.08, 0.74, zc);
+    this.put(this.G(THREE.TubeGeometry, hose, 10, 0.009, 6), M.rubber, x - 0.03, 0, zc, ry);
+    this.put(this.G(THREE.CylinderGeometry, 0.018, 0.012, 0.09, 12), M.black, x + 0.08, 0.74, zc);
     // этикетка на баллоне
-    this.put(new THREE.CylinderGeometry(0.079, 0.079, 0.16, 10, 1, true, -0.9, 1.8), M.white, x - 0.03, 0.9, zc, nz > 0 ? 0 : Math.PI);
+    this.put(this.G(THREE.CylinderGeometry, 0.079, 0.079, 0.16, 10, 1, true, -0.9, 1.8), M.white, x - 0.03, 0.9, zc, nz > 0 ? 0 : Math.PI);
     this.atlasSign(0, 1, 0.2, 0.2, x, 1.52, z + nz * 0.004, ry);                // знак «огнетушитель»
   }
 
@@ -245,7 +257,7 @@ export class Props {
 
   /* Табличка: плоскость с текстурой; с общим материалом — в слияние */
   sign(mat, w, h, x, y, z, ry, rx = 0) {
-    return this.put(new THREE.PlaneGeometry(w, h), mat, x, y, z, ry, rx);
+    return this.put(this.G(THREE.PlaneGeometry, w, h), mat, x, y, z, ry, rx);
   }
 
   /* Гигрометр с термометром — в музее он висит в каждом зале */
@@ -281,13 +293,13 @@ export class Props {
     const root = new THREE.Group();
     root.position.set(x, y, z);
     root.rotation.y = ry;
-    this.put(new THREE.CylinderGeometry(0.018, 0.018, 0.22, 12), M.white, x, y - 0.11, z);   // кронштейн
+    this.put(this.G(THREE.CylinderGeometry, 0.018, 0.018, 0.22, 12), M.white, x, y - 0.11, z);   // кронштейн
     const head = new THREE.Group();
     head.position.set(0, -0.24, 0);
     head.add(this.solid([
-      this.piece(new RoundedBoxGeometry(0.1, 0.09, 0.24, 1, 0.02), M.white, 0, 0, 0.06),        // корпус
-      this.piece(new THREE.BoxGeometry(0.12, 0.012, 0.26), M.white, 0, 0.052, 0.07),            // козырёк
-      this.piece(new THREE.CylinderGeometry(0.028, 0.028, 0.012, 20), M.smoke, 0, 0, 0.186, 0, Math.PI / 2), // объектив
+      this.piece(this.G(RoundedBoxGeometry, 0.1, 0.09, 0.24, 1, 0.02), M.white, 0, 0, 0.06),        // корпус
+      this.piece(this.G(THREE.BoxGeometry, 0.12, 0.012, 0.26), M.white, 0, 0.052, 0.07),            // козырёк
+      this.piece(this.G(THREE.CylinderGeometry, 0.028, 0.028, 0.012, 20), M.smoke, 0, 0, 0.186, 0, Math.PI / 2), // объектив
     ]));
     head.rotation.x = 0.35;
     root.add(head);
@@ -312,7 +324,7 @@ export class Props {
   /* Датчик дыма со светодиодом (светодиод мигает — см. update) */
   detector(x, y, z) {
     this.put(this.g.detector, this.m.white, x, y, z);
-    this.put(new THREE.SphereGeometry(0.005, 8, 6), this.m.led, x + 0.03, y - 0.041, z);
+    this.put(this.G(THREE.SphereGeometry, 0.005, 8, 6), this.m.led, x + 0.03, y - 0.041, z);
   }
 
   grille(x, y, z) {
@@ -325,7 +337,14 @@ export class Props {
   /* ---------------- расстановка ---------------- */
 
   /* Зал: скамьи у торцов острова, потолок, камера */
-  room(c, r) {
+  room(c, r) { this.roomSteps(c, r).forEach((f) => f()); }
+
+  /* Мебель зала тремя шагами — при заблаговременной сборке по шагу за кадр */
+  roomSteps(c, r) {
+    return [() => this.benches(c, r), () => this.ceiling(c, r), () => this.fixtures(c, r)];
+  }
+
+  benches(c, r) {
     const len = 1.9;
     const plan = this.w.plan;
     // у обоих торцов острова; маршрут перехода идёт серединой зоны у торца, скамья ближе к острову
@@ -333,7 +352,9 @@ export class Props {
       this.bench(c.cx, z, 0, len);
       plan.block.push({ x0: c.cx - len / 2 - 0.35, x1: c.cx + len / 2 + 0.35, z0: z - 0.5, z1: z + 0.5 });
     });
-    this.ceiling(c, r);
+  }
+
+  fixtures(c, r) {
     this.camera(c.cx - COR_W / 2 + 0.35, COR_H - 0.02, r.z0 - 0.4, Math.PI * 0.75);
     if (r.idx === 0) this.exitSign(c.cx + ARCH_W / 2 + 0.6, 3.1, r.z0 - 0.002, Math.PI);
     // навесное на перегородках — в группе зала, чьей стороной оно обращено:
@@ -355,8 +376,8 @@ export class Props {
     // урны у проёмов
     P.corridors.forEach((c) => {
       const bx = c.cx + ARCH_W / 2 + 0.9, bz = h.z0 + 0.55;
-      this.put(new THREE.CylinderGeometry(0.17, 0.16, 0.62, 28, 1, true), M.steel, bx, 0.31, bz);
-      this.put(new THREE.CylinderGeometry(0.155, 0.155, 0.02, 28), M.black, bx, 0.6, bz);
+      this.put(this.G(THREE.CylinderGeometry, 0.17, 0.16, 0.62, 28, 1, true), M.steel, bx, 0.31, bz);
+      this.put(this.G(THREE.CylinderGeometry, 0.155, 0.155, 0.02, 28), M.black, bx, 0.6, bz);
       this.put(new THREE.TorusGeometry(0.165, 0.008, 8, 28).rotateX(Math.PI / 2), M.steel, bx, 0.62, bz);
       P.block.push({ x0: bx - 0.35, x1: bx + 0.35, z0: bz - 0.35, z1: bz + 0.35 });
     });
@@ -435,7 +456,7 @@ export class Props {
     const M = this.m;
     const root = new THREE.Group();
     root.position.set(cx, 0, z);
-    root.add(this.solid([this.piece(new RoundedBoxGeometry(ARCH_W + 0.5, 0.2, 0.14, 2, 0.02), M.alu, 0, ARCH_H + 0.1, 0.02)]));
+    root.add(this.solid([this.piece(this.G(RoundedBoxGeometry, ARCH_W + 0.5, 0.2, 0.14, 2, 0.02), M.alu, 0, ARCH_H + 0.1, 0.02)]));
     const pw = ARCH_W / 2 + 0.04, ph = ARCH_H - 0.03;
     const leaves = [-1, 1].map((s) => {
       const leaf = new THREE.Group();
@@ -444,10 +465,10 @@ export class Props {
       leaf.add(glass);
       // алюминиевая рама створки — одним мешем
       leaf.add(this.solid([
-        this.piece(new THREE.BoxGeometry(0.035, ph, 0.04), M.alu, -pw / 2 + 0.0175, ph / 2, 0),
-        this.piece(new THREE.BoxGeometry(0.035, ph, 0.04), M.alu, pw / 2 - 0.0175, ph / 2, 0),
-        this.piece(new THREE.BoxGeometry(pw, 0.07, 0.04), M.alu, 0, 0.035, 0),
-        this.piece(new THREE.BoxGeometry(pw, 0.04, 0.04), M.alu, 0, ph - 0.02, 0),
+        this.piece(this.G(THREE.BoxGeometry, 0.035, ph, 0.04), M.alu, -pw / 2 + 0.0175, ph / 2, 0),
+        this.piece(this.G(THREE.BoxGeometry, 0.035, ph, 0.04), M.alu, pw / 2 - 0.0175, ph / 2, 0),
+        this.piece(this.G(THREE.BoxGeometry, pw, 0.07, 0.04), M.alu, 0, 0.035, 0),
+        this.piece(this.G(THREE.BoxGeometry, pw, 0.04, 0.04), M.alu, 0, ph - 0.02, 0),
       ]));
       root.add(leaf);
       return { leaf, s };
@@ -604,10 +625,10 @@ export class Props {
     top.position.set(0, h.h, 1.2);
     W.add(top);
     // проволока длиной len вниз от точки (x, y)
-    const wire = (len, x = 0, y = 0) => this.piece(new THREE.CylinderGeometry(0.003, 0.003, len, 6), M.wire, x, y - len / 2, 0);
-    const disc = (r, mat, x, y) => this.piece(new THREE.CylinderGeometry(r, r, 0.012, 48), mat, x, y, 0, 0, Math.PI / 2);
+    const wire = (len, x = 0, y = 0) => this.piece(this.G(THREE.CylinderGeometry, 0.003, 0.003, len, 6), M.wire, x, y - len / 2, 0);
+    const disc = (r, mat, x, y) => this.piece(this.G(THREE.CylinderGeometry, r, r, 0.012, 48), mat, x, y, 0, 0, Math.PI / 2);
     // верхняя проволока неподвижна — в общее слияние холла
-    this.put(new THREE.CylinderGeometry(0.003, 0.003, 0.9, 6), M.wire, 0, h.h - 0.45, 1.2);
+    this.put(this.G(THREE.CylinderGeometry, 0.003, 0.003, 0.9, 6), M.wire, 0, h.h - 0.45, 1.2);
     const levels = [];
     let parent = top, drop = 0.9;
     const spec = [[2.6, 0.42, 0, 0.55], [2.0, 0.33, 1, 0.55], [1.5, 0.26, 2, 0.55], [1.1, 0.2, 4, 0]];
@@ -618,7 +639,7 @@ export class Props {
       // коромысло: точка подвеса не в середине — как у настоящего мобиля;
       // на его коротком конце — проволока к следующему уровню (или последний диск)
       const nx = -len * 0.32;
-      const rodParts = [this.piece(new THREE.CylinderGeometry(0.004, 0.004, len, 6), M.wire, len * 0.18, 0, 0, 0, 0, Math.PI / 2)];
+      const rodParts = [this.piece(this.G(THREE.CylinderGeometry, 0.004, 0.004, len, 6), M.wire, len * 0.18, 0, 0, 0, 0, Math.PI / 2)];
       if (nextDrop) rodParts.push(wire(nextDrop, nx));
       else rodParts.push(wire(0.3, nx), disc(0.16, M.disc[3], nx, -0.46));
       const rod = this.solid(rodParts);

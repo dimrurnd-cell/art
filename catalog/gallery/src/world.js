@@ -171,6 +171,7 @@ export class World {
     this.scene = new THREE.Scene();
     this.aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
     this.paintings = [];
+    this.pendingProps = [];     // залы, собранные заранее, но ещё без мебели
     this.pickables = [];
     this.plaques = new Map();         // painting -> mesh
     this.banners = new Map();         // bay -> [mesh, mesh]
@@ -568,8 +569,11 @@ export class World {
   }
 
   /* Собрать зал, если он ещё не собран. Возвращает true, если собрали сейчас */
-  ensureRoom(r) {
-    if (r.group) return false;
+  ensureRoom(r, withProps = true) {
+    if (r.group) {
+      if (withProps && r.propsPending) this.roomProps(r);
+      return false;
+    }
     const c = r.sectionRef;
     const prev = this.target;
     r.group = this.group();
@@ -580,6 +584,34 @@ export class World {
     this.target = prev;
     if (r.idx > 0) this.ensurePart(c, r.idx - 1);
     if (r.idx < c.rooms.length - 1) this.ensurePart(c, r.idx);
+    // мебель — отдельным шагом (следующим кадром): это больше половины
+    // времени сборки зала; зал, который уже виден, собирается целиком
+    r.propsPending = true;
+    if (withProps) this.roomProps(r); else this.pendingProps.push(r);
+    return true;
+  }
+
+  /* Мебель и мелочи зала, отложенные при заблаговременной сборке.
+     all = false — один шаг (за кадр); куски копятся в своём буфере слияния
+     зала и сливаются в конце, поэтому вызовов отрисовки не больше, чем
+     при сборке сразу. */
+  roomProps(r, all = true) {
+    if (!r || !r.propsPending) return false;
+    if (!this.props) { r.propsPending = false; return false; }
+    if (!r.propSteps) { r.propSteps = this.props.roomSteps(r.sectionRef, r); r.propBatch = new Map(); }
+    const prevT = this.target, prevB = this.batch;
+    this.target = r.group;
+    this.batch = r.propBatch;
+    do r.propSteps.shift()(); while (all && r.propSteps.length);
+    if (!r.propSteps.length) {
+      this.endBatch();
+      r.propsPending = false;
+      r.propSteps = r.propBatch = null;
+      const i = this.pendingProps.indexOf(r);
+      if (i >= 0) this.pendingProps.splice(i, 1);
+    }
+    this.batch = prevB;
+    this.target = prevT;
     return true;
   }
 
@@ -726,7 +758,6 @@ export class World {
       this.paintings.push(it);
       this.pickables.push(m);
     });
-    if (this.props) this.props.room(c, r);
     if (this.onPaintings && ws.length) this.onPaintings(ws);
   }
 
