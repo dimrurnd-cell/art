@@ -512,31 +512,7 @@
     if (this.gl || this.glHost) return;         // WebGL-сцена следит за размером сама
     var h = this.hall;
     if (!h || !h.stage || !document.body.contains(h.stage)) return;
-
-    // в полноэкранном режиме не пересобираем зал ни при каких условиях:
-    // разворот часто меняет ширину окна (а с ней и breakpoint), и замена
-    // разметки тут же выбросила бы страницу из полного экрана
-    if ((document.fullscreenElement || document.webkitFullscreenElement) || this.fsFake) {
-      h.hitsPlaced = false;
-      this.placeHits();
-      return;
-    }
-
-    var cs = getComputedStyle(h.stage);
-    var num = function (name, fallback) {
-      var v = parseFloat(cs.getPropertyValue(name));
-      return isNaN(v) ? fallback : v;
-    };
-    var same = num('--step', h.step) === h.step &&
-               num('--hw', h.hw) === h.hw &&
-               num('--hh', h.hh) === h.hh &&
-               num('--art-h', h.artH) === h.artH;
-    if (same) {
-      h.hitsPlaced = false;
-      this.placeHits();
-      return;
-    }
-    this.buildHall(true);
+    this.wallPlace(true);                        // расстояние камеры — по размеру сцены
   };
 
   /* Карточки карусели — по текущему разделу. data-artist хранит сквозной
@@ -696,54 +672,6 @@
   };
 
   /* ==================== виртуальный зал ==================== */
-
-  /* Геометрия: камера смотрит вдоль оси Z в глубину (−Z).
-     Мир сдвигается на +camZ, то есть «идти вперёд» = увеличивать camZ.
-     Работы висят на боковых стенах, слегка развёрнутые внутрь зала,
-     чтобы читались и в движении, и издалека.                       */
-
-  var WALL_TURN = 62;   // разворот полотна относительно стены, градусы
-  var VIEW_DIST = 620;  // с какого расстояния камера смотрит на комнату
-  var YAW_MAX = 9;      // насколько можно повернуть взгляд вбок, градусов
-  var PITCH_MAX = 4;    // и вверх-вниз
-  var ART_FAR = 11000;  // как далеко по коридору рисуются полотна
-  var ART_BACK = 900;   // и сколько остаётся видно позади камеры
-  var ART_PRELOAD = 1.7; // во сколько раз раньше начинать подгружать картинки
-  /* На телефоне коридор просматриваем короче и держим жёсткий потолок по числу
-     одновременно загруженных картинок. Развёрнутое полотно 800×800 — это около
-     2.5 МБ распакованного растра, и без потолка проход по залу набирал бы их
-     сотнями: вкладка падала при первой же перерисовке на весь экран. */
-  var FAR_K = 8;        // во столько раз мельче плоскости дальней части коридора
-  var ART_FAR_SMALL = 5200;
-  var ART_PRELOAD_SMALL = 1.25;
-  var ART_FADE = 0.45;  // с какой доли дальности работы начинают растворяться
-  /* Потолок загруженных полотен. Держим примерно вдвое больше, чем видно
-     разом: этого хватает, чтобы отойти на несколько шагов назад и не
-     ждать повторной загрузки, и при этом расход остаётся считанным. */
-  var LOAD_MAX = 56;    // на большом экране
-  var LOAD_MAX_SMALL = 40;
-  /* Обзор вбок. Предел выбран по самому залу: коридор узкий, и уже к 25°
-     ближняя стена закрывает кадр целиком. На 20-22° работа с боковой стены,
-     наоборот, разворачивается почти во весь экран — это и нужно. */
-  var LOOK_MAX = 22;    // насколько можно повернуться боковыми стрелками, градусов
-  var LOOK_STEP = 11;   // поворот за одно нажатие: два нажатия — до упора
-  var LOOK_SPEED = 30;  // и за секунду удержания
-
-  /* Снять с полотна загруженные картинки. Пустой src освобождает и растр,
-     и место в кэше распакованных изображений; data-webp остаётся на месте,
-     поэтому при возвращении работа загрузится снова — уже из кэша сети. */
-  function unloadArt(art) {
-    var imgs = art.querySelectorAll('img[data-webp]');
-    for (var i = 0; i < imgs.length; i++) {
-      imgs[i].onerror = null;
-      imgs[i].src = BLANK;
-    }
-    art.loaded = false;
-  }
-  var CHIPS_MAX = 10;    // столько фамилий ещё помещается в ряд
-  var FOCUS_TURN = 0.3;  // доля разворота полотна, на которую доворачивается камера
-  var FOCUS_DIST = 0.44; // дистанция подхода к полотну в долях шага
-  var FOCUS_ZOOM = 1.35; // наезд камеры, когда зритель встал перед работой
 
   /* Арт-объекты зала: рисованные силуэты, стоящие на полу у стен.
      Их немного — они задают масштаб и «обжитость», не отвлекая от работ. */
@@ -1048,72 +976,75 @@
     this.buildHall();
   };
 
-  Widget.prototype.buildHall = function (rebuild) {
+  /* ---------------- простой зал: стена с работами ----------------
+
+     Простой режим — без WebGL. Весь раздел — одна длинная стена слева от
+     зрителя. У каждого художника свой отрезок стены, соседние отрезки стоят
+     под небольшим углом друг к другу: излом и есть граница между
+     художниками, подписи не нужны. Камера скользит вдоль стены и смотрит
+     на неё наискосок: текущая работа крупно в центре, следующие уходят в
+     перспективу вправо — по ходу чтения. Тёмного конца коридора больше нет:
+     пол и потолок — светлые градиенты фона сцены, а не 3D-плоскости (на
+     телефоне это и дешевле). Справа — дневной свет из проёмов
+     противоположной стены.
+
+     Картинки — только у ближних отрезков (±W_NEAR), дальше ±W_KEEP они
+     выгружаются, дальше ±W_SHOW отрезок не рисуется совсем. */
+  var W_ART = 250;      // высота полотна, px мира
+  var W_H = 520;        // высота стены
+  var W_GAP = 150;      // между работами
+  var W_PAD = 120;      // от краёв отрезка до работ
+  var W_MIN = 560;      // самый короткий отрезок
+  var W_TURN = 12;      // излом стены между художниками, градусы
+  var W_VIEW = 36;      // взгляд повёрнут вдоль стены от перпендикуляра
+  var W_PERSP = 900;    // перспектива сцены, px
+  var W_NEAR = 2;
+  var W_KEEP = 5;
+  var W_SHOW = 4;
+  var W_BLEND = 260;    // у излома взгляд поворачивает плавно, на этом отрезке пути
+  var W_TOUR = 4200;    // экскурсия: столько мс у каждой работы
+  var DEG = Math.PI / 180;
+
+  function wallImg(src, alt) {
+    return '<img src="' + BLANK + '" data-src="' + esc(src.replace(/\.webp$/, '.jpg')) + '" data-webp="' + esc(src) + '" alt="' + esc(alt) + '">';
+  }
+
+  Widget.prototype.buildHall = function () {
     var host = this.wrap.querySelector('.artc-view--hall');
     if (!host) return;
     if (this.useGL()) { this.buildGL(host); return; }
     if (this.hall && this.hall.offKey) this.hall.offKey();
     this.stopTour();
-    var keep = rebuild && this.hall ? this.hall.progress : 0;
+
+    var self = this;
+    var touch = isTouch();
+    var sec = this.sections.length ? this.sections[this.section] : null;
+    var shown = this.current();
+    var globals = sec ? sec.list : shown.map(function (a, i) { return i; });
+    var next = this.sections[this.section + 1] ? this.section + 1 : (this.sections.length > 1 ? 0 : -1);
 
     host.innerHTML =
-      '<div class="artc-stage" tabindex="0" role="application" ' +
-           'aria-label="Виртуальный зал выставки: перемещение стрелками, полотна открываются нажатием">' +
-        '<div class="artc-scene">' +
-          '<div class="artc-camera">' +
-            /* Дальняя часть коридора живёт вне мира — рядом с ним, прямо
-               в камере. Мир едет, она стоит; её трансформация задаётся
-               один раз при сборке и больше не трогается никогда.
-               Так и задумано: любое её движение было бы видно рывком, а
-               перерисовывать каждый кадр плоскость такого размера дорого
-               (замер: 180 мс на кадр против 100, когда она ехала вместе
-               с миром). */
-            '<div class="artc-depth" aria-hidden="true">' +
-              '<div class="artc-floor artc-far"></div><div class="artc-ceil artc-far"></div>' +
-              '<div class="artc-wall artc-wall--l artc-far"></div>' +
-              '<div class="artc-wall artc-wall--r artc-far"></div>' +
-              '<div class="artc-fog"></div>' +
-            '</div>' +
-            '<div class="artc-world">' +
-            '<div class="artc-floor"></div><div class="artc-ceil"></div>' +
-            '<div class="artc-wall artc-wall--l"></div><div class="artc-wall artc-wall--r"></div>' +
-            '<div class="artc-end"><div class="artc-end__inner">' +
-              pictureHTML(this.base + 'img/logo.webp', 'АРТ Ростов', false) +
-              '<span class="artc-end__slogan">Все грани искусства</span>' +
-              '<p class="artc-end__invite">Приходите увидеть вживую на выставке<br>' +
-                'с 16 по 25 апреля 2027</p>' +
-              '<a class="artc-end__ticket" href="' + esc(this.ticketUrl) + '"' +
-                (this.ticketUrl === '#' ? ' aria-disabled="true"' : ' target="_blank" rel="noopener"') +
-                '>Купить билет</a>' +
-            '</div></div>' +
-            '<button type="button" class="artc-pad artc-pad--fwd" aria-label="Пройти вперёд">' +
-              '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
-              'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-              '<path d="M12 19V5M5 12l7-7 7 7"/></svg></span></button>' +
-            '<button type="button" class="artc-pad artc-pad--back" aria-label="Вернуться назад">' +
-              '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
-              'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-              '<path d="M12 5v14M19 12l-7 7-7-7"/></svg></span></button>' +
-          '</div></div>' +
+      '<div class="artc-stage artc-hw" tabindex="0" role="application" ' +
+           'aria-label="Зал выставки: работы на стене, листайте стрелками, колесом или пальцем">' +
+        '<div class="artc-hw__day" aria-hidden="true"></div>' +
+        '<div class="artc-hw__scene"><div class="artc-hw__world"></div></div>' +
+        '<div class="artc-hw__top">' +
+          '<div class="artc-hw__where"><b></b><button type="button" class="artc-hw__who"></button></div>' +
+          '<div class="artc-hw__btns">' +
+            (this.canGL(this.hallMode) ? '<button type="button" class="artc-mode">' + ICON_3D + '<span>3D-галерея</span></button>' : '') +
+            '<button type="button" class="artc-hw__btn artc-hw__find" aria-label="Найти художника">' + ICON_FIND + '</button>' +
+            '<button type="button" class="artc-hw__btn artc-fs" aria-label="Открыть на весь экран">' + ICON_FS + '</button>' +
+          '</div>' +
         '</div>' +
-        '<button type="button" class="artc-hit artc-hit--back" data-label="Назад"></button>' +
-        '<button type="button" class="artc-hit artc-hit--fwd" data-label="Вперёд"></button>' +
-        '<button type="button" class="artc-fs" aria-label="Открыть на весь экран">' + ICON_FS + '</button>' +
-        (this.canGL(this.hallMode) ? '<button type="button" class="artc-mode">' + ICON_3D + '<span>3D-галерея</span></button>' : '') +
-        // Пальцем зал не осмотреть: за курсором мыши взгляд ведёт сам, а
-        // касание — это шаг по коридору. Поэтому на сенсорных экранах обзор
-        // вбок вынесен в две кнопки у краёв сцены.
-        '<button type="button" class="artc-look artc-look--l" aria-label="Посмотреть налево">' +
-          ARROW_L + '</button>' +
-        '<button type="button" class="artc-look artc-look--r" aria-label="Посмотреть направо">' +
-          ARROW_R + '</button>' +
-        '<div class="artc-dust" aria-hidden="true"></div>' +
-        '<div class="artc-vignette" aria-hidden="true"></div>' +
-        '<div class="artc-curtain" aria-hidden="true"></div>' +
-        '<p class="artc-hint">' + ICON_WALK + '<span>' + (isTouch()
-          ? 'Проведите пальцем, чтобы пройти по залу, а стрелками по краям ' +
-            'осмотритесь вокруг'
-          : 'Идите по залу: перетаскивайте, крутите колесо или жмите <b>W</b>/<b>S</b>') + '</span></p>' +
+        '<div class="artc-hw__nav">' +
+          '<button type="button" class="artc-hw__btn artc-hw__prev" aria-label="Предыдущая работа">' + ARROW_L + '</button>' +
+          '<span class="artc-hw__count" aria-live="polite"></span>' +
+          '<button type="button" class="artc-hw__btn artc-hw__next" aria-label="Следующая работа">' + ARROW_R + '</button>' +
+          '<button type="button" class="artc-hw__btn artc-hw__tour" aria-label="Экскурсия: работы сменяются сами" aria-pressed="false">' + ICON_TOUR + '</button>' +
+        '</div>' +
+        '<p class="artc-hint">' + ICON_WALK + '<span>' + (touch
+          ? 'Листайте пальцем вбок или жмите стрелки внизу'
+          : 'Листайте стрелками <b>←</b> <b>→</b> или перетаскивайте стену') + '</span></p>' +
         '<div class="artc-find" hidden>' +
           '<div class="artc-find__head">' +
             '<input type="search" class="artc-find__input" placeholder="Найти художника" ' +
@@ -1124,683 +1055,417 @@
           '<ul class="artc-find__list"></ul>' +
           '<p class="artc-find__empty" hidden>Никого не нашлось</p>' +
         '</div>' +
-        '<div class="artc-hud">' +
-          '<div class="artc-hud__row">' +
-            '<button type="button" class="artc-walk artc-walk--back" aria-label="Шаг назад">' + ARROW_DOWN + '</button>' +
-            '<span class="artc-progress"><i></i></span>' +
-            '<button type="button" class="artc-walk artc-walk--fwd" aria-label="Шаг вперёд">' + ARROW_UP + '</button>' +
-          '</div>' +
-          '<div class="artc-rooms"></div>' +
-          '<div class="artc-tools">' +
-            '<button type="button" class="artc-tour">' + ICON_TOUR +
-              '<span class="artc-tour__label">Провести по залу</span></button>' +
-          '</div>' +
-        '</div>' +
       '</div>';
 
     var stage = host.querySelector('.artc-stage');
-    if (isTouch()) stage.classList.add('is-touch');
-    // Android даёт странице мало видеопамяти: слои зала не успевают
-    // дорисовываться (полупрозрачные прямоугольники вместо стен) — сразу
-    // облегчённый режим и меньше одновременно загруженных картин
-    var leanHall = isHandheld() && (/Android/i.test(navigator.userAgent) || (navigator.deviceMemory && navigator.deviceMemory <= 4));
+    if (touch) stage.classList.add('is-touch');
+    var world = host.querySelector('.artc-hw__world');
+
+    /* Цепочка отрезков. s — путь вдоль стены от начала раздела, px мира;
+       у каждой работы и у каждого художника без работ — своя «остановка». */
+    var segs = [], stops = [], rooms = [];
+    var x = 0, z = 0, s = 0;
+    var addSeg = function (sg) {
+      sg.dx = Math.sin(sg.ang * DEG);
+      sg.dz = -Math.cos(sg.ang * DEG);
+      sg.x0 = x; sg.z0 = z; sg.s0 = s;
+      x += sg.dx * sg.L; z += sg.dz * sg.L; s += sg.L;
+      sg.i = segs.length;
+      segs.push(sg);
+    };
+    // начало раздела: вводный отрезок с названием — стена не обрывается слева
+    var nWorks = shown.reduce(function (n, a) { return n + a.works.length; }, 0);
+    addSeg({ intro: true, ang: W_TURN / 2, L: 900, items: [] });
+    shown.forEach(function (a, ai) {
+      var items = [], u = W_PAD;
+      a.works.forEach(function (w, wi) {
+        var r = (w.w && w.h) ? w.w / w.h : 1;
+        var aw = Math.round(Math.min(W_ART * 1.6, Math.max(W_ART * 0.6, W_ART * r)));
+        items.push({ w: w, wi: wi, u: u, aw: aw });
+        u += aw + W_GAP;
+      });
+      var sg = { a: a, gi: globals[ai], ai: ai, ang: ai % 2 ? W_TURN / 2 : -W_TURN / 2,
+                 L: Math.max(u - W_GAP + W_PAD, W_MIN), items: items };
+      addSeg(sg);
+      rooms.push({ name: a.name, city: a.city, avatar: self.url(a.avatar), stop: stops.length });
+      if (!items.length) stops.push({ s: sg.s0 + sg.L / 2, seg: sg, it: null });
+      items.forEach(function (it) { stops.push({ s: sg.s0 + it.u + it.aw / 2, seg: sg, it: it }); });
+    });
+    // конец раздела — последний отрезок той же стены
+    var end = { end: true, ang: segs.length % 2 ? W_TURN / 2 : -W_TURN / 2, L: 900, items: [] };
+    addSeg(end);
+    stops.push({ s: end.s0 + end.L / 2, seg: end, it: null });
+
+    // разметка отрезков — сразу вся (дальние скрыты), картинки — по мере подхода
+    var frag = document.createDocumentFragment();
+    segs.forEach(function (sg) {
+      var e = el('div', 'artc-hw__seg' + (sg.ang > 0 ? ' is-shade' : '') + (sg.end || sg.intro ? ' artc-hw__end' : ''));
+      e.style.width = sg.L + 'px';
+      e.style.height = W_H + 'px';
+      var mx = sg.x0 + sg.dx * sg.L / 2, mz = sg.z0 + sg.dz * sg.L / 2;
+      // стена слева от зрителя: ось плоскости — вперёд вдоль отрезка, лицо — вправо
+      e.style.transform = 'translate(-50%, -50%) translate3d(' + mx.toFixed(1) + 'px, 0, ' + mz.toFixed(1) +
+        'px) rotateY(' + (90 - sg.ang) + 'deg)';
+      var html;
+      if (sg.intro) {
+        html = '<div class="artc-hw__fin artc-hw__fin--intro">' +
+          '<h3>' + esc(sec ? sec.title : 'Выставка') + '</h3>' +
+          '<p>' + shown.length + ' ' + plural(shown.length, 'художник', 'художника', 'художников') + ' · ' +
+            nWorks + ' ' + plural(nWorks, 'работа', 'работы', 'работ') + '</p>' +
+          '<p class="artc-hw__invite">Идите вдоль стены →</p></div>';
+      } else if (sg.end) {
+        var total = stops.length - 1;
+        html = '<div class="artc-hw__fin">' +
+          pictureHTML(self.base + 'img/logo.webp', 'АРТ Ростов', true) +
+          '<h3>Конец раздела' + (sec ? ' «' + esc(sec.title) + '»' : '') + '</h3>' +
+          '<p>' + shown.length + ' ' + plural(shown.length, 'художник', 'художника', 'художников') + ' · ' +
+            total + ' ' + plural(total, 'остановка', 'остановки', 'остановок') + '</p>' +
+          '<p class="artc-hw__invite">Приходите увидеть вживую — 16–25 апреля 2027</p>' +
+          '<div>' +
+            (next >= 0 && next !== self.section ? '<button type="button" class="artc-hw__go" data-section="' + next + '">' +
+              esc(self.sections[next].title) + ' →</button>' : '') +
+            '<button type="button" class="artc-hw__go artc-hw__go--light" data-home="1">В начало</button>' +
+          '</div></div>';
+      } else {
+        var a = sg.a;
+        var nm = a.name.length > 40 ? 30 : a.name.length > 26 ? 36 : 44;
+        html = '<button type="button" class="artc-hw__name" data-artist="' + sg.gi + '" style="font-size:' + nm + 'px">' +
+          esc(a.name) + '<small>' + esc(a.city || '') + '</small><i>О художнике →</i></button>';
+        var top = W_H / 2 - W_ART / 2 + 20;
+        sg.items.forEach(function (it) {
+          var title = it.w.title || 'Без названия';
+          html += '<span class="artc-hw__spot" style="left:' + (it.u - 60) + 'px;top:' + (top - 70) + 'px;width:' +
+              (it.aw + 120) + 'px;height:' + (W_ART + 140) + 'px"></span>' +
+            '<button type="button" class="artc-hw__art" data-artist="' + sg.gi + '" data-work="' + it.wi + '" ' +
+              'style="left:' + it.u + 'px;top:' + top + 'px;width:' + it.aw + 'px;height:' + W_ART + 'px" ' +
+              'aria-label="Открыть работу «' + esc(title) + '» — ' + esc(a.name) + '">' +
+              wallImg(self.url(it.w.medium), title + ' — ' + a.name) + '</button>' +
+            '<button type="button" class="artc-hw__plq" data-artist="' + sg.gi + '" ' +
+              'style="left:' + it.u + 'px;top:' + (top + W_ART + 22) + 'px;max-width:' + Math.max(170, it.aw) + 'px" ' +
+              'aria-label="Карточка художника: ' + esc(a.name) + '">' +
+              '<b>' + esc(title) + '</b><span>' + esc(a.name) + '</span><i>О художнике →</i></button>';
+        });
+      }
+      e.innerHTML = html;
+      e.style.display = 'none';
+      sg.el = e;
+      frag.appendChild(e);
+    });
+    world.appendChild(frag);
+
     var modeBtn = host.querySelector('.artc-mode');
     if (modeBtn) {
-      var widget = this;
-      modeBtn.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
-      modeBtn.addEventListener('click', function (e) { e.stopPropagation(); widget.setHallMode('webgl'); });
-    }
-    var cs = getComputedStyle(stage);
-    var px = function (name, fallback) {
-      var v = parseFloat(cs.getPropertyValue(name));
-      return isNaN(v) ? fallback : v;
-    };
-
-    var STEP = px('--step', 780);
-    var HW = px('--hw', 470);
-    var HH = px('--hh', 330);
-    var ARTH = px('--art-h', 268);
-    // точка зрения вынесена вперёд на perspective — от неё считается доворот к работе
-    var PERSP = parseFloat(getComputedStyle(host.querySelector('.artc-scene')).perspective) || 1150;
-    var GAP = Math.round(STEP * 1.35);
-    var SEG_HINT = Math.round(STEP * 5.6);
-
-    /* Дальняя часть коридора.
-
-       Ближний кусок зала доходит до 0.66 своей длины — около двух с
-       половиной шагов, а полотна видны вчетверо дальше. Раньше за его
-       краем оставалась сквозная дыра в фон сцены, и работы висели в
-       пустоте. Дыра к тому же переставлялась вместе с куском — на шаг
-       за раз — и на каждом шаге заметно меняла размер: это и было
-       мельтешение в конце коридора.
-
-       Дальняя часть чинит и то, и другое. Она:
-       — неподвижна относительно камеры (в hallUpdate её сдвиг гасит camZ),
-         поэтому пульсировать там нечему в принципе;
-       — вчетверо мельче и растянута scale(): браузер растрирует плоскость
-         по её собственному размеру, а не по месту на экране, и такой
-         коридор обходится вчетверо дешевле сплошного (замер: 77 мс на
-         кадр против 16.7 мс);
-       — уходит в темноту, и её собственный край не виден совсем.
-       Ближний кусок с его фактурой, пилястрами и плинтусом лежит поверх
-       первых своих двух с половиной шагов — там видно его, дальше её. */
-    /* Начинается она там, где ближний кусок заведомо кончился. Ближний
-       доходит до 0.66 своей длины, но его стык притянут к сетке шага и
-       потому гуляет на шаг — берём ближнюю границу этого разброса и ещё
-       двести пикселей на нахлёст. Так дальняя часть занимает на экране
-       только узкий конус за ближней, а не весь кадр под ней: замер
-       ходьбы — 133 мс на кадр против 101 у прежнего зала, а если начать
-       её от самой камеры, выходит 149. */
-    var DEPTH_FROM = Math.max(0, Math.round(SEG_HINT * 0.66 - STEP - 200));
-    var DEPTH_AHEAD = (isHandheld() ? ART_FAR_SMALL : ART_FAR) + STEP;
-    var DEPTH_LEN = Math.ceil((DEPTH_AHEAD - DEPTH_FROM) / FAR_K) * FAR_K;
-    var DEPTH_MID = -(DEPTH_FROM + DEPTH_LEN / 2);    // где стоит её середина
-    var viewDist = (isHandheld() || window.innerWidth < 700)
-      ? Math.round(VIEW_DIST * 0.62) : VIEW_DIST;
-    var START = Math.round(STEP * 1.1);
-
-    // ритм пилястр вдоль обеих стен (шаг совпадает с шагом полотен)
-    var pil = '';
-    for (var pi = 0; pi * STEP * 2 < SEG_HINT; pi++) {
-      pil += '<i class="artc-pilaster" style="left:' + (pi * STEP * 2 - 21) + 'px"></i>';
-    }
-    host.querySelector('.artc-wall--l:not(.artc-far)').innerHTML = pil;
-    host.querySelector('.artc-wall--r:not(.artc-far)').innerHTML = pil;
-
-    var world = host.querySelector('.artc-world');
-    var self = this;
-    var arts = [];
-    var pending = [];          // полотна, ещё не вставленные в DOM
-    var rooms = [];
-    var decor = [];
-    var z = -START;
-
-    var shown = this.current();
-    var globals = this.sections.length ? this.sections[this.section].list : [];
-    shown.forEach(function (a, ai) {
-      var slots = Math.ceil(a.works.length / 2);
-      var roomStart = z;
-      var roomEntry = z + Math.round(GAP * 0.42);
-
-      a.works.forEach(function (w, wi) {
-        var left = wi % 2 === 0;
-        var slot = Math.floor(wi / 2);
-        var artZ = roomStart - slot * STEP;
-        // ширина полотна — по реальным пропорциям работы
-        var ratio = (w.w && w.h) ? w.w / w.h : 1;
-        var aw = Math.round(Math.min(ARTH * 1.55, Math.max(ARTH * 0.62, ARTH * ratio)));
-        // полотно развёрнуто внутрь зала, поэтому его дальний угол уходит
-        // к стене на aw/2 * cos(угол) — отступаем ровно на эту глубину плюс запас,
-        // иначе широкие работы врезаются в стену
-        var sink = Math.round(aw / 2 * Math.cos(WALL_TURN * Math.PI / 180));
-        var x = (HW - sink - 26) * (left ? -1 : 1);
-        var turn = left ? WALL_TURN : -WALL_TURN;
-
-        // Полотно и табличка — две разные кнопки: по картине открывается
-        // сама работа во весь экран, по табличке — карточка художника.
-        var b = el('div', 'artc-art');
-        b.style.setProperty('--aw', aw + 'px');
-        b.style.setProperty('--d', (200 + wi * 90 + ai * 40) + 'ms');
-        b.style.transform = 'translate(-50%, -50%) translate3d(' + x + 'px, -20px, ' + artZ + 'px) rotateY(' + turn + 'deg)';
-        b.setAttribute('data-artist', globals[ai]);
-        b.setAttribute('data-work', wi);
-        b.setAttribute('data-z', artZ);
-        b.setAttribute('data-x', x);
-        b.setAttribute('data-turn', turn);
-        b.innerHTML =
-          '<span class="artc-art__spot"></span>' +
-          '<button type="button" class="artc-art__frame" aria-label="Рассмотреть работу' +
-              (w.title ? ' «' + esc(w.title) + '»' : '') + ' — ' + esc(a.name) + '">' +
-            '<img src="' + BLANK + '" data-src="' + esc(self.url(w.medium).replace(/\.webp$/, '.jpg')) + '" ' +
-              'data-webp="' + esc(self.url(w.medium)) + '" alt="' +
-              esc((w.title || 'Работа') + ' — ' + a.name) + '">' +
-          '</button>' +
-          '<button type="button" class="artc-art__plaque" aria-label="Открыть карточку художника: ' +
-              esc(a.name) + '">' +
-            '<span class="artc-art__ava">' +
-              // Фото автора грузится вместе с работой, а не сразу: в большом
-              // зале табличек сотни, и загодя это мегабайты впустую.
-              '<img src="' + BLANK + '" data-src="' + esc(self.url(a.avatar).replace(/\.webp$/, '.jpg')) + '" ' +
-                'data-webp="' + esc(self.url(a.avatar)) + '" alt="' + esc(a.name) + '">' +
-            '</span>' +
-            '<span class="artc-art__meta">' +
-              '<span class="artc-art__title">' + esc(w.title || 'Без названия') + '</span>' +
-              '<span class="artc-art__author">' + esc(a.name) + '</span>' +
-            '</span>' +
-          '</button>';
-        // Создание элементов — самое дорогое при сотне художников. В DOM
-        // кладём порциями: сперва ближние ко входу, остальные в следующих
-        // кадрах. Дальние всё равно скрыты отсечением по дистанции.
-        pending.push(b);
-        arts.push(b);
-
-      });
-
-      // имя художника — на левой стене, город — на правой
-      // имя целиком: длинное — мельче и в несколько строк, но без обрезки
-      var sign = el('div', 'artc-sign' + (a.name.length > 44 ? ' artc-sign--xlong' : a.name.length > 26 ? ' artc-sign--long' : ''));
-      sign.innerHTML = esc(a.name);
-      sign.style.transform = 'translate(-50%, -50%) translate3d(' + (-HW + 4) + 'px, ' +
-        (-HH + 96) + 'px, ' + roomEntry + 'px) rotateY(90deg)';
-      world.appendChild(sign);
-
-      var sign2 = el('div', 'artc-sign');
-      sign2.innerHTML = '<small>' + esc(a.city) + '</small>';
-      sign2.style.transform = 'translate(-50%, -50%) translate3d(' + (HW - 4) + 'px, ' +
-        (-HH + 104) + 'px, ' + roomEntry + 'px) rotateY(-90deg)';
-      world.appendChild(sign2);
-
-      rooms.push({ name: a.name, city: a.city, avatar: self.url(a.avatar),
-                   z: -roomStart - viewDist });
-      z = roomStart - (slots - 1) * STEP - GAP;
-
-      // между залами — по одному арт-объекту у стены, стороны чередуются
-      if (ai < shown.length - 1) {
-        var obj = OBJECTS[ai % OBJECTS.length];
-        var side = ai % 2 === 0 ? 1 : -1;
-        var ox = (HW - 132) * side;
-        var oz = z + Math.round(GAP * 0.5);
-        var scale = HH / 315 * 1.3;                  // объекты в масштабе зала
-        var oh = Math.round(obj.h * scale);
-        var ow = Math.round(obj.w * scale);
-
-        var o = el('div', 'artc-object', obj.svg);
-        o.style.setProperty('--ow', ow + 'px');
-        o.style.setProperty('--ox', ox + 'px');
-        o.style.setProperty('--oy', (HH - oh / 2) + 'px');
-        o.style.setProperty('--oz', oz + 'px');
-        o.style.transform = 'translate(-50%, -50%) translate3d(' + ox + 'px, ' +
-          (HH - oh / 2) + 'px, ' + oz + 'px)';
-        o.setAttribute('data-z', oz);
-        world.appendChild(o);
-        decor.push(o);
-
-        var sh = el('div', 'artc-object-shadow');
-        sh.style.setProperty('--sw', Math.round(ow * 1.15) + 'px');
-        sh.style.transform = 'translate(-50%, -50%) translate3d(' + ox + 'px, ' +
-          (HH - 2) + 'px, ' + oz + 'px) rotateX(90deg)';
-        sh.setAttribute('data-z', oz);
-        world.appendChild(sh);
-        decor.push(sh);
-
-      }
-    });
-
-    var len = Math.abs(z) + START;
-    var SEG = SEG_HINT;   // длина «движущегося» куска зала (кратно шагу — стык незаметен)
-    stage.style.setProperty('--len', len + 'px');
-    stage.style.setProperty('--seg', SEG + 'px');
-    stage.style.setProperty('--far-seg', DEPTH_LEN + 'px');
-
-    // Ставим дальнюю часть один раз и больше к ней не возвращаемся.
-    // На 6 пикселей наружу — чтобы в месте нахлёста ближний кусок с его
-    // фактурой и пилястрами всегда оказывался перед ней, а не спорил.
-    var db = 'translate(-50%, -50%) translate3d(';
-    var dk = ') scale(' + FAR_K + ')';
-    var put3 = function (sel, x, y, z, rot) {
-      host.querySelector(sel).style.transform =
-        db + x + 'px, ' + y + 'px, ' + Math.round(z) + 'px) ' + rot + dk;
-    };
-    put3('.artc-floor.artc-far', 0, HH + 6, DEPTH_MID, 'rotateX(90deg');
-    put3('.artc-ceil.artc-far', 0, -HH - 6, DEPTH_MID, 'rotateX(-90deg');
-    put3('.artc-wall--l.artc-far', -HW - 6, 0, DEPTH_MID, 'rotateY(90deg');
-    put3('.artc-wall--r.artc-far', HW + 6, 0, DEPTH_MID, 'rotateY(-90deg');
-    // заглушка в самом конце: за ней уже ничего не рисуется
-    host.querySelector('.artc-fog').style.transform =
-      db + '0px, 0px, ' + (-DEPTH_AHEAD) + 'px) scale(1.06)';
-
-    // пылинки в лучах света
-    if (!prefersReducedMotion()) {
-      var dust = host.querySelector('.artc-dust');
-      var html = '';
-      for (var i = 0; i < 10; i++) {
-        html += '<i style="left:' + (Math.random() * 100).toFixed(1) + '%;top:' +
-          (30 + Math.random() * 70).toFixed(1) + '%;animation-duration:' +
-          (9 + Math.random() * 11).toFixed(1) + 's;animation-delay:-' +
-          (Math.random() * 12).toFixed(1) + 's"></i>';
-      }
-      dust.innerHTML = html;
-    }
-
-    // Переход к художнику. Пока их немного — ряд кнопок с фамилиями. Когда
-    // счёт идёт на сотню, такой ряд занимает пол-экрана и им невозможно
-    // пользоваться, поэтому вместо него одна кнопка со списком и поиском.
-    var roomsBox = host.querySelector('.artc-rooms');
-    var manyRooms = rooms.length > CHIPS_MAX;
-    if (manyRooms) {
-      var findBtn = el('button', 'artc-rooms__find');
-      findBtn.type = 'button';
-      findBtn.innerHTML = ICON_FIND + '<span>Художники</span><i>' + rooms.length + '</i>';
-      findBtn.addEventListener('click', function (e) { e.stopPropagation(); self.toggleFind(true); });
-      roomsBox.appendChild(findBtn);
-      roomsBox.classList.add('artc-rooms--find');
-    } else {
-      rooms.forEach(function (room, i) {
-        var b = el('button', 'artc-rooms__btn');
-        b.type = 'button';
-        b.textContent = shortName(room.name);
-        b.title = room.name;
-        b.addEventListener('click', function () { self.walkTo(room.z); });
-        roomsBox.appendChild(b);
-      });
+      modeBtn.addEventListener('click', function (e) { e.stopPropagation(); self.setHallMode('webgl'); });
     }
 
     this.hall = {
-      host: host, stage: stage, world: world,
-      camera: host.querySelector('.artc-camera'),
-      arts: arts, decor: decor, rooms: rooms,
-      roomBtns: manyRooms ? [] : roomsBox.children,
-      findBtn: manyRooms ? roomsBox.querySelector('.artc-rooms__find') : null,
-      padF: host.querySelector('.artc-pad--fwd'), padB: host.querySelector('.artc-pad--back'),
-      hitF: host.querySelector('.artc-hit--fwd'), hitB: host.querySelector('.artc-hit--back'),
+      wall: true, host: host, stage: stage, world: world,
+      scene: host.querySelector('.artc-hw__scene'),
+      day: host.querySelector('.artc-hw__day'),
+      segs: segs, stops: stops, rooms: rooms,
       fsBtn: host.querySelector('.artc-fs'),
-      step: STEP, len: len, seg: SEG, hw: HW, hh: HH, artH: ARTH, persp: PERSP,
-      floor: host.querySelector('.artc-floor:not(.artc-far)'),
-      ceil: host.querySelector('.artc-ceil:not(.artc-far)'),
-      wallL: host.querySelector('.artc-wall--l:not(.artc-far)'),
-      wallR: host.querySelector('.artc-wall--r:not(.artc-far)'),
-      depthAhead: DEPTH_AHEAD,
-      segZ: null,
-      maxZ: Math.max(0, len - Math.round(STEP * 0.62)),
-      camZ: 0, targetZ: 0, camX: 0, targetX: 0, aim: 0, targetAim: 0,
-      zoom: 1, targetZoom: 1,
-      bob: 0, yaw: 0, pitch: 0, focus: null,
-      look: 0, targetLook: 0, lookHold: 0,
-      progress: 0, moving: false, hitsPlaced: false, t0: Date.now(), tick: 0,
-      probeN: 0, probeMs: 0, probeLast: 0, lite: leanHall,
-      small: isHandheld(), loadMax: leanHall ? 16 : isHandheld() ? LOAD_MAX_SMALL : LOAD_MAX
+      s: 0, ts: 0, cur: -1, segI: -1, raf: 0, last: 0
     };
-    if (leanHall) stage.classList.add('is-lite');
-
-    // «влёт» в зал при первом открытии
-    var startAt = rooms.length ? rooms[0].z : 0;
-    if (rebuild) {
-      this.hall.camZ = this.hall.targetZ = keep * this.hall.maxZ;
-    } else {
-      this.hall.camZ = startAt - 900;
-      this.hall.targetZ = startAt;
+    var h = this.hall;
+    h.s = h.ts = stops.length ? stops[0].s : 0;
+    this.bindWall();
+    this.wallPlace(true);
+    // размер сцены становится известен после раскладки страницы — и может
+    // меняться (поворот, панель браузера): расстояние камеры — по нему
+    requestAnimationFrame(function () { if (self.hall === h) self.wallPlace(true); });
+    if (window.ResizeObserver) {
+      h.ro = new ResizeObserver(function () { if (self.hall === h) self.wallPlace(true); });
+      h.ro.observe(stage);
     }
-
-    this.flushArts(pending, 60);
-    this.bindHall();
-    this.hallLoop();
   };
 
-  /* Вставка полотен в сцену порциями, чтобы первый кадр не ждал всех */
-  Widget.prototype.flushArts = function (pending, first) {
-    var self = this;
-    var target = this.hall ? this.hall.world : null;
-    if (!target) return;
-    var i = 0;
-    var put = function (n) {
-      var frag = document.createDocumentFragment();
-      for (var k = 0; k < n && i < pending.length; k++, i++) frag.appendChild(pending[i]);
-      target.appendChild(frag);
-    };
-    put(first);
-    if (i >= pending.length) return;
-    var step = function () {
-      if (!self.hall || self.hall.world !== target) return;   // зал уже пересобрали
-      put(40);
-      if (i < pending.length) requestAnimationFrame(step);
-      else self.hall.frameKey = '';                           // перерисовать с новыми
-    };
-    requestAnimationFrame(step);
+  function plural(n, one, few, many) {
+    var m = n % 100, k = n % 10;
+    if (m > 10 && m < 20) return many;
+    return k === 1 ? one : (k > 1 && k < 5 ? few : many);
+  }
+
+  /* Отрезок по пути s (с запоминанием последнего — идём обычно по соседним) */
+  Widget.prototype.wallSeg = function (s) {
+    var segs = this.hall.segs;
+    var i = Math.max(0, Math.min(segs.length - 1, this.hall.segI < 0 ? 0 : this.hall.segI));
+    while (i > 0 && s < segs[i].s0) i--;
+    while (i < segs.length - 1 && s >= segs[i].s0 + segs[i].L) i++;
+    return i;
   };
 
-  Widget.prototype.bindHall = function () {
-    var h = this.hall, self = this;
-    var stage = h.stage;
+  /* Камера в точке пути s: точка на стене, взгляд наискосок вдоль неё */
+  Widget.prototype.wallPlace = function (force) {
+    var h = this.hall;
+    if (!h || !h.wall || !h.segs.length) return;
+    var si = this.wallSeg(h.s);
+    var sg = h.segs[si];
+    var ds = h.s - sg.s0;
+    var px = sg.x0 + sg.dx * ds, pz = sg.z0 + sg.dz * ds;
+    // направление стены у излома меняется плавно: на W_BLEND до и после стыка
+    var ang = sg.ang, prev = h.segs[si - 1], nxt = h.segs[si + 1];
+    var smooth = function (t) { return t * t * (3 - 2 * t); };
+    if (prev && ds < W_BLEND) ang = prev.ang + (sg.ang - prev.ang) * smooth(0.5 + 0.5 * ds / W_BLEND);
+    else if (nxt && sg.L - ds < W_BLEND) ang = nxt.ang + (sg.ang - nxt.ang) * smooth(0.5 + 0.5 * (sg.L - ds) / W_BLEND);
+    var tx = Math.sin(ang * DEG), tz = -Math.cos(ang * DEG);
+    var nx = Math.cos(ang * DEG), nz = Math.sin(ang * DEG);            // к зрителю
+    var c = Math.cos(W_VIEW * DEG), sn = Math.sin(W_VIEW * DEG);
+    var vx = -nx * c + tx * sn, vz = -nz * c + tz * sn;
+    // расстояние — по размеру сцены: полотно около половины меньшей стороны
+    var W = h.stage.clientWidth || 800, H = h.stage.clientHeight || 600;
+    var dist = W_PERSP * W_ART * 1.15 / (0.5 * Math.min(W * 1.1, H * 0.85));
+    var cx = px - vx * dist, cz = pz - vz * dist;
+    var yaw = Math.atan2(vx, -vz) / DEG;
+    h.world.style.transform = 'translateZ(' + W_PERSP + 'px) rotateY(' + yaw.toFixed(3) + 'deg) translate3d(' +
+      (-cx).toFixed(1) + 'px, 0, ' + (-cz).toFixed(1) + 'px)';
+    // свет из проёмов напротив плывёт при ходьбе
+    h.day.style.backgroundPosition = '0 0, ' + (-(h.s * 0.18) % 1400).toFixed(0) + 'px 0';
 
-    // Шаг делается нажатием по широкой зоне, а стрелка на полу — её рисунок.
-    // Зоны большие и на телефоне закрывают половину экрана, поэтому они
-    // уступают дорогу: если под пальцем оказалось полотно — открываем его,
-    // а если палец вели, а не ткнули, — это был свайп, и шагать не нужно.
-    // Нажатие по зоне разбирается в pointerup (см. endDrag), а не в click:
-    // сцена забирает указатель себе (setPointerCapture), и мышиный click
-    // приходит уже ей, а не зоне — до обработчика зоны он не доходит.
-    // Здесь остаётся только клавиатура: у неё click.detail === 0.
-    var bindHit = function (hit, dir, cls) {
-      hit.addEventListener('click', function (e) {
-        e.stopPropagation();
-        if (e.detail === 0) self.walkBy(h.step * dir);
-      });
-      hit.addEventListener('pointerenter', function () { stage.classList.add(cls); });
-      hit.addEventListener('pointerleave', function () { stage.classList.remove(cls); });
-    };
-    bindHit(h.hitF, 1, 'hl-fwd');
-    bindHit(h.hitB, -1, 'hl-back');
+    if (si !== h.segI || force) {
+      h.segI = si;
+      this.wallLoad(si);
+    }
+    var cur = this.wallNearest(h.ts);
+    if (cur !== h.cur || force) {
+      h.cur = cur;
+      this.wallHud();
+    }
+  };
 
-    var walkF = stage.querySelector('.artc-walk--fwd');
-    var walkB = stage.querySelector('.artc-walk--back');
-    walkF.addEventListener('click', function (e) { e.stopPropagation(); self.walkBy(h.step); });
-    walkB.addEventListener('click', function (e) { e.stopPropagation(); self.walkBy(-h.step); });
-    walkF.addEventListener('pointerenter', function () { stage.classList.add('hl-fwd'); });
-    walkF.addEventListener('pointerleave', function () { stage.classList.remove('hl-fwd'); });
-    walkB.addEventListener('pointerenter', function () { stage.classList.add('hl-back'); });
-    walkB.addEventListener('pointerleave', function () { stage.classList.remove('hl-back'); });
-
-    h.fsBtn.addEventListener('click', function (e) { e.stopPropagation(); self.toggleFullscreen(); });
-
-    /* Обзор вбок кнопками: короткое нажатие поворачивает на шаг, удержание —
-       ведёт взгляд плавно, пока палец на кнопке. Отпустили — взгляд остаётся
-       там же: иначе рассмотреть работу на боковой стене не успеть. */
-    [['.artc-look--l', -1], ['.artc-look--r', 1]].forEach(function (pair) {
-      var btn = stage.querySelector(pair[0]);
-      var dir = pair[1];
-      if (!btn) return;
-      var held = false;
-      var press = function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        held = true;
-        h.lookHold = dir;
-        self.lookBy(dir * LOOK_STEP);
-        if (btn.setPointerCapture && e.pointerId != null) {
-          try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+  /* Ближние отрезки — видны и с картинками; дальние скрыты и выгружены */
+  Widget.prototype.wallLoad = function (si) {
+    var segs = this.hall.segs;
+    for (var i = 0; i < segs.length; i++) {
+      var d = Math.abs(i - si), e = segs[i].el;
+      var show = d <= W_SHOW;
+      if ((e.style.display === 'none') === show) e.style.display = show ? '' : 'none';
+      var imgs = e.getElementsByTagName('img');
+      for (var k = 0; k < imgs.length; k++) {
+        var im = imgs[k], webp = im.getAttribute('data-webp');
+        if (!webp) continue;
+        if (d <= W_NEAR && im.getAttribute('data-on') !== '1') {
+          im.setAttribute('data-on', '1');
+          im.onerror = function () {
+            var jpg = this.getAttribute('data-src');
+            if (jpg && this.src.indexOf(jpg) === -1) this.src = jpg;
+          };
+          im.src = webp;
+        } else if (d > W_KEEP && im.getAttribute('data-on') === '1') {
+          im.onerror = null;
+          im.removeAttribute('data-on');
+          im.src = BLANK;
         }
-      };
-      var release = function () { if (held) { held = false; h.lookHold = 0; } };
-      btn.addEventListener('pointerdown', press);
-      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
-        btn.addEventListener(ev, release);
-      });
-      // клавиатура: у нажатия с Enter/Space нет указателя
-      btn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        if (e.detail === 0) self.lookBy(dir * LOOK_STEP);
-      });
-    });
+      }
+    }
+  };
 
-    stage.querySelector('.artc-tour')
-      .addEventListener('click', function (e) { e.stopPropagation(); self.toggleTour(); });
+  Widget.prototype.wallNearest = function (s) {
+    var st = this.hall.stops, best = 0, bd = Infinity;
+    for (var i = 0; i < st.length; i++) {
+      var d = Math.abs(st[i].s - s);
+      if (d < bd) { bd = d; best = i; }
+    }
+    return best;
+  };
 
-    var find = stage.querySelector('.artc-find');
-    find.querySelector('.artc-find__close')
-      .addEventListener('click', function (e) { e.stopPropagation(); self.toggleFind(false); });
-    find.querySelector('.artc-find__input').addEventListener('input', function () {
-      self.fillFind(this.value);
+  /* Надписи над сценой: раздел, художник, счётчик работ */
+  Widget.prototype.wallHud = function () {
+    var h = this.hall, st = h.stops[h.cur];
+    if (!st) return;
+    var sec = this.sections.length ? this.sections[this.section] : null;
+    var who = h.stage.querySelector('.artc-hw__who');
+    var b = h.stage.querySelector('.artc-hw__where b');
+    var cnt = h.stage.querySelector('.artc-hw__count');
+    var nArt = h.rooms.length;
+    var narrow = h.stage.clientWidth < 560;
+    if (st.seg.end) {
+      b.textContent = (sec ? sec.title : 'Выставка') + ' · конец раздела';
+      who.textContent = '';
+      who.hidden = true;
+      cnt.textContent = 'Конец раздела';
+    } else {
+      // на узком экране — одной строкой; имя художника и так крупно на стене
+      b.textContent = (sec ? sec.title + ' · ' : '') + (narrow ? '' : 'художник ') + (st.seg.ai + 1) + ' из ' + nArt;
+      who.hidden = false;
+      who.textContent = st.seg.a.name + ' →';
+      who.setAttribute('data-artist', st.seg.gi);
+      cnt.textContent = st.it ? 'Работа ' + (st.it.wi + 1) + ' из ' + st.seg.items.length : 'Нет работ';
+    }
+    h.stage.querySelector('.artc-hw__prev').disabled = h.cur <= 0;
+    h.stage.querySelector('.artc-hw__next').disabled = h.cur >= h.stops.length - 1;
+  };
+
+  /* Перейти к остановке i (плавно) */
+  Widget.prototype.wallGo = function (i) {
+    var h = this.hall;
+    if (!h || !h.wall) return;
+    i = Math.max(0, Math.min(h.stops.length - 1, i));
+    h.ts = h.stops[i].s;
+    this.wallRun();
+  };
+
+  Widget.prototype.wallStep = function (d) {
+    var h = this.hall;
+    if (!h || !h.wall) return;
+    this.wallGo(this.wallNearest(h.ts) + d);
+  };
+
+  /* Движение к цели: экспоненциально, пока не приехали */
+  Widget.prototype.wallRun = function () {
+    var self = this, h = this.hall;
+    if (h.raf) return;
+    h.last = 0;
+    var tick = function (now) {
+      h.raf = 0;
+      if (self.hall !== h) return;
+      var dt = h.last ? Math.min(0.05, (now - h.last) / 1000) : 0.016;
+      h.last = now;
+      var k = prefersReducedMotion() ? 1 : 1 - Math.exp(-dt * 5.5);
+      h.s += (h.ts - h.s) * k;
+      if (Math.abs(h.ts - h.s) < 0.6) h.s = h.ts;
+      self.wallPlace();
+      if (h.s !== h.ts || h.drag) h.raf = requestAnimationFrame(tick);
+    };
+    h.raf = requestAnimationFrame(tick);
+  };
+
+  Widget.prototype.bindWall = function () {
+    var self = this, h = this.hall, stage = h.stage;
+    var q = function (sel) { return stage.querySelector(sel); };
+    var user = function () { self.stopTour(); self.hideHint(); };
+
+    q('.artc-hw__prev').addEventListener('click', function () { user(); self.wallStep(-1); });
+    q('.artc-hw__next').addEventListener('click', function () { user(); self.wallStep(1); });
+    q('.artc-hw__tour').addEventListener('click', function () { self.toggleTour(); });
+    q('.artc-hw__find').addEventListener('click', function () { user(); self.toggleFind(); });
+    q('.artc-hw__who').addEventListener('click', function () {
+      var gi = this.getAttribute('data-artist');
+      if (gi != null) { self.fromHall = true; self.lbFromHall = false; self.openArtist(+gi); }
     });
+    h.fsBtn.addEventListener('click', function () { self.toggleFullscreen(); });
+
+    var find = q('.artc-find');
+    find.querySelector('.artc-find__close').addEventListener('click', function () { self.toggleFind(false); });
+    find.querySelector('.artc-find__input').addEventListener('input', function () { self.fillFind(this.value); });
     find.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') { e.stopPropagation(); self.toggleFind(false); }
+      e.stopPropagation();
     });
 
-
-    // экскурсию прерывает любое вмешательство посетителя
-    ['wheel', 'pointerdown', 'keydown'].forEach(function (ev) {
-      stage.addEventListener(ev, function (e) {
-        if (self.tour && e.target.closest && !e.target.closest('.artc-tour')) self.stopTour();
-      }, true);
-    });
-
-    // события изнутри открытой карточки/лайтбокса/формы сцена не трогает
-    var fromModal = function (e) { return !!(e.target.closest && e.target.closest('.artc-modal')); };
-
-    stage.addEventListener('wheel', function (e) {
-      if (fromModal(e) || Math.abs(e.deltaY) < 2) return;
-      e.preventDefault();
-      self.walkBy(e.deltaY * 1.6);
-    }, { passive: false });
-
-    stage.addEventListener('keydown', function (e) {
-      if (fromModal(e)) return;
-      var k = e.key;
-      if (k === 'ArrowUp' || k === 'ArrowRight') { self.walkBy(h.step); e.preventDefault(); }
-      if (k === 'ArrowDown' || k === 'ArrowLeft') { self.walkBy(-h.step); e.preventDefault(); }
-    });
-
-    stage.addEventListener('pointerenter', function () { h.hover = true; });
-    stage.addEventListener('pointerleave', function () { h.hover = false; });
-
-    // W/S — пока курсор над залом; стрелки не трогаем, ими листают страницу
-    var onKey = function (e) {
-      if (!h.hover || !h.host.classList.contains('is-active')) return;
-      if (document.querySelector('.artc-modal.is-open')) return;
-      var t = (e.target.tagName || '').toLowerCase();
-      if (t === 'input' || t === 'textarea' || t === 'select') return;
-      var k = e.key.toLowerCase();
-      if (k === 'w' || k === 'ц') { self.walkBy(h.step); e.preventDefault(); }
-      if (k === 's' || k === 'ы') { self.walkBy(-h.step); e.preventDefault(); }
-    };
-    document.addEventListener('keydown', onKey);
-    h.offKey = function () { document.removeEventListener('keydown', onKey); };
-
-    // перетаскивание / свайп: тянем «на себя» — идём вперёд
+    // Перетаскивание стены: вбок — листать, вертикально — страница листается
+    // сама (touch-action: pan-y). Отпустили — к ближайшей работе, с учётом
+    // броска: быстрый жест уводит на соседнюю.
     var drag = null;
     stage.addEventListener('pointerdown', function (e) {
-      if (fromModal(e) || e.target.closest('.artc-hud, .artc-rooms, .artc-find, .artc-pad, .artc-fs, .artc-look, .artc-end__ticket')) return;
-      drag = {
-        x: e.clientX, y: e.clientY, z: h.targetZ, moved: 0, id: e.pointerId,
-        art: e.target.closest('.artc-art'),
-        plaque: !!e.target.closest('.artc-art__plaque'),
-        hit: e.target.closest('.artc-hit'),
-        cx: e.clientX, cy: e.clientY
-      };
-      stage.classList.add('is-grabbing');
-      // после первого касания зал слушает стрелки, не дёргая прокрутку страницы
-      try { stage.focus({ preventScroll: true }); } catch (err) { stage.focus(); }
-      if (stage.setPointerCapture) { try { stage.setPointerCapture(e.pointerId); } catch (err2) {} }
+      if (e.target.closest('.artc-hw__top, .artc-hw__nav, .artc-find')) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      user();
+      try { stage.focus({ preventScroll: true }); } catch (err) { /* старый браузер */ }
+      drag = { id: e.pointerId, x: e.clientX, s: h.s, moved: false, t: performance.now(), vx: 0, lx: e.clientX, lt: performance.now() };
     });
     stage.addEventListener('pointermove', function (e) {
-      if (!drag) {
-        if (!fromModal(e)) self.hallParallax(e);
+      if (!drag || drag.id !== e.pointerId) return;
+      var dx = e.clientX - drag.x;
+      if (!drag.moved && Math.abs(dx) > 6) {
+        drag.moved = true;
+        h.drag = true;
+        try { stage.setPointerCapture(e.pointerId); } catch (err) { /* ok */ }
+      }
+      if (!drag.moved) return;
+      var now = performance.now();
+      drag.vx = (e.clientX - drag.lx) / Math.max(1, now - drag.lt);
+      drag.lx = e.clientX; drag.lt = now;
+      // пиксель экрана — столько пути вдоль стены
+      var k = 1.35 * W_ART / Math.max(160, 0.5 * Math.min(stage.clientWidth * 1.1, stage.clientHeight * 0.85));
+      var first = h.stops[0].s, last = h.stops[h.stops.length - 1].s;
+      h.ts = h.s = Math.max(first - 200, Math.min(last + 200, drag.s - dx * k));
+      self.wallRun();
+    });
+    var up = function (e) {
+      if (!drag || drag.id !== e.pointerId) return;
+      var d = drag;
+      drag = null;
+      h.drag = false;
+      if (!d.moved) return;
+      stage.wallMoved = performance.now();
+      var i = self.wallNearest(h.s);
+      if (Math.abs(d.vx) > 0.35) {
+        var dir = d.vx < 0 ? 1 : -1;
+        if ((h.stops[i].s - h.s) * dir <= 0) i += dir;     // бросок — к следующей по ходу
+      }
+      self.wallGo(i);
+    };
+    stage.addEventListener('pointerup', up);
+    stage.addEventListener('pointercancel', up);
+
+    // нажатия: полотно — работа во весь экран, табличка и имя — карточка
+    stage.addEventListener('click', function (e) {
+      if (stage.wallMoved && performance.now() - stage.wallMoved < 350) return;   // это было перетаскивание
+      var fin = e.target.closest('.artc-hw__go');
+      if (fin) {
+        if (fin.getAttribute('data-home')) self.wallGo(0);
+        else self.switchSection(+fin.getAttribute('data-section'));
         return;
       }
-      var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-      drag.moved = Math.max(drag.moved, Math.abs(dx), Math.abs(dy));
-      var d = Math.abs(dy) > Math.abs(dx) ? dy : -dx;
-      self.walkTo(drag.z + d * 2.4, true);
-    });
-    var endDrag = function (open) {
-      if (drag && stage.releasePointerCapture) { try { stage.releasePointerCapture(drag.id); } catch (err) {} }
-      // Короткое нажатие (без протяжки): по табличке — карточка художника,
-      // по самому полотну — работа во весь экран.
-      // Именно pointerup, а не click: при захвате указателя click приходит
-      // на саму сцену, и полотно в нём уже не определить.
-      if (open && drag && drag.moved <= 8) {
-        if (drag.art) {
-          if (drag.plaque) self.openArtCard(drag.art); else self.openArtWork(drag.art);
-        } else if (drag.hit && !drag.hit.classList.contains('is-off')) {
-          // под зоной шага может оказаться заметное полотно — тогда открываем его
-          var target = self.artUnder(drag.cx, drag.cy);
-          if (target) {
-            var a2 = target.closest('.artc-art');
-            if (target.classList.contains('artc-art__plaque')) self.openArtCard(a2);
-            else self.openArtWork(a2);
-          } else {
-            self.walkBy(h.step * (drag.hit.classList.contains('artc-hit--fwd') ? 1 : -1));
-          }
-        }
+      var art = e.target.closest('.artc-hw__art');
+      if (art) {
+        user();
+        self.fromHall = true;
+        self.lbFromHall = true;
+        self.openArtist(+art.getAttribute('data-artist'));
+        self.openWork(+art.getAttribute('data-work'));
+        return;
       }
-      drag = null;
-      stage.classList.remove('is-grabbing');
-    };
-    stage.addEventListener('pointerup', function () { endDrag(true); });
-    stage.addEventListener('pointercancel', function () { endDrag(false); });
-    stage.addEventListener('pointerleave', function () {
-      h.yaw = 0; h.pitch = 0;
-      // именно applyCamera, а не сброс transform: иначе с камеры пропадут
-      // доворот к работе и наезд, а цикл их не вернёт (кадр-то не изменился)
-      self.applyCamera();
-    });
-
-    // клавиатура: Enter/Space на полотне (у таких click.detail === 0)
-    stage.addEventListener('click', function (e) {
-      if (fromModal(e)) return;
-      var art = e.target.closest('.artc-art');
-      if (art && e.detail === 0) {
-        if (e.target.closest('.artc-art__plaque')) self.openArtCard(art);
-        else self.openArtWork(art);
+      var card = e.target.closest('.artc-hw__plq, .artc-hw__name');
+      if (card) {
+        user();
+        self.fromHall = true;
+        self.lbFromHall = false;
+        self.openArtist(+card.getAttribute('data-artist'));
       }
     });
-  };
 
-  /* Что за полотно лежит под точкой — сквозь прозрачные зоны шага.
+    // колесо: по горизонтали (тачпад) — всегда, вертикальное — только во
+    // весь экран: иначе мышь над залом не могла бы листать страницу
+    var acc = 0, accT = 0;
+    stage.addEventListener('wheel', function (e) {
+      var fs = stage.classList.contains('is-fs');
+      var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (fs ? e.deltaY : 0);
+      if (!d) return;
+      e.preventDefault();
+      user();
+      var now = performance.now();
+      if (now - accT > 400) acc = 0;
+      accT = now;
+      acc += d;
+      if (Math.abs(acc) > 70) { self.wallStep(acc > 0 ? 1 : -1); acc = 0; }
+    }, { passive: false });
 
-     Уступаем дорогу только тому, во что зритель явно целился: вдоль коридора
-     под курсором почти всегда есть далёкие работы в несколько пикселей, и
-     если засчитывать и их, то по стрелкам на полу становится не попасть. */
-  Widget.prototype.artUnder = function (x, y) {
-    if (!document.elementsFromPoint) return null;
-    var list = document.elementsFromPoint(x, y);
-    for (var i = 0; i < list.length; i++) {
-      var el = list[i];
-      var c = el.classList;
-      if (!c) continue;
-      var frame = c.contains('artc-art__frame');
-      if (!frame && !c.contains('artc-art__plaque')) continue;
-      var r = el.getBoundingClientRect();
-      if (frame ? (r.width >= 78 && r.height >= 78) : (r.width >= 90 && r.height >= 22)) return el;
-      return null;                       // ближайшее — мелкое, значит целились в пол
-    }
-    return null;
-  };
-
-  /* Нажатие по полотну: подходим к нему и разворачиваем работу во весь экран. */
-  Widget.prototype.openArtWork = function (art) {
-    var self = this;
-    this.focusArt(art);
-    clearTimeout(this.openT);
-    this.openT = setTimeout(function () {
-      self.fromHall = art;                 // чтобы знать, куда возвращаться
-      self.lbFromHall = true;              // и показать кнопку «Вернуться в зал»
-      // Карточка художника открывается под работой: закрыл работу — читаешь
-      // об авторе и видишь остальные его вещи, закрыл карточку — снова зал.
-      self.openArtist(+art.getAttribute('data-artist'));
-      self.openWork(+art.getAttribute('data-work'));
-    }, 620);
-  };
-
-  /* Нажатие по табличке под полотном: карточка художника. */
-  Widget.prototype.openArtCard = function (art) {
-    var self = this;
-    this.focusArt(art);
-    // даём камере подойти к работе и только потом показываем карточку
-    clearTimeout(this.openT);
-    this.openT = setTimeout(function () {
-      self.fromHall = art;                 // чтобы знать, куда возвращаться
-      self.lbFromHall = false;
-      self.openArtist(+art.getAttribute('data-artist'));
-    }, 760);
-  };
-
-  /* Итоговое положение камеры: доворот к полотну, слежение за курсором
-     и наезд. scale() приближает картинку целиком, не трогая глубину сцены, —
-     так работа, к которой подошли, читается крупно, как вблизи. */
-  Widget.prototype.applyCamera = function () {
-    var h = this.hall;
-    if (!h) return;
-    var t = 'scale(' + h.zoom.toFixed(3) + ') ' +
-      'rotateY(' + (h.aim + h.yaw + h.look).toFixed(2) + 'deg) rotateX(' + h.pitch.toFixed(2) + 'deg)';
-    // при обычной ходьбе камера не поворачивается: лишняя запись в transform
-    // заставила бы браузер пересобирать всю сцену каждый кадр
-    if (t === h.camKey) return;
-    h.camKey = t;
-    h.camera.style.transform = t;
-  };
-
-  /* Лёгкий параллакс за курсором: зал чуть отзывается на движение мыши.
-     Углы намеренно маленькие — это оживление картинки, а не управление
-     обзором: большой разворот сбивал с толку при ходьбе. */
-  Widget.prototype.hallParallax = function (e) {
-    var h = this.hall;
-    // на сенсорном экране обзором управляют боковые стрелки: параллакс за
-    // «курсором» там срабатывал бы от касаний и уводил взгляд рывками
-    if (!h || prefersReducedMotion() || isTouch() || window.innerWidth < 720) return;
-    var r = h.stage.getBoundingClientRect();
-    // Взгляд идёт за курсором: увели вправо — смотрим вправо, вниз — вниз.
-    // Положительный rotateY поворачивает камеру вправо, положительный
-    // rotateX — вверх, отсюда знаки.
-    /* Поворот от положения мыши. Отклик нелинейный: у центра экрана он
-       мягкий, к краям — заметно сильнее. Так можно и заглянуть на картину
-       сбоку, и не дёргать вид при обычном движении мышью. */
-    var tx = ((e.clientX - r.left) / r.width - 0.5) * 2;      // -1 … 1
-    var ty = ((e.clientY - r.top) / r.height - 0.5) * 2;
-    var ease = function (t) {
-      var a = Math.min(1, Math.abs(t));
-      return (t < 0 ? -1 : 1) * a * a * (3 - 2 * a);          // плавно от центра
+    var onKey = function (e) {
+      if (!self.hall || self.hall !== h) return;
+      if (document.querySelector('.artc-modal.is-open')) return;
+      var inStage = stage.contains(document.activeElement) || document.activeElement === stage;
+      if (!inStage || /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+      var k = e.key;
+      if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown') { user(); self.wallStep(1); e.preventDefault(); }
+      else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp') { user(); self.wallStep(-1); e.preventDefault(); }
+      else if (k === 'Home') { user(); self.wallGo(0); e.preventDefault(); }
+      else if (k === 'End') { user(); self.wallGo(h.stops.length - 1); e.preventDefault(); }
+      else if (k === 'Enter' && e.target === stage) {
+        var st = h.stops[h.cur];
+        if (st && st.it) { self.fromHall = true; self.lbFromHall = true; self.openArtist(st.seg.gi); self.openWork(st.it.wi); }
+      }
     };
-    // у подведённой картины поворот приглушаем: иначе широкий угол уводит
-    // её из кадра, ради которого к ней и подходили
-    var k = h.focus ? 0.35 : 1;
-    h.yaw = ease(tx) * YAW_MAX * k;
-    h.pitch = ease(ty) * -PITCH_MAX * k;
-    this.applyCamera();
+    document.addEventListener('keydown', onKey);
+    h.offKey = function () {
+      document.removeEventListener('keydown', onKey);
+      if (h.ro) h.ro.disconnect();
+      if (h.raf) cancelAnimationFrame(h.raf);
+      h.raf = 0;
+    };
   };
 
-  /* Встать напротив полотна: подойти, сместиться поперёк зала
-     и довернуть камеру, чтобы работа оказалась в центре кадра.
-
-     Геометрия здесь не такая, как кажется. Камера поворачивается вокруг точки
-     зрения, а та вынесена вперёд на величину perspective, поэтому до работы от
-     неё не `dist`, а `perspective + dist`. Значит доворот на угол A уводит
-     работу вбок на tan(A) * (perspective + dist) — и ровно настолько же нужно
-     сместиться поперёк зала, чтобы вернуть её в центр. */
-  Widget.prototype.focusArt = function (art) {
-    var h = this.hall;
-    if (!h || !art) return;
-    var z = parseFloat(art.getAttribute('data-z'));
-    var x = parseFloat(art.getAttribute('data-x'));
-    var turn = parseFloat(art.getAttribute('data-turn'));
-
-    var dist = Math.round(h.step * FOCUS_DIST);
-    var arm = h.persp + dist;                    // реальное плечо доворота
-    var aim = -turn * FOCUS_TURN;                // куда поворачиваем взгляд
-    var camZ = -z - dist;
-    var camX = -x + Math.tan(aim * Math.PI / 180) * arm;
-
-    // Зал узкий, а плечо длинное: полный разворот увёл бы камеру сквозь стену.
-    // Упираемся в стену — уменьшаем доворот ровно настолько, чтобы работа
-    // всё равно осталась в центре кадра.
-    var limit = h.hw - 140;
-    if (camX > limit || camX < -limit) {
-      camX = Math.max(-limit, Math.min(limit, camX));
-      aim = Math.atan((camX + x) / arm) * 180 / Math.PI;
-    }
-
-    h.targetX = camX;
-    h.targetAim = aim;
-    h.targetLook = 0;              // подошли к работе — взгляд возвращаем на неё
-    h.targetZoom = FOCUS_ZOOM;
-    this.keepFocus = true;
-    this.walkTo(camZ);
-    this.keepFocus = false;
-
-    h.focus = art;
-    art.classList.add('is-focused');
-  };
-
-  /* отойти от работы: камера возвращается на ось коридора */
-  Widget.prototype.blurArt = function () {
-    var h = this.hall;
-    if (!h) return;
-    h.targetX = 0;
-    h.targetAim = 0;
-    h.targetZoom = 1;
-    if (h.focus) { h.focus.classList.remove('is-focused'); h.focus = null; }
-  };
-
-  /* Повернуть взгляд вбок (боковые стрелки). Угол сохраняется, пока зритель
-     не вернёт его сам, не подойдёт к работе и не откроет её. */
-  Widget.prototype.lookBy = function (deg) {
-    var h = this.hall;
-    if (!h) return;
-    h.targetLook = Math.max(-LOOK_MAX, Math.min(LOOK_MAX, h.targetLook + deg));
-    h.moving = true;
-    this.hideHint();
-  };
-
-  Widget.prototype.walkBy = function (dz) { this.walkTo(this.hall.targetZ + dz); };
-
-  Widget.prototype.walkTo = function (z, silent) {
-    var h = this.hall;
-    if (!h) return;
-    h.targetZ = Math.max(-200, Math.min(h.maxZ, z));
-    h.moving = true;
-    this.hideHint();
-    // шаг по залу отменяет подход к работе — кроме самого подхода
-    if (!this.keepFocus) this.blurArt();
-  };
+  Widget.prototype.blurArt = function () {};
 
   Widget.prototype.hideHint = function () {
     var hint = this.hall && this.hall.stage.querySelector('.artc-hint');
@@ -1810,8 +1475,8 @@
   };
 
   /* Ненадолго показать подсказку поверх зала — тем же элементом, что и
-     подсказка на входе: место для неё уже есть. Появление задаём инлайном,
-     иначе сработала бы анимация входа с её девятисотмиллисекундной паузой. */
+     подсказка на входе. Появление задаём инлайном, иначе сработала бы
+     анимация входа с её паузой. */
   Widget.prototype.showHint = function (text) {
     var self = this;
     var hint = this.hall && this.hall.stage.querySelector('.artc-hint');
@@ -1822,234 +1487,6 @@
     clearTimeout(this.hintT);
     this.hintT = setTimeout(function () { self.hideHint(); }, 5000);
   };
-
-  Widget.prototype.hallLoop = function () {
-    var self = this;
-    var h = this.hall;
-    if (h.raf) cancelAnimationFrame(h.raf);
-
-    var frame = function () {
-      var hall = self.hall;
-      if (!hall || !document.body.contains(hall.stage)) return;
-      hall.raf = requestAnimationFrame(frame);
-
-      // зал скрыт (открыт «Каталог») — не тратим кадры
-      if (!hall.host.classList.contains('is-active')) return;
-
-      // шаг сглаживания не зависит от частоты кадров
-      var now = (window.performance && performance.now) ? performance.now() : Date.now();
-
-      // Замер скорости: на слабых устройствах переводим зал в облегчённый
-      // режим, чтобы ходьба оставалась плавной. Считаем только те кадры, в
-      // которых сцена действительно перерисовывается (камера едет) — на
-      // стоянке кадры даром не тратятся, и по ним о скорости не судить.
-      // Паузы между проходами в замер не попадают.
-      if (!hall.probeAfter) hall.probeAfter = now + 700;    // первые кадры — распаковка картинок
-      if (!hall.lite && hall.probeN < 1e6 && hall.moving && now > hall.probeAfter) {
-        var gap = now - (hall.probeLast || now);
-        hall.probeLast = now;
-        // Верхняя граница отсекает не медленные кадры, а перерывы между
-        // проходами. Она была 140 мс — и совсем слабое устройство в замер
-        // не попадало вовсе: его кадры длиннее, все пробы отбрасывались,
-        // и облегчённый режим не включался именно там, где он нужен.
-        if (gap > 0 && gap < 600) { hall.probeMs += gap; hall.probeN++; }
-        if (hall.probeMs > 1400) {
-          var fps = hall.probeN / hall.probeMs * 1000;
-          hall.probeN = 1e6;
-          if (fps < 34) {
-            hall.lite = true;
-            hall.stage.classList.add('is-lite');
-          }
-        }
-      }
-      var dt = Math.min(4, Math.max(0.2, (now - (hall.last || now)) / 16.67));
-      hall.last = now;
-
-      // палец держит боковую стрелку — взгляд едет, пока её не отпустят
-      if (hall.lookHold) self.lookBy(hall.lookHold * LOOK_SPEED * dt / 60);
-
-      var k = 1 - Math.pow(1 - 0.085, dt);
-      var d = hall.targetZ - hall.camZ;
-      var dx = hall.targetX - hall.camX;
-      var da = hall.targetAim - hall.aim;
-      var dl = hall.targetLook - hall.look;
-      var dzoom = hall.targetZoom - hall.zoom;
-      if (Math.abs(d) > 0.4 || Math.abs(dx) > 0.4 ||
-          Math.abs(da) > 0.05 || Math.abs(dl) > 0.05 || Math.abs(dzoom) > 0.002) {
-        hall.camZ += d * k;
-        hall.camX += dx * k;
-        hall.aim += da * k;
-        hall.look += dl * k;
-        hall.zoom += dzoom * k;
-        hall.moving = true;
-      } else if (hall.moving) {
-        hall.camZ = hall.targetZ;
-        hall.camX = hall.targetX;
-        hall.aim = hall.targetAim;
-        hall.look = hall.targetLook;
-        hall.zoom = hall.targetZoom;
-        hall.moving = false;
-        // камера встала — сверяем зоны шага с тем, где сейчас нарисованы
-        // стрелки: на ходу и во время «влёта» они качаются вместе с камерой.
-        // Считаем сразу: кадр без изменений до hallUpdate не доходит.
-        hall.hitsPlaced = false;
-        self.placeHits();
-      }
-
-      // покачивание шага
-      var speed = Math.min(1, Math.abs(d) / 400);
-      hall.bob += speed * 0.12 * dt;
-      var bobY = prefersReducedMotion() ? 0 : Math.sin(hall.bob) * 5.5 * speed;
-
-      // когда камера стоит, сцену не трогаем совсем: лишняя запись
-      // в transform заставляет браузер пересобирать весь зал каждый кадр
-      var frameKey = bobY.toFixed(1) + '|' + hall.camZ.toFixed(1) + '|' +
-                     hall.camX.toFixed(1) + '|' + hall.aim.toFixed(2) + '|' +
-                     hall.look.toFixed(2) + '|' + hall.zoom.toFixed(3);
-      if (frameKey === hall.frameKey) return;
-      hall.frameKey = frameKey;
-
-      hall.world.style.transform = 'translate3d(' + hall.camX.toFixed(2) + 'px,' +
-        bobY.toFixed(2) + 'px,' + hall.camZ.toFixed(2) + 'px)';
-      self.applyCamera();
-      self.hallUpdate();
-      return;
-    };
-    h.raf = requestAnimationFrame(frame);
-  };
-
-  /* подгрузка полотен по мере приближения + состояние HUD */
-  Widget.prototype.hallUpdate = function () {
-    var h = this.hall;
-    var p = h.maxZ ? Math.max(0, Math.min(1, h.camZ / h.maxZ)) : 0;
-    if (Math.abs(p - h.progress) > 0.002) {
-      h.progress = p;
-      var bar = h.stage.querySelector('.artc-progress i');
-      if (bar) bar.style.width = (p * 100).toFixed(1) + '%';
-    }
-
-    // пол, потолок и стены — короткий сегмент, едущий за камерой:
-    // рисовать зал целиком (тысячи пикселей в глубину) слишком дорого
-    var anchor = -Math.round((h.camZ + h.seg * 0.16) / h.step) * h.step;
-    if (anchor !== h.segZ) {
-      h.segZ = anchor;
-      var base = 'translate(-50%, -50%) translate3d(';
-      h.floor.style.transform = base + '0px, ' + h.hh + 'px, ' + anchor + 'px) rotateX(90deg)';
-      h.ceil.style.transform = base + '0px, ' + (-h.hh) + 'px, ' + anchor + 'px) rotateX(-90deg)';
-      h.wallL.style.transform = base + (-h.hw) + 'px, 0px, ' + anchor + 'px) rotateY(90deg)';
-      h.wallR.style.transform = base + h.hw + 'px, 0px, ' + anchor + 'px) rotateY(-90deg)';
-    }
-
-
-    // полотна: подгружаем и показываем только те, что рядом с камерой
-    var far = h.lite ? ART_FAR * 0.6 : ART_FAR;
-    if (h.small) far = Math.min(far, ART_FAR_SMALL);
-    var loadFrom = -far * (h.small ? ART_PRELOAD_SMALL : ART_PRELOAD);   // отсюда уже грузим
-    var fadeFrom = -far * ART_FADE;                // отсюда работы начинают таять
-    var live = h.live || (h.live = []);
-    live.length = 0;
-    h.tick++;
-    for (var i = 0; i < h.arts.length; i++) {
-      var art = h.arts[i];
-      var dz = +art.getAttribute('data-z') + h.camZ;
-      var inView = dz > -far && dz < ART_BACK;
-      if (inView !== art.shown) {
-        art.shown = inView;
-        art.style.visibility = inView ? '' : 'hidden';
-      }
-      /* Работы вдали растворяются в сумраке вместе с коридором. Без этого
-         они висели бы яркими пятнами в темноте, а на границе прорисовки
-         возникали бы разом — заметным скачком. Полотна ближе к оси зала,
-         чем стены, и затемнение стен на них не ложится, поэтому гасим их
-         отдельно. */
-      if (inView) {
-        var fade = dz > fadeFrom ? 1 : Math.max(0, (dz - far) / (fadeFrom - far));
-        fade = Math.round(fade * 20) / 20;          // не пишем стиль на каждый пиксель
-        if (fade !== art.fade) {
-          art.fade = fade;
-          art.style.opacity = fade < 1 ? fade : '';
-        }
-      }
-      var wanted = dz > loadFrom && dz < ART_BACK;
-      if (wanted) art.seenAt = h.tick;             // отметка «нужна прямо сейчас»
-      if (art.loaded) { live.push(art); continue; }
-      // Картинки берём заранее, до того как полотно въедет в кадр: иначе
-      // видно, как оно проявляется уже на стене. Скрытые изображения не
-      // рисуются, поэтому на скорость это не влияет — только на загрузку.
-      if (!wanted) continue;
-      var imgs = art.querySelectorAll('img[data-webp]');   // полотно и фото автора
-      if (!imgs.length) { art.loaded = true; continue; }
-      for (var k = 0; k < imgs.length; k++) {
-        var img = imgs[k];
-        img.onerror = function () { this.onerror = null; this.src = this.getAttribute('data-src'); };
-        img.src = img.getAttribute('data-webp') || img.getAttribute('data-src');
-      }
-      art.loaded = true;
-      live.push(art);
-    }
-
-    /* Освобождение памяти. Распакованный растр живёт, пока у картинки стоит
-       src, и за проход по залу его набиралось больше полугигабайта.
-
-       Выгружаем не по дальности, а по давности: когда загруженных работ
-       становится больше потолка, гасим те, что дольше всех не попадались на
-       глаза. По дальности не годится — стоит отойти на пару шагов назад, и
-       только что виденные работы уже выгружены; шаг обратно заставлял их
-       грузиться заново, и картина на стене успевала мигнуть пустотой.
-       Замер ходьбы взад-вперёд: было 66 перезагрузок на сотне кадров у
-       настольной версии и 105 у телефона, стало 0.
-
-       Гасим с запасом, до 0.8 потолка, чтобы разбор не повторялся каждый
-       кадр от одной пересечённой границы. */
-    if (live.length > h.loadMax) {
-      live.sort(function (a, b) { return (a.seenAt || 0) - (b.seenAt || 0); });
-      var drop = live.length - Math.round(h.loadMax * 0.8);
-      for (var u = 0; u < drop; u++) {
-        if (live[u].seenAt === h.tick) break;      // нужные сейчас не трогаем
-        unloadArt(live[u]);
-      }
-    }
-
-    // подсветка текущего «зала» художника
-    var near = 0, best = 1e9;
-    for (var r = 0; r < h.rooms.length; r++) {
-      var dist = Math.abs(h.rooms[r].z - h.camZ);
-      if (dist < best) { best = dist; near = r; }
-    }
-    if (near !== h.nearRoom) {
-      h.nearRoom = near;
-      for (var b = 0; b < h.roomBtns.length; b++) {
-        h.roomBtns[b].classList.toggle('is-current', b === near);
-      }
-    }
-
-    // указатели лежат на полу и едут вместе с камерой
-    var base3d = 'translate(-50%, -50%) translate3d(0px, ' + (h.hh - 3) + 'px, ';
-    h.padF.style.transform = base3d + (-h.camZ - 760) + 'px) rotateX(90deg)';
-    h.padB.style.transform = base3d + (-h.camZ - 395) + 'px) rotateX(90deg)';
-    h.padF.classList.toggle('is-off', h.targetZ >= h.maxZ - 1);
-    h.padB.classList.toggle('is-off', h.targetZ <= -199);
-    h.hitF.classList.toggle('is-off', h.targetZ >= h.maxZ - 1);
-    h.hitB.classList.toggle('is-off', h.targetZ <= -199);
-    if (!h.hitsPlaced) this.placeHits();
-
-    // арт-объекты рисуем только рядом с камерой; у отражений и посетителей
-    // своя, более короткая дистанция: они дороже в отрисовке, а вдали
-    // всё равно не читаются
-    // в облегчённом режиме дистанции ещё короче — там дорог каждый кадр
-    var reach = h.lite ? 0.55 : 1;
-    for (var d = 0; d < h.decor.length; d++) {
-      var o = h.decor[d];
-      var odz = +o.getAttribute('data-z') + h.camZ;
-      var oNear = odz > -(o.nearDist || 4600) * reach && odz < 700;
-      if (oNear !== o.shown) {
-        o.shown = oNear;
-        o.style.visibility = oNear ? '' : 'hidden';
-      }
-    }
-  };
-
-  /* ------------- поиск художника в длинном зале ------------- */
 
   Widget.prototype.toggleFind = function (on) {
     var h = this.hall;
@@ -2127,110 +1564,48 @@
       list.addEventListener('click', function (e) {
         var b = e.target.closest('[data-room]');
         if (!b) return;
-        self.walkTo(self.hall.rooms[+b.getAttribute('data-room')].z);
+        var room = self.hall.rooms[+b.getAttribute('data-room')];
         self.toggleFind(false);
+        // далеко — без долгой прокрутки мимо сотни работ: сразу на место
+        var h2 = self.hall, target = h2.stops[room.stop].s;
+        if (Math.abs(target - h2.s) > 6000) h2.s = target + (target > h2.s ? -900 : 900);
+        self.wallGo(room.stop);
       });
     }
   };
 
   /* ---------------- автоэкскурсия ---------------- */
 
-  /* Камера сама обходит зал: подходит к каждой работе, задерживается
-     у неё и едет дальше. Любое действие посетителя экскурсию прерывает. */
+  /* Работы сменяются сами, по W_TOUR мс на каждую; любое действие
+     посетителя экскурсию прерывает. */
   Widget.prototype.toggleTour = function () {
     if (this.tour) { this.stopTour(); return; }
     var h = this.hall;
-    if (!h || !h.arts.length) return;
-
-    this.tour = { i: -1, t: null };
-    h.stage.classList.add('is-touring');
-    this.hideHint();
-    this.tourStep();
-  };
-
-  Widget.prototype.tourStep = function () {
+    if (!h || !h.wall) return;
     var self = this;
-    var h = this.hall;
-    if (!this.tour || !h) return;
-
-    this.tour.i++;
-    if (this.tour.i >= h.arts.length) {      // дошли до конца — финальная стена
-      this.blurArt();
-      this.keepFocus = true;
-      this.walkTo(h.maxZ);
-      this.keepFocus = false;
-      this.tour.t = setTimeout(function () { self.stopTour(); }, 6000);
-      return;
-    }
-
-    this.focusArt(h.arts[this.tour.i]);
-    this.tour.t = setTimeout(function () { self.tourStep(); }, 3800);
+    this.tour = { t: null };
+    h.stage.classList.add('is-touring');
+    var b = h.stage.querySelector('.artc-hw__tour');
+    if (b) b.setAttribute('aria-pressed', 'true');
+    this.hideHint();
+    var step = function () {
+      if (!self.tour || self.hall !== h) return;
+      if (h.cur >= h.stops.length - 1) { self.stopTour(); return; }
+      self.wallStep(1);
+      self.tour.t = setTimeout(step, W_TOUR);
+    };
+    this.tour.t = setTimeout(step, 600);
   };
 
   Widget.prototype.stopTour = function () {
     if (!this.tour) return;
     clearTimeout(this.tour.t);
     this.tour = null;
-    if (this.hall) this.hall.stage.classList.remove('is-touring');
-    this.blurArt();
-  };
-
-  /* Зоны нажатия ставим по фактическому положению нарисованных стрелок:
-     они всегда на одном расстоянии от камеры, поэтому на экране не смещаются
-     и пересчитывать их нужно только при изменении размеров сцены. */
-  Widget.prototype.placeHits = function () {
-    var h = this.hall;
-    if (!h) return;
-    var st = h.stage.getBoundingClientRect();
-    if (!st.width || !st.height) return;
-
-    // Нижняя граница зон. Мешают только те части панели, по которым правда
-    // нажимают: кнопки шага по краям строки и кнопки перехода к художникам.
-    // Полоса прогресса — просто индикатор, нажатия она не ловит (см. css).
-    var limit = st.height;
-    var rooms = h.stage.querySelector('.artc-rooms');
-    var row = h.stage.querySelector('.artc-hud__row');
-    var below = rooms && rooms.getBoundingClientRect().height ? rooms : row;
-    if (below) {
-      var br = below.getBoundingClientRect();
-      if (br.height) limit = br.top - st.top - 8;
+    if (this.hall) {
+      this.hall.stage.classList.remove('is-touring');
+      var b = this.hall.stage.querySelector('.artc-hw__tour');
+      if (b) b.setAttribute('aria-pressed', 'false');
     }
-
-    // По бокам строки — круглые кнопки шага; зона не должна их накрывать
-    var side = 0;
-    var walk = h.stage.querySelector('.artc-walk');
-    if (walk) {
-      var wr = walk.getBoundingClientRect();
-      if (wr.width) side = wr.width + 26;
-    }
-
-    var rF = h.padF.getBoundingClientRect();
-    var rB = h.padB.getBoundingClientRect();
-    if (!rF.width || !rB.width) return;
-
-    var cyF = rF.top + rF.height / 2 - st.top;   // дальняя стрелка — «вперёд»
-    var cyB = rB.top + rB.height / 2 - st.top;   // ближняя стрелка — «назад»
-    var w = Math.min(Math.max(rB.width * 1.5, st.width * 0.56), st.width - side * 2 - 16);
-    var left = Math.round(st.width / 2 - w / 2);
-
-    // Зоны обязаны идти встык, без наложения: пересекаясь, верхняя
-    // перехватывала бы нажатия у нижней — по «назад» было не попасть.
-    // И обе целиком помещаются над панелью: иначе нижняя половина «назад»
-    // уходила под кнопки залов, и попасть по ней было нечем.
-    var bottomB = Math.round(Math.min(limit, cyB + Math.max(60, st.height * 0.1)));
-    var split = Math.min(Math.round((cyF + cyB) / 2), bottomB - 52);
-    var topF = Math.min(Math.round(cyF - Math.max(64, st.height * 0.11)), split - 52);
-    topF = Math.max(0, topF);
-
-    var put = function (hit, top, bottom) {
-      hit.style.left = left + 'px';
-      hit.style.width = Math.round(w) + 'px';
-      hit.style.top = Math.round(top) + 'px';
-      hit.style.height = Math.max(44, Math.round(bottom - top)) + 'px';
-    };
-    put(h.hitF, topF, split - 3);
-    put(h.hitB, split + 3, bottomB);
-    h.hitsPlaced = true;
   };
 
   Widget.prototype.toggleFullscreen = function () {
@@ -2327,32 +1702,9 @@
       if (m && m.parentNode !== host) host.appendChild(m);
     });
 
-    // зал не пересобираем: размеры зала заданы в единицах сцены и от размера
-    // окна не зависят, а пересоздание разметки выбросило бы нас из полного экрана
-    // Зал построен под размеры того breakpoint, в котором его собирали.
-    // На время показа фиксируем их инлайн: разворот может изменить ширину
-    // окна, и иначе ритм пола и пилястр разъехался бы с полотнами.
-    var h = this.hall;
-    ['--step', '--hw', '--hh', '--art-h'].forEach(function (name, i) {
-      var val = [h.step, h.hw, h.hh, h.artH][i];
-      if (on) stage.style.setProperty(name, val + 'px');
-      else stage.style.removeProperty(name);
-    });
-
-    // То же и с перспективой. Телефон, развёрнутый набок, шире 600 пикселей,
-    // и css отдал бы сцене «настольную» перспективу — а зал построен под
-    // телефонную, и от подмены геометрия зала разъезжается прямо на глазах.
-    var scene = h.stage.querySelector('.artc-scene');
-    if (scene) {
-      scene.style.perspective = on ? h.persp + 'px' : '';
-      h.camera.style.transformOrigin = on ? '50% 47% ' + h.persp + 'px' : '';
-    }
-
-    h.hitsPlaced = false;
-    setTimeout(function () {
-      self.placeHits();
-      if (!on) self.refreshHall();   // размеры окна за время показа могли смениться
-    }, 80);
+    // зал не пересобираем (выбросило бы из полного экрана): камера сама
+    // подстраивает расстояние под новый размер сцены
+    setTimeout(function () { self.wallPlace(true); }, 80);
   };
 
   Widget.prototype.fsBtnLabel = function (on) {
@@ -2442,9 +1794,8 @@
         this.blurArt();
         // на телефоне про колесо мыши писать незачем
         this.showHint(isTouch()
-          ? 'Вы снова в зале — проведите пальцем, чтобы идти дальше'
-          : 'Вы снова в зале — идите дальше: перетаскивайте, крутите колесо ' +
-            'или жмите стрелки на полу');
+          ? 'Вы снова в зале — листайте пальцем вбок, чтобы идти дальше'
+          : 'Вы снова в зале — дальше стрелками <b>←</b> <b>→</b> или перетаскивайте стену');
       }
     }
     var anyOpen = document.querySelector('.artc-modal.is-open');
