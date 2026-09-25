@@ -64,34 +64,27 @@ class Gallery {
         'aria-label="Виртуальная галерея: ходьба стрелками или W/S, полотна открываются нажатием">' +
         '<canvas class="artg-canvas"></canvas>' +
         '<div class="artg-top">' +
-          '<div class="artg-where"><b></b><span></span>' +
-            '<button type="button" class="artg-simple" data-a="simple" title="Плоский зал без 3D — для слабых устройств">' +
-              '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>' +
-              'Простой режим</button></div>' +
+          '<div class="artg-where"><b></b><span></span></div>' +
           '<div class="artg-actions">' +
-            '<button type="button" class="artg-btn" data-a="tour" aria-label="Провести по залу">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14l11-7z"/></svg>' + '<span>Экскурсия</span></button>' +
-            '<button type="button" class="artg-btn" data-a="hall" aria-label="Холл">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg>' + '<span>Холл</span></button>' +
-            '<button type="button" class="artg-btn" data-a="map" aria-label="План">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>' + '<span>План</span></button>' +
-            '<button type="button" class="artg-btn" data-a="list" aria-label="Художники">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>' + '<span>Художники</span></button>' +
-            '<button type="button" class="artg-btn artg-btn--icon" data-a="snd" aria-label="Звук зала" aria-pressed="false">' +
-              '<i class="artg-snd-on">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>' + '</i>' +
-              '<i class="artg-snd-off">' + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5zM16 9l6 6M22 9l-6 6"/></svg>' + '</i></button>' +
-            '<button type="button" class="artg-btn artg-btn--icon" data-a="light" aria-pressed="false" ' +
-              'aria-label="Естественный свет: картины в исходных цветах, без спотов" title="Естественный свет — картины в исходных цветах">' +
-              '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-              '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg></button>' +
-            '<button type="button" class="artg-btn artg-btn--icon" data-a="share" aria-label="Поделиться ссылкой на это место">' +
-              '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">' +
-              '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>' +
-            '<button type="button" class="artg-btn artg-btn--icon" data-a="q" aria-label="Качество изображения" aria-expanded="false">' +
-              '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">' +
-              '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>' +
-            '<button type="button" class="artg-btn artg-btn--icon" data-a="more" aria-label="Ещё: звук, свет, ссылка, качество" aria-expanded="false">' +
-              '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>' +
             '<button type="button" class="artg-btn artg-btn--icon" data-a="fs" aria-label="Во весь экран">' +
-              '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">' +
-              '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>' +
+              '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>' +
+            '<button type="button" class="artg-btn artg-btn--icon artg-menu-btn" data-a="menu" aria-label="Меню" aria-expanded="false">' +
+              '<svg class="artg-ico-menu" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>' +
+              '<svg class="artg-ico-close" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
           '</div>' +
+        '</div>' +
+        '<div class="artg-menu" hidden role="menu" aria-label="Меню галереи">' +
+            '<button type="button" class="artg-mi" data-a="tour" role="menuitem"><span class="artg-mi__t">Экскурсия по залу</span><i class="artg-mi__i"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14l11-7z"/></svg></i></button>' +
+            '<button type="button" class="artg-mi" data-a="hall" role="menuitem"><span class="artg-mi__t">В холл</span><i class="artg-mi__i"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg></i></button>' +
+            '<button type="button" class="artg-mi" data-a="map" role="menuitem"><span class="artg-mi__t">План залов</span><i class="artg-mi__i"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg></i></button>' +
+            '<button type="button" class="artg-mi" data-a="list" role="menuitem"><span class="artg-mi__t">Художники</span><i class="artg-mi__i"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></i></button>' +
+            '<button type="button" class="artg-mi" data-a="snd" role="menuitemcheckbox" aria-checked="false"><span class="artg-mi__t">Звук</span><i class="artg-mi__i">' +
+              '<svg class="artg-snd-on" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>' +
+              '<svg class="artg-snd-off" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5zM16 9l6 6M22 9l-6 6"/></svg></i></button>' +
+            '<button type="button" class="artg-mi" data-a="light" role="menuitemcheckbox" aria-checked="false"><span class="artg-mi__t">Свет</span><i class="artg-mi__i"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg></i></button>' +
+            '<button type="button" class="artg-mi" data-a="share" role="menuitem"><span class="artg-mi__t">Ссылка на это место</span><i class="artg-mi__i"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></i></button>' +
+            '<button type="button" class="artg-mi" data-a="q" role="menuitem"><span class="artg-mi__t">Качество изображения</span><i class="artg-mi__i"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></i></button>' +
+            '<button type="button" class="artg-mi" data-a="simple" role="menuitem"><span class="artg-mi__t">Простой режим</span><i class="artg-mi__i"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg></i></button>' +
         '</div>' +
         '<div class="artg-panel" hidden>' +
           '<div class="artg-phead"><b>Художники</b><button type="button" class="artg-close" data-close aria-label="Закрыть">' +
@@ -110,12 +103,6 @@ class Gallery {
             '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
           [['auto', 'Авто'], ['hd', 'HD · объём и свечение'], ['sd', 'SD · плавнее, для телефона']].map(([m, t]) => '<button type="button" role="radio" data-q="' + m + '">' + t + '</button>').join('') +
           '<small></small>' +
-        '</div>' +
-        '<div class="artg-more" hidden role="menu">' +
-          '<button type="button" role="menuitem" data-proxy="snd"></button>' +
-          '<button type="button" role="menuitem" data-proxy="light"></button>' +
-          '<button type="button" role="menuitem" data-proxy="share">Скопировать ссылку на это место</button>' +
-          '<button type="button" role="menuitem" data-proxy="q">Качество изображения…</button>' +
         '</div>' +
         '<div class="artg-hint"></div>' +
         '<div class="artg-tour" hidden aria-live="polite"></div>' +
@@ -308,18 +295,24 @@ class Gallery {
     st.querySelector('.artg-map__plan').addEventListener('click', (e) => this.mapClick(e));
     st.querySelector('[data-a="fs"]').addEventListener('click', () => this.toggleFullscreen());
     const sndBtn = st.querySelector('[data-a="snd"]');
-    const sndShow = () => { sndBtn.setAttribute('aria-pressed', String(this.sound.on)); sndBtn.classList.toggle('is-on', this.sound.on); };
+    const sndShow = () => {
+      sndBtn.setAttribute('aria-checked', String(this.sound.on));
+      sndBtn.classList.toggle('is-on', this.sound.on);
+      sndBtn.firstChild.textContent = this.sound.on ? 'Звук включён' : 'Звук выключен';
+    };
     sndBtn.addEventListener('click', () => { this.sound.toggle(); sndShow(); });
     // свет: выставочный (споты) или естественный (картины как в оригинале)
     const lightBtn = st.querySelector('[data-a="light"]');
     const lightShow = () => {
-      lightBtn.setAttribute('aria-pressed', String(this.naturalLight));
+      lightBtn.setAttribute('aria-checked', String(this.naturalLight));
       lightBtn.classList.toggle('is-on', this.naturalLight);
-      lightBtn.title = this.naturalLight ? 'Выставочный свет — споты над работами' : 'Естественный свет — картины в исходных цветах';
+      lightBtn.firstChild.textContent = this.naturalLight ? 'Свет: естественный' : 'Свет: споты';
     };
     lightBtn.addEventListener('click', () => {
       this.setNaturalLight(!this.naturalLight);
       lightShow();
+      // из меню подсказка не нужна — подпись пункта уже сказала, какой свет
+      if (!st.querySelector('.artg-menu').hidden) return;
       this.hint(this.naturalLight
         ? 'Естественный свет: споты погашены, картины — в цветах исходных изображений'
         : 'Выставочный свет: споты над работами');
@@ -346,28 +339,26 @@ class Gallery {
       if (show) { this.placePanels(); this.fillQuality(); }
       st.classList.toggle('has-panel', this.anyPanel());
     });
-    // на узкой сцене редкие кнопки (звук, свет, ссылка, качество) — в меню «⋯»
-    const more = st.querySelector('.artg-more');
-    const moreFill = () => {
-      more.querySelector('[data-proxy="snd"]').textContent = 'Звук зала: ' + (this.sound.on ? 'включён' : 'выключен');
-      more.querySelector('[data-proxy="light"]').textContent = 'Свет: ' + (this.naturalLight ? 'естественный' : 'выставочный (споты)');
-    };
-    st.querySelector('[data-a="more"]').addEventListener('click', () => {
-      const show = more.hidden;
+    // меню: одна кнопка справа, пункты колонкой по правому краю. Пункты,
+    // открывающие панель или уводящие зрителя, меню закрывают; звук и свет —
+    // переключатели, меню остаётся открытым
+    const menu = st.querySelector('.artg-menu');
+    const menuBtn = st.querySelector('[data-a="menu"]');
+    menuBtn.addEventListener('click', () => {
+      const show = menu.hidden;
       this.closePanels();
-      more.hidden = !show;
-      st.querySelector('[data-a="more"]').setAttribute('aria-expanded', String(show));
-      if (show) { this.placePanels(); moreFill(); }
-      this.stage.classList.toggle('has-panel', this.anyPanel());
+      if (!show) return;
+      menu.hidden = false;
+      menuBtn.setAttribute('aria-expanded', 'true');
+      st.classList.add('is-menu');
+      this.placePanels();
     });
-    more.addEventListener('click', (e) => {
-      const b = e.target.closest('[data-proxy]');
-      if (!b) return;
-      const a = b.getAttribute('data-proxy');
-      if (a === 'q') { this.closePanels(); st.querySelector('[data-a="q"]').click(); return; }
-      st.querySelector('[data-a="' + a + '"]').click();
-      if (a === 'share') this.closePanels(); else moreFill();
-    });
+    menu.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-a]');
+      if (!b) { this.closeMenu(); return; }      // мимо пунктов — как касание сцены
+      const a = b.getAttribute('data-a');
+      if (a !== 'snd' && a !== 'light' && !menu.hidden) this.closeMenu();
+    }, true);
     // у каждой панели своя кнопка «закрыть» — на телефоне кнопки над сценой
     // переносятся в два ряда, и панель не должна их закрывать
     st.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => this.closePanels()));
@@ -443,14 +434,21 @@ class Gallery {
   }
 
   /* Закрыть все панели (художники, план, качество) */
+  closeMenu() {
+    const st = this.stage;
+    st.querySelector('.artg-menu').hidden = true;
+    st.querySelector('[data-a="menu"]').setAttribute('aria-expanded', 'false');
+    st.classList.remove('is-menu');
+    st.classList.toggle('has-panel', this.anyPanel());
+  }
+
   closePanels() {
     const st = this.stage;
+    this.closeMenu();
     st.querySelector('.artg-panel').hidden = true;
     st.querySelector('.artg-map').hidden = true;
     st.querySelector('.artg-qpanel').hidden = true;
-    st.querySelector('.artg-more').hidden = true;
     st.querySelector('[data-a="q"]').setAttribute('aria-expanded', 'false');
-    st.querySelector('[data-a="more"]').setAttribute('aria-expanded', 'false');
     st.classList.remove('has-panel');
   }
 
@@ -461,14 +459,14 @@ class Gallery {
   }
 
   anyPanel() {
-    return ['.artg-panel', '.artg-map', '.artg-qpanel', '.artg-more'].some((s) => !this.stage.querySelector(s).hidden);
+    return ['.artg-panel', '.artg-map', '.artg-qpanel', '.artg-menu'].some((s) => !this.stage.querySelector(s).hidden);
   }
 
   /* Панели — сразу под кнопками, сколько бы рядов кнопок ни было */
   placePanels() {
     const top = this.stage.querySelector('.artg-top');
     const y = top.offsetTop + top.offsetHeight + 8;
-    ['.artg-panel', '.artg-map', '.artg-qpanel', '.artg-more'].forEach((s) => {
+    ['.artg-panel', '.artg-map', '.artg-qpanel', '.artg-menu'].forEach((s) => {
       const p = this.stage.querySelector(s);
       p.style.top = y + 'px';
       p.style.maxHeight = 'calc(100% - ' + (y + 16) + 'px)';
@@ -755,7 +753,7 @@ class Gallery {
     let down = null;
 
     st.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.artg-top, .artg-panel, .artg-move, .artg-map, .artg-qpanel, .artg-tour, .artg-joy')) return;
+      if (e.target.closest('.artg-top, .artg-menu, .artg-panel, .artg-move, .artg-map, .artg-qpanel, .artg-tour, .artg-joy')) return;
       // открыта панель — касание сцены её закрывает, а не ведёт по залу
       if (this.anyPanel()) { this.closePanels(); return; }
       if (this.tour.running) this.tour.stop();

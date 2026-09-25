@@ -55,6 +55,10 @@ export class Sound {
   build() {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return false;
+    // iPhone: при беззвучном режиме (переключатель сбоку) Safari глушит звук
+    // страниц; «воспроизведение», как у плеера, переключатель не глушит
+    // (Safari 17+; зритель сам включил звук кнопкой)
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* нет — не страшно */ }
     const ctx = this.ctx = new AC();
     this.master = ctx.createGain();
     this.master.gain.value = 0;

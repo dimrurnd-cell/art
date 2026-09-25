@@ -10,14 +10,10 @@ export const CSS = `
   align-items:flex-start;gap:10px;pointer-events:none}
 .artg-where{pointer-events:none;color:#2a2a2a;line-height:1.25;min-width:0}
 .artg-where b{display:block;font:500 13px/1.3 "Inter","Helvetica Neue",Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase}
-.artg-simple{pointer-events:auto;margin-top:8px;min-height:34px;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;appearance:none;border:1px solid rgba(42,42,42,.22);
-  background:rgba(255,255,255,.82);color:#2a2a2a;border-radius:999px;padding:6px 12px 6px 10px;font:500 13px/1 "Inter","Helvetica Neue",Arial,sans-serif;
-  cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-.artg-simple:hover{background:#fff;border-color:rgba(42,42,42,.4)}
-.artg-simple:focus-visible{outline:2px solid #2a2a2a;outline-offset:2px}
 .artg-where span{font-size:14px;color:#6f6f6b;max-width:min(48vw,520px);line-height:1.3;
   display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .artg-actions{display:flex;gap:8px;pointer-events:auto;flex-shrink:0}
+.artg-btn--icon{width:42px;height:42px;padding:0;justify-content:center}
 .artg-btn{appearance:none;border:0;border-radius:999px;background:rgba(255,255,255,.9);color:#2a2a2a;
   font:500 14px/1 "Inter","Helvetica Neue",Arial,sans-serif;padding:10px 15px;cursor:pointer;box-shadow:0 1px 0 rgba(0,0,0,.06),0 4px 14px rgba(0,0,0,.08);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .artg-btn:hover{background:#fff}
@@ -25,26 +21,46 @@ export const CSS = `
 .artg-btn--icon{padding:8px 10px;display:flex;align-items:center}
 .artg-btn{display:inline-flex;align-items:center;gap:7px}
 .artg-btn svg{flex-shrink:0}
-.artg-snd-on,.artg-snd-off{display:flex;font-style:normal}
-.artg-btn[data-a="snd"] .artg-snd-on{display:none}
-.artg-btn[data-a="snd"].is-on .artg-snd-on{display:flex}
-.artg-btn[data-a="snd"].is-on .artg-snd-off{display:none}
-.artg-btn[data-a="light"].is-on{background:#2a2a2a;color:#fff}
-.artg-stage.is-compact .artg-btn span{display:none}
-.artg-stage.is-compact .artg-btn{padding:8px 10px}
-.artg-simple{white-space:nowrap}
 .artg-where b{white-space:nowrap}
 /* низкий экран (телефон горизонтально): сцена не выше экрана */
 @media (max-height:520px){.artg-stage{height:calc(100vh - 24px);height:calc(100svh - 24px);min-height:260px}
   .artg-stage .artg-map__plan{width:auto;height:96px;align-self:center}}
 .artg-stage.is-narrow .artg-hint{font-size:13px;padding:8px 12px;max-width:calc(100% - 28px)}
-.artg-stage.is-narrow [data-a="snd"],.artg-stage.is-narrow [data-a="light"],.artg-stage.is-narrow [data-a="share"],.artg-stage.is-narrow [data-a="q"]{display:none}
-.artg-stage:not(.is-narrow) [data-a="more"]{display:none}
-.artg-more{position:absolute;right:14px;top:60px;width:min(300px,calc(100% - 28px));padding:8px;background:rgba(255,255,255,.97);border-radius:14px;
-  box-shadow:0 10px 40px rgba(0,0,0,.14);display:flex;flex-direction:column;gap:2px;z-index:3}
-.artg-more[hidden]{display:none}
-.artg-more button{appearance:none;border:0;background:none;text-align:left;padding:12px 12px;border-radius:8px;font:400 15px/1.2 "Inter","Helvetica Neue",Arial,sans-serif;color:#2a2a2a;cursor:pointer}
-.artg-more button:hover,.artg-more button:focus-visible{background:#f0efec;outline:none}
+/* меню: колонка по правому краю под кнопкой — круглая иконка и подпись */
+.artg-menu-btn .artg-ico-close{display:none}
+.artg-stage.is-menu .artg-menu-btn{background:#2a2a2a;color:#fff}
+.artg-stage.is-menu .artg-menu-btn .artg-ico-menu{display:none}
+.artg-stage.is-menu .artg-menu-btn .artg-ico-close{display:block}
+.artg-menu{position:absolute;right:14px;top:62px;z-index:3;display:flex;flex-direction:column;align-items:flex-end;gap:8px;
+  max-height:calc(100% - 76px);overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;padding:2px 2px 4px;margin:-2px -2px 0;
+  scrollbar-width:none;pointer-events:auto}
+.artg-menu::-webkit-scrollbar{display:none}
+.artg-menu[hidden]{display:none}
+.artg-mi{appearance:none;border:0;background:none;padding:0;margin:0;display:flex;align-items:center;gap:10px;cursor:pointer;flex-shrink:0;color:#2a2a2a;font:500 14px/1.2 "Inter","Helvetica Neue",Arial,sans-serif;
+  animation:artg-mi-in .22s cubic-bezier(.2,.8,.2,1) both}
+.artg-mi__t{background:rgba(255,255,255,.94);padding:8px 12px;border-radius:999px;white-space:nowrap;
+  box-shadow:0 1px 0 rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.08)}
+.artg-mi__i{width:42px;height:42px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-style:normal;
+  background:rgba(255,255,255,.94);box-shadow:0 1px 0 rgba(0,0,0,.06),0 4px 14px rgba(0,0,0,.1)}
+.artg-mi:hover .artg-mi__i,.artg-mi:hover .artg-mi__t{background:#fff}
+.artg-mi:focus-visible{outline:none}
+.artg-mi:focus-visible .artg-mi__i{outline:2px solid #2a2a2a;outline-offset:2px}
+.artg-mi.is-on .artg-mi__i{background:#2a2a2a;color:#fff}
+.artg-mi .artg-snd-on{display:none}
+.artg-mi.is-on .artg-snd-on{display:block}
+.artg-mi.is-on .artg-snd-off{display:none}
+.artg-mi:nth-child(2){animation-delay:.02s}.artg-mi:nth-child(3){animation-delay:.04s}.artg-mi:nth-child(4){animation-delay:.06s}
+.artg-mi:nth-child(5){animation-delay:.08s}.artg-mi:nth-child(6){animation-delay:.1s}.artg-mi:nth-child(7){animation-delay:.12s}
+.artg-mi:nth-child(8){animation-delay:.14s}.artg-mi:nth-child(9){animation-delay:.16s}
+@keyframes artg-mi-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.artg-mi{animation:none}}
+/* низкая сцена (телефон горизонтально): пункты мельче; не влезли — колонка прокручивается */
+@media (max-height:520px){.artg-mi__i{width:36px;height:36px}.artg-mi__t{padding:6px 10px;font-size:13px}.artg-menu{gap:6px}}
+/* не во весь экран на телефоне: вертикальное движение пальца листает
+   страницу, горизонтальное — поворачивает взгляд; во весь экран палец
+   снова целиком у зала */
+.artg-stage.is-touch:not(.is-fs){touch-action:pan-y}
+.artg-joy,.artg-move,.artg-step{touch-action:none}
 /* пока открыта панель — джойстик и кнопки шага не лезут поверх неё */
 .artg-stage.has-panel .artg-move,.artg-stage.has-panel .artg-joy{visibility:hidden}
 /* подсказка на сенсорном экране — над джойстиком, а не на нём */
@@ -140,12 +156,7 @@ export const CSS = `
 .artg-stage.is-fs.is-touch .artg-move{right:max(18px,env(safe-area-inset-right))}
 @media (max-width:600px){
   .artg-stage{height:clamp(440px,74vh,640px);border-radius:16px}
-  .artg-btn,.artg-btn--icon{padding:7px;font-size:13px}
-  .artg-btn span{display:none}
-  .artg-top{flex-direction:column;align-items:stretch;gap:8px}
-  .artg-actions{justify-content:flex-end}
   .artg-tour{bottom:140px}
   .artg-tour__txt b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-  .artg-actions{gap:4px;flex-wrap:wrap}
 }
 `;
