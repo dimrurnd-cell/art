@@ -19,7 +19,7 @@
 ├── gallery.js         ← 3D-галерея, грузится, когда зритель долистал до неё
 ├── gallery-assets/    ← фактуры помещения (hi — компьютер, lo — телефон), ~11 МБ
 ├── music/             ← тихая музыка зала: 7 пьес MP3 (~22 МБ) и CREDITS.txt
-├── curator/           ← куратор: faq.json, kb.md, figure.webp, face.webp
+├── curator/           ← куратор: faq.json, kb.md, фото (figure.webp, face.webp), движение (idle.mp4/.webm/.webp)
 ├── catalog.css
 ├── hall.css
 ├── artists.json
@@ -35,7 +35,7 @@
     └── masterskaya/ …
 ```
 
-Всего 186 файлов, ~50 МБ (почти все — бинарные: картинки, фактуры, музыка, шрифт). Права: файлы 644, папки 755.
+Всего 189 файлов, ~51 МБ (почти все — бинарные: картинки, фактуры, музыка, шрифт). Права: файлы 644, папки 755.
 
 **Атлас превью для 3D-галереи.** После заливки картинок откройте в браузере
 `tools/build-atlas.html` из репозитория, укажите адрес
@@ -60,7 +60,7 @@
 
 ### Быстрее: одним архивом
 
-186 файлов по SFTP заливаются долго, часть может не докачаться. Надёжнее
+189 файлов по SFTP заливаются долго, часть может не докачаться. Надёжнее
 загрузить архив и распаковать его на сервере (терминал в WinSCP — Ctrl+T):
 
 ```bash
@@ -82,8 +82,8 @@ rm -rf repo.zip art-claude-repository-overview-h8lcj2
 
 ```bash
 cd /home/develop/donexpo/static/artcatalog
-find . -type f | wc -l    # 186 (после сборки атласа — больше)
-du -sh .                  # ~50M
+find . -type f | wc -l    # 189 (после сборки атласа — больше)
+du -sh .                  # ~51M
 ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 ```
 
@@ -91,19 +91,22 @@ ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 
 | Файл | Байт |
 |---|---|
-| `catalog.js` | 134 625 |
+| `catalog.js` | 135 583 |
 | `catalog.css` | 22 662 |
-| `hall.css` | 41 902 |
+| `hall.css` | 42 312 |
 | `artists.json` | 329 957 |
 | `artists.js` | 261 991 |
-| `catalog-standalone.css` | 91 932 |
-| `gallery.js` | 989 915 |
+| `catalog-standalone.css` | 92 342 |
+| `gallery.js` | 992 779 |
 | `fonts/parangon.woff2` | 20 328 |
 | `img/logo.webp` | 31 726 |
 | `curator/figure.webp` | 42 828 |
 | `curator/face.webp` | 3 276 |
-| `curator/faq.json` | 6 844 |
-| `curator/kb.md` | 3 299 |
+| `curator/faq.json` | 7 993 |
+| `curator/kb.md` | 3 465 |
+| `curator/idle.mp4` | 461 748 |
+| `curator/idle.webm` | 392 123 |
+| `curator/idle.webp` | 822 682 |
 
 Признак испорченного шрифта — заголовки каталога рисуются обычным шрифтом
 вместо фирменного каллиграфического; испорченные изображения не открываются.

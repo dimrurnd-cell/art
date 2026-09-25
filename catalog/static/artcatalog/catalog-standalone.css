@@ -1283,6 +1283,13 @@
   -webkit-backface-visibility: hidden; backface-visibility: hidden;
 }
 .artc-hw__guide img { display: block; width: 100%; height: 100%; pointer-events: none; -webkit-user-drag: none; }
+/* движение: кадр ролика выше фигуры (стоящая — 90 % кадра), низ — пол */
+.artc-hw__guide .artc-hw__anim {
+  position: absolute; left: 50%; bottom: 0; width: auto; height: 111.112%; max-width: none;
+  transform: translateX(-50%); opacity: 0;
+}
+.artc-hw__guide.is-anim .artc-hw__anim { opacity: 1; }
+.artc-hw__guide.is-anim .artc-hw__anim + img { opacity: 0; }
 .artc-hw__guide::after {                /* тень на полу */
   content: ""; position: absolute; left: 4%; right: 4%; bottom: -10px; height: 24px; z-index: -1;
   background: radial-gradient(closest-side, rgba(40, 30, 20, .3), rgba(40, 30, 20, 0));

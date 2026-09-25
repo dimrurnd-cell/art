@@ -121,8 +121,9 @@ def main():
     ap.add_argument('--fps-in', type=float, default=16)
     ap.add_argument('--hold', type=float, default=0.6, help='пауза в исходной позе, с')
     ap.add_argument('--height', type=int, default=768, help='высота кадра на выходе')
-    ap.add_argument('--webp-height', type=int, default=640)
-    ap.add_argument('--webp-fps', type=float, default=15)
+    ap.add_argument('--webp-height', type=int, default=600)
+    ap.add_argument('--webp-fps', type=float, default=12)
+    ap.add_argument('--webp-quality', type=int, default=60)
     ap.add_argument('--out', default='static/artcatalog/curator/')
     ap.add_argument('--preview', default=None)
     ap.add_argument('--wall', default='243,241,236', help='цвет стены для превью')
@@ -193,7 +194,7 @@ def main():
         ims.append(cropped(c, al, o.webp_height))
     webp = os.path.join(o.out, 'idle.webp')
     ims[0].save(webp, 'WEBP', save_all=True, append_images=ims[1:], duration=int(round(1000 / o.webp_fps)),
-                loop=0, quality=78, alpha_quality=85, method=6)
+                loop=0, quality=o.webp_quality, alpha_quality=80, method=6, minimize_size=True, allow_mixed=True)
     print('idle.webp: %d×%d, %d кадров, %d байт' % (ims[0].width, ims[0].height, len(ims), os.path.getsize(webp)))
 
     if o.preview:
