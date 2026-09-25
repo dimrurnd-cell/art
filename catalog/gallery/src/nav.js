@@ -68,8 +68,49 @@ export class Nav {
     if (to >= 0) this.aislePath(pts, plan.corridors[to], px, pz, x, z);
 
     pts.push({ x, z, yaw, pitch: pitch == null ? -0.02 : pitch });
-    this.path = pts;
+    this.path = this.detour(this.x, this.z, pts);
     this.onArrive = onArrive || null;
+  }
+
+  /* Обход мебели: отрезок пути, задевающий препятствие (скамьи, стойка,
+     кадки, урны — plan.block), огибает его через угол с запасом 0.5 м.
+     По маршруту столкновения не проверяются (он быстрый и плавный), так
+     что без обхода камера проезжала сквозь скамью холла. */
+  detour(x0, z0, pts) {
+    const blocks = this.plan.block;
+    const PAD = 0.35;
+    const hits = (ax, az, bx, bz) => {
+      const n = Math.max(2, Math.ceil(Math.hypot(bx - ax, bz - az) / 0.2));
+      for (const b of blocks) {
+        for (let i = 1; i < n; i++) {
+          const t = i / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+          if (x > b.x0 - PAD && x < b.x1 + PAD && z > b.z0 - PAD && z < b.z1 + PAD) return b;
+        }
+      }
+      return null;
+    };
+    const out = [];
+    let ax = x0, az = z0;
+    for (const p of pts) {
+      for (let guard = 0; guard < 4; guard++) {
+        const b = hits(ax, az, p.x, p.z);
+        if (!b) break;
+        const m = PAD + 0.2;
+        const corners = [[b.x0 - m, b.z0 - m], [b.x1 + m, b.z0 - m], [b.x0 - m, b.z1 + m], [b.x1 + m, b.z1 + m]];
+        let best = null, bl = Infinity;
+        for (const [cx, cz] of corners) {
+          if (!canStand(this.plan, cx, cz) || hits(ax, az, cx, cz) === b) continue;
+          const l = Math.hypot(cx - ax, cz - az) + Math.hypot(p.x - cx, p.z - cz);
+          if (l < bl) { bl = l; best = [cx, cz]; }
+        }
+        if (!best) break;
+        out.push({ x: best[0], z: best[1], fast: p.fast });
+        ax = best[0]; az = best[1];
+      }
+      out.push(p);
+      ax = p.x; az = p.z;
+    }
+    return out;
   }
 
   /* Точки пути внутри раздела от (px, pz) до (x, z), без самой цели */
