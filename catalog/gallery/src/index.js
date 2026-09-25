@@ -177,7 +177,10 @@ class Gallery {
     this.sound = new Sound((p) => bridge.url(p));
     // пьеса началась — её название короткой подсказкой
     this.sound.onTrack = (t) => this.hint('♪ ' + t.t + ' · исп. ' + t.p);
-    this.onVis = () => this.sound.visible(!document.hidden);
+    this.onVis = () => {
+      this.sound.visible(!document.hidden);
+      if (document.hidden && this.curator) this.curator.play(false);
+    };
     document.addEventListener('visibilitychange', this.onVis);
     this.lastPos = { x: 0, z: 0 };
     this.bobAmp = 0;
@@ -773,6 +776,7 @@ class Gallery {
     st.addEventListener('pointerdown', (e) => {
       if (e.target.closest('.artg-top, .artg-menu, .artg-panel, .artg-move, .artg-map, .artg-qpanel, .artg-tour, .artg-joy, .artg-say, .artc-cur')) return;
       // открыта панель — касание сцены её закрывает, а не ведёт по залу
+      if (this.curator) this.curator.unblock();
       if (this.anyPanel()) { this.closePanels(); return; }
       if (this.tour.running) this.tour.stop();
       down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, t: performance.now(), id: e.pointerId, moved: false };
@@ -1130,7 +1134,10 @@ class Gallery {
     P.on = false; P.build = P.tex = P.probe = P.render = P.prog = 0;
     // во весь экран сцена видна всегда, что бы ни думал наблюдатель видимости
     const shown = this.visible || this.fsFake || (document.fullscreenElement || document.webkitFullscreenElement) === this.stage;
-    if (!shown || document.hidden || this.modalOpen()) return;
+    if (!shown || document.hidden || this.modalOpen()) {
+      if (this.curator) this.curator.play(false);
+      return;
+    }
 
     P.on = true;
     const nav = this.nav;
@@ -1152,7 +1159,12 @@ class Gallery {
     cam.position.set(nav.x + Math.cos(nav.yaw) * sway, EYE + dip + breath, nav.z - Math.sin(nav.yaw) * sway);
     cam.rotation.set(nav.pitch + 0.0012 * Math.sin(tt * 1.5 + 1), nav.yaw, 0.0028 * Math.sin(this.bobPhase) * this.bobAmp);
     this.world.camLight.position.set(nav.x, EYE + 0.6, nav.z);
-    if (this.curator) { this.curator.face(cam); this.placeSay(); }
+    if (this.curator) {
+      this.curator.face(cam);
+      const cp = this.curator.pos;
+      this.curator.play(this.room < 0 && Math.hypot(nav.x - cp.x, nav.z - cp.z) < 30);
+      this.placeSay();
+    }
 
     if (this.tick++ % 6 === 0) {
       this.world.update(nav);
@@ -1384,6 +1396,7 @@ class Gallery {
     if (this.fsFake) this.fakeFs(false);
     if (this.quality) this.quality.dropComposer();
     if (this.probe) this.probe.dispose();
+    if (this.curator) this.curator.dispose();
     if (this.sound) this.sound.dispose();
     if (this.onVis) document.removeEventListener('visibilitychange', this.onVis);
     if (this.renderer) this.renderer.dispose();

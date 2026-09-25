@@ -5,13 +5,37 @@
    облачко открывает окно вопросов — его рисует catalog.js (bridge.curator),
    одно на 3D-галерею и простой зал.
 
-   Потом фото можно заменить видео (ожидание и речь) — меняется только
-   текстура. */
+   Движение — ролик curator/idle.mp4 или .webm (Wan 2.2 по фото, фон убран, цикл
+   замкнут; собирает tools/curator-anim.py): в каждом кадре сверху цвет,
+   снизу прозрачность серым — так прозрачное видео играет везде, включая
+   iPhone, а в видеопамяти один кадр. Низ кадра — пол, стоящая фигура —
+   ANIM_FIG высоты кадра. Пока ролик не пошёл (или посетитель просит
+   меньше движения) — неподвижное фото. */
 import * as THREE from 'three';
 import { ARCH_W } from './layout.js';
 
 const H = 1.66;              // рост, м
 const AR = 513 / 1200;       // пропорции curator/figure.webp
+const ANIM_FIG = 0.9;        // доля высоты кадра ролика, которую занимает стоящая фигура
+
+/* Кадр ролика: цвет — верхняя половина, прозрачность — нижняя (серым).
+   Цвет видео three.js переводит из sRGB сам (DECODE_VIDEO_TEXTURE),
+   прозрачность берём до перевода — как записана. */
+function stackedAlpha(mat) {
+  mat.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#ifdef USE_MAP
+      vec4 sampledDiffuseColor = texture2D( map, vec2( vMapUv.x, 0.5 + vMapUv.y * 0.5 ) );
+      float matte = texture2D( map, vec2( vMapUv.x, vMapUv.y * 0.5 ) ).g;
+      #ifdef DECODE_VIDEO_TEXTURE
+        sampledDiffuseColor = sRGBTransferEOTF( sampledDiffuseColor );
+      #endif
+      sampledDiffuseColor.a = matte;
+      diffuseColor *= sampledDiffuseColor;
+    #endif`);
+  };
+  mat.customProgramCacheKey = () => 'curator-stacked-alpha';
+  return mat;
+}
 
 function shadowTexture() {
   const c = document.createElement('canvas');
@@ -60,8 +84,83 @@ export class Curator {
     sh.position.set(x, 0.006, z + 0.04);
     sh.userData.noAO = true;
     world.hallGroup.add(this.mesh, sh);
+    this.makeVideo(world, bridge);
     world.pickables.push(this.mesh);
     P.block.push({ x0: x - 0.5, x1: x + 0.5, z0: z - 0.45, z1: z + 0.45 });
+  }
+
+  /* Ролик движения. Меш создан сразу (скрытым): прогрев шейдеров
+     собирает и его вариант, ролик потом только подменяет фото. */
+  makeVideo(world, bridge) {
+    const still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (still || !bridge.url) return;
+    const v = document.createElement('video');
+    v.crossOrigin = 'anonymous';
+    v.muted = true;
+    v.defaultMuted = true;
+    v.loop = true;
+    v.playsInline = true;
+    v.setAttribute('playsinline', '');
+    v.setAttribute('muted', '');
+    v.preload = 'auto';
+    const tex = new THREE.VideoTexture(v);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = stackedAlpha(new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.08, toneMapped: false }));
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(H * AR / ANIM_FIG, H / ANIM_FIG).translate(0, H / ANIM_FIG / 2, 0), mat);
+    mesh.position.copy(this.pos);
+    mesh.visible = false;
+    mesh.userData.noAO = true;
+    world.hallGroup.add(mesh);
+    this.video = { v, mesh, tex, ok: false, broken: false, pending: false, blocked: false };
+    // ширина — по пропорциям самого ролика (кадр — две половины друг над другом)
+    v.addEventListener('loadedmetadata', () => {
+      const ar = v.videoWidth / (v.videoHeight / 2);
+      if (!ar) return;
+      const hh = H / ANIM_FIG;
+      mesh.geometry.dispose();
+      mesh.geometry = new THREE.PlaneGeometry(hh * ar, hh).translate(0, hh / 2, 0);
+    });
+    v.addEventListener('playing', () => { this.video.ok = true; });
+    v.addEventListener('error', () => { this.video.broken = true; });
+    // H.264 — Chrome, Safari, iPhone; где его нет (свободные сборки Chromium) — VP9
+    const h264 = v.canPlayType('video/mp4; codecs="avc1.640028"');
+    v.src = bridge.url(h264 ? 'curator/idle.mp4' : 'curator/idle.webm');
+  }
+
+  /* Играть, только пока фигура может быть в кадре: зритель в холле, не
+     дальше 30 м, вкладка видна. Браузер не дал запустить сам
+     (энергосбережение на iPhone) — пробуем снова после касания сцены
+     (unblock), а пока стоит фото. */
+  play(on) {
+    const V = this.video;
+    if (!V || V.broken) return;
+    if (on && V.v.paused && !V.pending && !V.blocked) {
+      V.pending = true;
+      const p = V.v.play();
+      const done = () => { V.pending = false; };
+      if (p && p.then) p.then(done, () => { done(); V.blocked = true; });
+      else done();
+    } else if (!on && !V.v.paused) {
+      V.v.pause();
+    }
+    // ролик пошёл — фото не рисуем, но оставляем для щелчков: по его маске
+    // определяется попадание в силуэт
+    const show = !!(on && V.ok && !V.v.paused && V.v.readyState >= 2);
+    V.mesh.visible = show;
+    this.mesh.material.visible = !show;
+  }
+
+  unblock() {
+    if (this.video) this.video.blocked = false;
+  }
+
+  dispose() {
+    const V = this.video;
+    if (!V) return;
+    V.v.pause();
+    V.v.removeAttribute('src');
+    V.v.load();
+    V.tex.dispose();
   }
 
   /* Грубая маска прозрачности: щелчок мимо силуэта (в пустой угол
@@ -99,6 +198,7 @@ export class Curator {
   /* Лицом к зрителю: поворот только вокруг вертикали */
   face(cam) {
     this.mesh.rotation.y = Math.atan2(cam.position.x - this.pos.x, cam.position.z - this.pos.z);
+    if (this.video) this.video.mesh.rotation.y = this.mesh.rotation.y;
   }
 
   /* Где на экране макушка: { x, y, d } в пикселях сцены или null */

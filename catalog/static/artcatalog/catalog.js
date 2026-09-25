@@ -1287,7 +1287,10 @@
       var d = Math.abs(i - si), e = segs[i].el;
       var show = d <= W_SHOW;
       if ((e.style.display === 'none') === show) e.style.display = show ? '' : 'none';
-      if (segs[i].guide) segs[i].guide.el.style.display = show ? '' : 'none';
+      if (segs[i].guide) {
+        segs[i].guide.el.style.display = show ? '' : 'none';
+        if (show) this.guideAnim(segs[i].guide);
+      }
       var imgs = e.getElementsByTagName('img');
       for (var k = 0; k < imgs.length; k++) {
         var im = imgs[k], webp = im.getAttribute('data-webp');
@@ -1306,6 +1309,21 @@
         }
       }
     }
+  };
+
+  /* Движение куратора: анимированный WebP с прозрачностью — обычная
+     картинка, играет сама, без скриптов. Грузится, когда фигура впервые
+     видна; пока не пришёл (или посетитель просит меньше движения) — фото.
+     Низ кадра — пол, стоящая фигура — 90 % высоты кадра. */
+  Widget.prototype.guideAnim = function (gd) {
+    if (gd.anim || prefersReducedMotion()) return;
+    var im = gd.anim = document.createElement('img');
+    im.className = 'artc-hw__anim';
+    im.alt = '';
+    im.setAttribute('draggable', 'false');
+    im.onload = function () { gd.el.classList.add('is-anim'); };
+    im.src = this.base + 'curator/idle.webp';
+    gd.el.insertBefore(im, gd.el.firstChild);
   };
 
   Widget.prototype.wallNearest = function (s) {
