@@ -170,7 +170,11 @@ class Gallery {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.spots = new Spots(this.scene, this.small);
     this.atmo = new Atmosphere(this.scene, this.spots, this.small);
-    this.sound = new Sound();
+    this.sound = new Sound((p) => bridge.url(p));
+    // пьеса началась — её название короткой подсказкой
+    this.sound.onTrack = (t) => this.hint('♪ ' + t.t + ' · исп. ' + t.p);
+    this.onVis = () => this.sound.visible(!document.hidden);
+    document.addEventListener('visibilitychange', this.onVis);
     this.lastPos = { x: 0, z: 0 };
     this.bobAmp = 0;
     this.bobPhase = 0;
@@ -302,7 +306,7 @@ class Gallery {
     const sndShow = () => {
       sndBtn.setAttribute('aria-checked', String(this.sound.on));
       sndBtn.classList.toggle('is-on', this.sound.on);
-      sndBtn.firstChild.textContent = this.sound.on ? 'Звук включён' : 'Звук выключен';
+      sndBtn.firstChild.textContent = this.sound.on ? 'Музыка и звук включены' : 'Музыка и звук выключены';
     };
     sndBtn.addEventListener('click', () => { this.sound.toggle(); sndShow(); });
     // свет: выставочный (споты) или естественный (картины как в оригинале)
@@ -1339,6 +1343,7 @@ class Gallery {
     if (this.quality) this.quality.dropComposer();
     if (this.probe) this.probe.dispose();
     if (this.sound) this.sound.dispose();
+    if (this.onVis) document.removeEventListener('visibilitychange', this.onVis);
     if (this.renderer) this.renderer.dispose();
   }
 }

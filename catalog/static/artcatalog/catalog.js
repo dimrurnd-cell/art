@@ -92,6 +92,11 @@
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
       '<path d="M3 8h3a2 2 0 002-2V3M21 8h-3a2 2 0 01-2-2V3M3 16h3a2 2 0 012 2v3M21 16h-3a2 2 0 00-2 2v3"/></svg>';
 
+  var ICON_MUSIC =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+      'stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/>' +
+      '<circle cx="17" cy="16" r="3"/></svg>';
+
   // простой режим: плоский кадр; 3D: куб в перспективе
   var ICON_SIMPLE =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
@@ -766,6 +771,7 @@
     if (g) g.destroy();
     if (this.hall && this.hall.offKey) this.hall.offKey();
     this.stopTour();
+    if (this.music && this.music.on && m !== 'css') this.toggleMusic(false);   // у 3D-галереи своя
     this.hall = null;
     this.buildHall();
   };
@@ -1033,6 +1039,7 @@
           '<div class="artc-hw__where"><b></b><button type="button" class="artc-hw__who"></button></div>' +
           '<div class="artc-hw__btns">' +
             (this.canGL(this.hallMode) ? '<button type="button" class="artc-mode">' + ICON_3D + '<span>3D-галерея</span></button>' : '') +
+            '<button type="button" class="artc-hw__btn artc-hw__music" aria-label="Тихая музыка" aria-pressed="false">' + ICON_MUSIC + '</button>' +
             '<button type="button" class="artc-hw__btn artc-hw__find" aria-label="Найти художника">' + ICON_FIND + '</button>' +
             '<button type="button" class="artc-hw__btn artc-fs" aria-label="Открыть на весь экран">' + ICON_FS + '</button>' +
           '</div>' +
@@ -1340,6 +1347,12 @@
     q('.artc-hw__next').addEventListener('click', function () { user(); self.wallStep(1); });
     q('.artc-hw__tour').addEventListener('click', function () { self.toggleTour(); });
     q('.artc-hw__find').addEventListener('click', function () { user(); self.toggleFind(); });
+    q('.artc-hw__music').addEventListener('click', function () { self.toggleMusic(); });
+    this.musicShow();
+    // музыка была включена в прошлый раз — с первым касанием зала (раньше браузер не даст)
+    stage.addEventListener('pointerdown', function () {
+      if (self.musicWant() && !(self.music && self.music.on)) self.toggleMusic(true);
+    }, { once: true });
     q('.artc-hw__who').addEventListener('click', function () {
       var gi = this.getAttribute('data-artist');
       if (gi != null) { self.fromHall = true; self.lbFromHall = false; self.openArtist(+gi); }
@@ -1465,6 +1478,89 @@
       if (h.raf) cancelAnimationFrame(h.raf);
       h.raf = 0;
     };
+  };
+
+  /* ---------------- тихая музыка ----------------
+
+     Тот же плейлист, что и в 3D-галерее (gallery/src/audio.js — TRACKS):
+     фортепиано, записи в общественном достоянии или CC0, выровнены по
+     громкости. Выбор общий с 3D-галереей (localStorage «artg-sound»).
+     Громкость — через Web Audio: на iPhone громкость <audio> не меняется. */
+  var MUSIC = [
+    ['satie-gymnopedie-1', 'Эрик Сати — Гимнопедия № 1', 'Робин Альсиаторе'],
+    ['bach-goldberg-aria', 'И. С. Бах — Ария из «Гольдберг-вариаций»', 'Кимико Исидзака'],
+    ['chopin-nocturne-op9-2', 'Фредерик Шопен — Ноктюрн op. 9 № 2', 'Фрэнк Леви'],
+    ['debussy-clair-de-lune', 'Клод Дебюсси — «Лунный свет»', 'Лауренс Гудхарт'],
+    ['beethoven-fur-elise', 'Людвиг ван Бетховен — «К Элизе»', 'Gaodifan'],
+    ['chopin-nocturne-op48-1', 'Фредерик Шопен — Ноктюрн op. 48 № 1', 'Люк Фолкнер'],
+    ['beethoven-moonlight-1', 'Людвиг ван Бетховен — «Лунная соната», I часть', 'Пол Питман']
+  ];
+  var MUSIC_KEY = 'artg-sound';
+  var MUSIC_VOL = 0.3;
+
+  Widget.prototype.musicWant = function () {
+    try { return localStorage.getItem(MUSIC_KEY) === 'on'; } catch (e) { return false; }
+  };
+
+  Widget.prototype.musicShow = function () {
+    var b = this.hall && this.hall.stage && this.hall.stage.querySelector('.artc-hw__music');
+    if (!b) return;
+    var on = !!(this.music && this.music.on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.setAttribute('aria-label', on ? 'Выключить музыку' : 'Включить тихую музыку');
+  };
+
+  Widget.prototype.toggleMusic = function (force) {
+    var self = this;
+    var m = this.music;
+    var on = force === undefined ? !(m && m.on) : !!force;
+    if (force === undefined) { try { localStorage.setItem(MUSIC_KEY, on ? 'on' : 'off'); } catch (e) { /* приватный режим */ } }
+    if (on && !m) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* нет — не страшно */ }
+      m = this.music = { ctx: new AC(), ti: Math.floor(Math.random() * MUSIC.length), on: false, fails: 0 };
+      m.gain = m.ctx.createGain();
+      m.gain.gain.value = 0;
+      m.gain.connect(m.ctx.destination);
+      m.audio = new Audio();
+      m.audio.crossOrigin = 'anonymous';
+      m.audio.preload = 'auto';
+      m.ctx.createMediaElementSource(m.audio).connect(m.gain);
+      var load = function () { m.audio.src = self.url('music/' + MUSIC[m.ti][0] + '.mp3'); };
+      m.play = function () { var pr = m.audio.play(); if (pr && pr.catch) pr.catch(function () {}); };
+      m.next = function (pause) {
+        clearTimeout(m.nextT);
+        m.nextT = setTimeout(function () {
+          m.ti = (m.ti + 1) % MUSIC.length;
+          load();
+          if (m.on && !document.hidden) m.play();
+        }, pause);
+      };
+      m.audio.addEventListener('ended', function () { m.fails = 0; m.next(1500); });
+      m.audio.addEventListener('error', function () { if (++m.fails < MUSIC.length) m.next(2000); });
+      m.audio.addEventListener('playing', function () {
+        if (m.on) self.showHint('♪ ' + MUSIC[m.ti][1] + ' · исп. ' + MUSIC[m.ti][2]);
+      });
+      document.addEventListener('visibilitychange', function () {
+        if (!m.on) return;
+        if (document.hidden) m.audio.pause(); else m.play();
+      });
+      load();
+    }
+    if (!m) return;
+    m.on = on;
+    clearTimeout(m.pauseT);
+    var t = m.ctx.currentTime;
+    m.gain.gain.cancelScheduledValues(t);
+    m.gain.gain.setTargetAtTime(on ? MUSIC_VOL : 0, t, 0.25);
+    if (on) {
+      if (m.ctx.state === 'suspended') m.ctx.resume();
+      m.play();
+    } else {
+      m.pauseT = setTimeout(function () { if (!m.on) m.audio.pause(); }, 900);
+    }
+    this.musicShow();
   };
 
   Widget.prototype.blurArt = function () {};

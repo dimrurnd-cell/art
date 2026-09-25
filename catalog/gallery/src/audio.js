@@ -1,19 +1,35 @@
-/* Звук зала — весь синтезируется в браузере (Web Audio), файлов нет.
+/* Звук зала: тихая классическая музыка, шаги и мелкие звуки помещения.
 
-   Фон — тихий «воздух» помещения: бурый шум через фильтр низких частот,
-   как далёкая вентиляция и гул большого пространства. Шаги — по пройденному
-   пути (шаг ~0.72 м), а не по времени: стоишь — тишина, идёшь быстрее —
-   чаще. Шаг — еле слышный мягкий шорох мягкой подошвы (приглушённый шум)
-   и едва заметный низкий толчок, без стука каблука; у каждого шага своя
-   громкость и высота. Эхо — свёртка с
-   синтезированным откликом помещения: в высоком холле длиннее (2.8 с),
-   в зале короче (1.5 с), при переходе одно плавно сменяет другое.
+   Музыка — фортепиано, записи в общественном достоянии или CC0 с Wikimedia
+   Commons (исполнители — в TRACKS и в music/CREDITS.txt). Файлы выровнены
+   по громкости, MP3 96 кбит/с (играет в любом браузере, включая iPhone); грузятся по
+   одному, только когда звук включён. Громкость в зале — MUSIC_VOL: музыка
+   на фоне, не мешает смотреть. Идёт через Web Audio, а не громкостью
+   <audio>: на iPhone громкость элемента менять нельзя.
+
+   Шаги — по пройденному пути (шаг ~0.72 м), а не по времени: стоишь —
+   тишина, идёшь быстрее — чаще. Шаг — еле слышный мягкий шорох подошвы
+   и едва заметный низкий толчок; у каждого шага своя громкость и высота.
+   Эхо (свёртка с синтезированным откликом помещения; в холле длиннее) —
+   только у дверей и щелчка света. Прежнего фонового гула помещения нет:
+   он звучал как метро.
 
    Браузеры разрешают звук только после действия зрителя, поэтому звук
    включается кнопкой; выбор запоминается. */
 
 const KEY = 'artg-sound';
 const STRIDE = 0.72;
+const MUSIC_VOL = 0.3;       // музыка в зале — тихо, на фоне
+
+export const TRACKS = [
+  { f: 'music/satie-gymnopedie-1.mp3', t: 'Эрик Сати — Гимнопедия № 1', p: 'Робин Альсиаторе' },
+  { f: 'music/bach-goldberg-aria.mp3', t: 'И. С. Бах — Ария из «Гольдберг-вариаций»', p: 'Кимико Исидзака' },
+  { f: 'music/chopin-nocturne-op9-2.mp3', t: 'Фредерик Шопен — Ноктюрн op. 9 № 2', p: 'Фрэнк Леви' },
+  { f: 'music/debussy-clair-de-lune.mp3', t: 'Клод Дебюсси — «Лунный свет»', p: 'Лауренс Гудхарт' },
+  { f: 'music/beethoven-fur-elise.mp3', t: 'Людвиг ван Бетховен — «К Элизе»', p: 'Gaodifan' },
+  { f: 'music/chopin-nocturne-op48-1.mp3', t: 'Фредерик Шопен — Ноктюрн op. 48 № 1', p: 'Люк Фолкнер' },
+  { f: 'music/beethoven-moonlight-1.mp3', t: 'Людвиг ван Бетховен — «Лунная соната», I часть', p: 'Пол Питман' },
+];
 
 function impulse(ctx, seconds, decay) {
   const n = Math.round(ctx.sampleRate * seconds);
@@ -42,7 +58,12 @@ function noise(ctx, seconds, brown) {
 }
 
 export class Sound {
-  constructor() {
+  /* url — адрес файла каталога по относительному пути (bridge.url) */
+  constructor(url) {
+    this.url = url || ((p) => p);
+    this.ti = Math.floor(Math.random() * TRACKS.length);   // с какой пьесы начать
+    this.fails = 0;
+    this.onTrack = null;
     let saved = '';
     try { saved = localStorage.getItem(KEY) || ''; } catch (e) { /* приватный режим */ }
     this.want = saved === 'on';
@@ -74,16 +95,10 @@ export class Sound {
     this.send.connect(this.revHall); this.send.connect(this.revRoom);
     this.setRoom(true, true);
 
-    // фон помещения
-    const bed = ctx.createBufferSource();
-    bed.buffer = noise(ctx, 6, true);
-    bed.loop = true;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 280;
-    const bedGain = ctx.createGain(); bedGain.gain.value = 0.05;
-    bed.connect(lp).connect(bedGain);
-    bedGain.connect(this.master);
-    bedGain.connect(this.send);
-    bed.start();
+    // музыка — своя громкость, поверх общего выключателя
+    this.musicGain = ctx.createGain();
+    this.musicGain.gain.value = MUSIC_VOL;
+    this.musicGain.connect(this.master);
 
     this.white = noise(ctx, 0.3, false);
     return true;
@@ -105,6 +120,47 @@ export class Sound {
     const t = this.ctx.currentTime;
     this.master.gain.cancelScheduledValues(t);
     this.master.gain.setTargetAtTime(on ? 1 : 0, t, 0.25);
+    clearTimeout(this.pauseT);
+    if (on) this.play();
+    // выключили — музыка стихает и встаёт на паузу, с того же места и продолжит
+    else if (this.audio) this.pauseT = setTimeout(() => { if (!this.on) this.audio.pause(); }, 900);
+  }
+
+  /* Плейлист: <audio> через Web Audio (громкость на iPhone только так) */
+  play() {
+    if (!this.audio) {
+      const a = this.audio = new Audio();
+      a.crossOrigin = 'anonymous';           // иначе Web Audio отдал бы тишину
+      a.preload = 'auto';
+      this.ctx.createMediaElementSource(a).connect(this.musicGain);
+      a.addEventListener('ended', () => { this.fails = 0; this.next(1500); });
+      a.addEventListener('error', () => { if (++this.fails < TRACKS.length) this.next(2000); });
+      a.addEventListener('playing', () => { if (this.onTrack) this.onTrack(TRACKS[this.ti]); });
+      this.load();
+    }
+    const p = this.audio.play();
+    if (p && p.catch) p.catch(() => { /* браузер ждёт жеста — включится с ним */ });
+  }
+
+  load() {
+    this.audio.src = this.url(TRACKS[this.ti].f);
+  }
+
+  /* следующая пьеса — после паузы, как между номерами концерта */
+  next(pause) {
+    clearTimeout(this.nextT);
+    this.nextT = setTimeout(() => {
+      if (!this.audio) return;
+      this.ti = (this.ti + 1) % TRACKS.length;
+      this.load();
+      if (this.on && !document.hidden) this.play();
+    }, pause || 0);
+  }
+
+  /* вкладка спрятана — музыка на паузе; вернулись — играет дальше */
+  visible(shown) {
+    if (!this.audio || !this.on) return;
+    if (shown) this.play(); else this.audio.pause();
   }
 
   /* Большое помещение (холл) или зал: эхо плавно перетекает */
@@ -164,24 +220,16 @@ export class Sound {
     src.start(t); src.stop(t + 1);
   }
 
-  /* Свет по датчику: тихий щелчок реле и короткий гул разгорания */
+  /* Свет по датчику: тихий щелчок реле (гул разгорания убран — с ним
+     зал звучал как метро) */
   lightsOn() {
     if (!this.on || !this.ctx) return;
     const ctx = this.ctx, t = ctx.currentTime;
-    const o = ctx.createOscillator();
-    o.type = 'triangle';
-    o.frequency.value = 100;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.012, t + 0.05);
-    g.gain.exponentialRampToValueAtTime(0.0005, t + 1.2);
-    o.connect(g); g.connect(this.master);
-    o.start(t); o.stop(t + 1.25);
     const src = ctx.createBufferSource();
     src.buffer = this.white;
     const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3000;
     const cg = ctx.createGain();
-    cg.gain.setValueAtTime(0.06, t); cg.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+    cg.gain.setValueAtTime(0.035, t); cg.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
     src.connect(hp).connect(cg); cg.connect(this.master); cg.connect(this.send);
     src.start(t); src.stop(t + 0.05);
   }
@@ -198,6 +246,8 @@ export class Sound {
   }
 
   dispose() {
+    clearTimeout(this.nextT); clearTimeout(this.pauseT);
+    if (this.audio) { this.audio.pause(); this.audio.removeAttribute('src'); this.audio.load(); }
     if (this.ctx) this.ctx.close();
   }
 }

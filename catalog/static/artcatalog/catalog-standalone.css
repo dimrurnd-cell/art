@@ -1251,7 +1251,7 @@
 .artc-hw__btn:hover, .artc-hw .artc-fs:hover { background: #fff; transform: none; }
 .artc-hw__btn:disabled { opacity: .35; cursor: default; }
 .artc-hw__btn:focus-visible { outline: 2px solid #2A2A2A; outline-offset: 2px; }
-.artc-hw__tour[aria-pressed="true"] { background: #2A2A2A; color: #fff; }
+.artc-hw__tour[aria-pressed="true"], .artc-hw__music[aria-pressed="true"] { background: #2A2A2A; color: #fff; }
 .artc-hw__nav { position: absolute; left: 0; right: 0; bottom: max(14px, env(safe-area-inset-bottom)); z-index: 5; display: flex; justify-content: center; align-items: center; gap: 12px; pointer-events: none; }
 .artc-hw__nav > * { pointer-events: auto; }
 .artc-hw__nav .artc-hw__prev, .artc-hw__nav .artc-hw__next { width: 48px; height: 48px; }
