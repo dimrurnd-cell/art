@@ -172,6 +172,9 @@
     this.demo = root.getAttribute('data-demo') === '1';
     this.tildaPopup = (root.getAttribute('data-tilda-popup') || '').replace(/^#/, '');
     this.ticketUrl = root.getAttribute('data-ticket-url') || '#';
+    // data-curator: адрес куратора на сервере (…/api/artcatalog/curator/); без него — готовые ответы
+    this.curatorUrl = (root.getAttribute('data-curator') || '').replace(/\/?$/, '/').replace(/^\/$/, '');
+    this.curatorName = root.getAttribute('data-curator-name') || '';
     // data-hall: "webgl" | "css" | "" (сам решит по устройству)
     this.hallMode = root.getAttribute('data-hall') || '';
     var base = this.base;
@@ -959,6 +962,7 @@
       onProgress: function (f) { self.glProgress(0.15 + f * 0.85); },
       onReady: function () { self.glReady(); },
       simple: function () { self.setHallMode('css'); },
+      curator: function (host) { self.openCurator(host); },
       fallback: function (reason) { self.glFallback(reason); }
     });
     if (!this.gl) { this.glFallback('webgl'); return; }
@@ -1010,6 +1014,14 @@
   var W_SHOW = 4;
   var W_BLEND = 260;    // у излома взгляд поворачивает плавно, на этом отрезке пути
   var W_TOUR = 4200;    // экскурсия: столько мс у каждой работы
+  // куратор у вступительной стены: рост 166 см — в масштабе зала (от глаз до
+  // пола W_H/2 + W_FOOT = 1.62 м); стоит перед стеной, лицом к зрителю
+  var W_FLOOR = W_H / 2 + W_FOOT;
+  var CUR_H = Math.round(W_FLOOR * 1.66 / 1.62);
+  var CUR_W = Math.round(CUR_H * 513 / 1200);
+  var CUR_U = 250;      // где стоит — вдоль вступительного отрезка
+  var CUR_OUT = 70;     // и насколько отошла от стены к зрителю
+  var CUR_STOP = 470;   // остановка «у куратора» — первая в разделе
   var DEG = Math.PI / 180;
 
   function wallImg(src, alt) {
@@ -1084,6 +1096,7 @@
     // начало раздела: вводный отрезок с названием — стена не обрывается слева
     var nWorks = shown.reduce(function (n, a) { return n + a.works.length; }, 0);
     addSeg({ intro: true, ang: W_TURN / 2, L: 900, items: [] });
+    stops.push({ s: segs[0].s0 + CUR_STOP, seg: segs[0], it: null });
     shown.forEach(function (a, ai) {
       var items = [], u = W_PAD;
       a.works.forEach(function (w, wi) {
@@ -1117,13 +1130,14 @@
         'px) rotateY(' + (90 - sg.ang) + 'deg)';
       var html;
       if (sg.intro) {
+        e.className += ' has-guide';
         html = '<div class="artc-hw__fin artc-hw__fin--intro">' +
           '<h3>' + esc(sec ? sec.title : 'Выставка') + '</h3>' +
           '<p>' + shown.length + ' ' + plural(shown.length, 'художник', 'художника', 'художников') + ' · ' +
             nWorks + ' ' + plural(nWorks, 'работа', 'работы', 'работ') + '</p>' +
           '<p class="artc-hw__invite">Идите вдоль стены →</p></div>';
       } else if (sg.end) {
-        var total = stops.length - 1;
+        var total = stops.length - 2;          // без вступительной и этой
         html = '<div class="artc-hw__fin">' +
           pictureHTML(self.base + 'img/logo.webp', 'АРТ Ростов', true) +
           '<h3>Конец раздела' + (sec ? ' «' + esc(sec.title) + '»' : '') + '</h3>' +
@@ -1161,6 +1175,19 @@
       frag.appendChild(e);
     });
     world.appendChild(frag);
+
+    // куратор: точка на полу перед вступительной стеной
+    var ig = segs[0], an = ig.ang * DEG;
+    var guide = el('button', 'artc-hw__guide',
+      '<img src="' + esc(this.base + 'curator/figure.webp') + '" alt="" width="' + CUR_W + '" height="' + CUR_H + '" draggable="false">' +
+      '<span class="artc-hw__say">' + esc(CUR_HELLO) + '</span>');
+    guide.type = 'button';
+    guide.setAttribute('aria-label', 'Куратор выставки: задать вопрос');
+    guide.style.width = CUR_W + 'px';
+    guide.style.height = CUR_H + 'px';
+    guide.style.display = 'none';
+    world.appendChild(guide);
+    ig.guide = { el: guide, x: ig.x0 + ig.dx * CUR_U + Math.cos(an) * CUR_OUT, z: ig.z0 + ig.dz * CUR_U + Math.sin(an) * CUR_OUT };
 
     var modeBtn = host.querySelector('.artc-mode');
     if (modeBtn) {
@@ -1223,10 +1250,22 @@
     // расстояние — по размеру сцены: полотно около половины меньшей стороны
     var W = h.stage.clientWidth || 800, H = h.stage.clientHeight || 600;
     var dist = W_PERSP * W_ART * 1.15 / (0.5 * Math.min(W * 1.1, H * 0.85));
+    // у вступительной стены камера дальше — куратор виден в полный рост;
+    // к первой работе расстояние плавно становится обычным
+    if (h.stops.length > 1) {
+      var s0 = h.stops[0].s, s1 = h.stops[1].s;
+      var kf = Math.max(0, Math.min(1, (s1 - h.s) / (s1 - s0)));
+      dist *= 1 + 0.55 * smooth(kf);
+    }
     var cx = px - vx * dist, cz = pz - vz * dist;
     var yaw = Math.atan2(vx, -vz) / DEG;
     h.world.style.transform = 'translateZ(' + W_PERSP + 'px) rotateY(' + yaw.toFixed(3) + 'deg) translate3d(' +
       (-cx).toFixed(1) + 'px, 0, ' + (-cz).toFixed(1) + 'px)';
+    var gd = h.segs[0].guide;
+    if (gd && gd.el.style.display !== 'none') {
+      gd.el.style.transform = 'translate3d(' + (gd.x - CUR_W / 2).toFixed(1) + 'px, ' + (W_FLOOR - CUR_H) + 'px, ' +
+        gd.z.toFixed(1) + 'px) rotateY(' + (-yaw).toFixed(3) + 'deg)';
+    }
     // свет из проёмов напротив плывёт при ходьбе
     h.day.style.backgroundPosition = '0 0, ' + (-(h.s * 0.18) % 1400).toFixed(0) + 'px 0';
 
@@ -1248,6 +1287,7 @@
       var d = Math.abs(i - si), e = segs[i].el;
       var show = d <= W_SHOW;
       if ((e.style.display === 'none') === show) e.style.display = show ? '' : 'none';
+      if (segs[i].guide) segs[i].guide.el.style.display = show ? '' : 'none';
       var imgs = e.getElementsByTagName('img');
       for (var k = 0; k < imgs.length; k++) {
         var im = imgs[k], webp = im.getAttribute('data-webp');
@@ -1287,7 +1327,12 @@
     var cnt = h.stage.querySelector('.artc-hw__count');
     var nArt = h.rooms.length;
     var narrow = h.stage.clientWidth < 560;
-    if (st.seg.end) {
+    if (st.seg.intro) {
+      b.textContent = (sec ? sec.title : 'Выставка') + (narrow ? '' : ' · ' + nArt + ' ' + plural(nArt, 'художник', 'художника', 'художников'));
+      who.textContent = '';
+      who.hidden = true;
+      cnt.textContent = 'Вход в раздел';
+    } else if (st.seg.end) {
       b.textContent = (sec ? sec.title : 'Выставка') + ' · конец раздела';
       who.textContent = '';
       who.hidden = true;
@@ -1372,7 +1417,7 @@
     // броска: быстрый жест уводит на соседнюю.
     var drag = null;
     stage.addEventListener('pointerdown', function (e) {
-      if (e.target.closest('.artc-hw__top, .artc-hw__nav, .artc-find')) return;
+      if (e.target.closest('.artc-hw__top, .artc-hw__nav, .artc-find, .artc-cur')) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       user();
       try { stage.focus({ preventScroll: true }); } catch (err) { /* старый браузер */ }
@@ -1420,6 +1465,11 @@
       if (fin) {
         if (fin.getAttribute('data-home')) self.wallGo(0);
         else self.switchSection(+fin.getAttribute('data-section'));
+        return;
+      }
+      if (e.target.closest('.artc-hw__guide')) {
+        user();
+        self.openCurator(stage);
         return;
       }
       var art = e.target.closest('.artc-hw__art');
@@ -1808,6 +1858,306 @@
   Widget.prototype.fsBtnLabel = function (on) {
     var b = this.hall && this.hall.fsBtn;
     if (b) b.setAttribute('aria-label', on ? 'Выйти из полноэкранного режима' : 'Открыть на весь экран');
+  };
+
+  /* ---------------- куратор ----------------
+
+     Фигура куратора стоит в холле 3D-галереи и в начале каждого раздела
+     простого зала, над ней облачко «Могу ли я Вам чем-то помочь?». Нажатие
+     открывает окно вопросов — внутри сцены, чтобы оно работало и во весь
+     экран. Ответ приходит текстом в облачке.
+
+     data-curator — адрес приложения на сервере (…/api/artcatalog/curator/):
+     там готовые ответы и нейросеть GigaChat. Без него, или если сервер не
+     ответил, — готовые ответы из curator/faq.json прямо в браузере. */
+  var CUR_HELLO = 'Могу ли я Вам чем-то помочь?';
+  var CUR_FALLBACK = 'Хороший вопрос! Точно ответят организаторы выставки — напишите на ads@donexpocentre.ru, и Вам подскажут.';
+  // общие слова в названиях участников: по ним художника не узнаём
+  var CUR_COMMON = ['карти', 'худож', 'галер', 'студи', 'мастер', 'школ', 'творч', 'объед', 'искус',
+    'салон', 'центр', 'клуб', 'союз', 'ассоц', 'проект', 'арт', 'art', 'gallery'];
+
+  function curNorm(t) {
+    return String(t || '').toLowerCase().replace(/ё/g, 'е').replace(/[^0-9a-zа-я]+/g, ' ').trim();
+  }
+  // грубая основа слова: «билеты» и «билетов» совпадут
+  function curStem(w) { return w.length > 5 ? w.slice(0, Math.max(4, w.length - 2)) : w; }
+  function curWords(t) {
+    return curNorm(t).split(' ').filter(function (w) { return w.length > 1; }).map(curStem);
+  }
+  // короткие слова — только точно («вы», «где»), длинные — по основе
+  function curSame(a, b) {
+    if (a === b) return true;
+    if (a.length < 4 || b.length < 4) return false;
+    return a.indexOf(b) === 0 || b.indexOf(a) === 0;
+  }
+  function curHas(words, part) {
+    for (var i = 0; i < words.length; i++) if (curSame(words[i], part)) return true;
+    return false;
+  }
+  // фамилия в другом падеже: «Шитовой» — «Шитова», но «Ростове» — не «Ростовцева»
+  function curName(w, t) {
+    if (w === t) return true;
+    var n = Math.min(w.length, t.length);
+    if (n < 4 || Math.abs(w.length - t.length) > 2) return false;
+    var k = Math.max(4, n - 1);
+    return w.slice(0, k) === t.slice(0, k);
+  }
+
+  Widget.prototype.curatorData = function (cb) {
+    var self = this;
+    if (this.curFaq) { cb(this.curFaq); return; }
+    (this.curWait = this.curWait || []).push(cb);
+    if (this.curWait.length > 1) return;
+    var done = function (d) {
+      self.curFaq = d && d.items ? d : { items: [] };
+      var w = self.curWait;
+      self.curWait = [];
+      w.forEach(function (f) { f(self.curFaq); });
+    };
+    fetch(this.base + 'curator/faq.json', { credentials: 'same-origin' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(done, function () { done(null); });
+  };
+
+  /* Готовый ответ: подходит ключ, все слова которого есть в вопросе */
+  Widget.prototype.curatorMatch = function (q) {
+    var words = curWords(q), best = null, bn = 0;
+    ((this.curFaq || {}).items || []).forEach(function (it) {
+      var n = 0;
+      (it.keys || []).forEach(function (k) {
+        var parts = curWords(k);
+        if (parts.length && parts.every(function (p) { return curHas(words, p); })) n++;
+      });
+      if (n > bn) { bn = n; best = it; }
+    });
+    return best;
+  };
+
+  /* Художник, названный в вопросе по имени или фамилии, — его номер или −1 */
+  Widget.prototype.curatorArtist = function (q) {
+    var words = curNorm(q).split(' ').filter(function (w) { return w.length >= 4; });
+    if (!words.length) return -1;
+    var best = -1, bs = 0;
+    this.artists.forEach(function (a, gi) {
+      var s = 0;
+      curNorm(a.name).split(' ').forEach(function (t) {
+        if (t.length < 4) return;
+        for (var c = 0; c < CUR_COMMON.length; c++) if (t.indexOf(CUR_COMMON[c]) === 0) return;
+        for (var k = 0; k < words.length; k++) if (curName(words[k], t)) { s++; return; }
+      });
+      if (s > bs) { bs = s; best = gi; }
+    });
+    return best;
+  };
+
+  Widget.prototype.curatorMode = function () { return this.gl ? '3d' : 'simple'; };
+
+  Widget.prototype.curatorLocal = function (q) {
+    var it = this.curatorMatch(q), gi = this.curatorArtist(q);
+    // названный художник важнее общих ответов («где работы Шитовой» — не про адрес
+    // выставки), кроме ответа о покупке
+    if (it && (gi < 0 || it.id === 'buy')) return (this.curatorMode() === 'simple' && it.a_simple) || it.a;
+    if (gi >= 0) {
+      var a = this.artists[gi], n = (a.works || []).length, sec = this.sections[a.secIndex];
+      return a.name + (a.city ? ' (' + a.city + ')' : '') + ' — ' + n + ' ' + plural(n, 'работа', 'работы', 'работ') +
+        (sec && this.sections.length > 1 ? ' в разделе «' + sec.title + '»' : '') + '. Проводить Вас к ним?';
+    }
+    return (this.curFaq || {}).fallback || CUR_FALLBACK;
+  };
+
+  /* Ответ: сервер (если задан), иначе или при ошибке — готовые ответы */
+  Widget.prototype.curatorAsk = function (q, cb) {
+    var self = this, url = this.curatorUrl;
+    var local = function () { cb(self.curatorLocal(q)); };
+    if (!url || !window.fetch) { setTimeout(local, 500); return; }
+    var ctl = window.AbortController ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 20000);
+    fetch(url + 'ask/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: q, history: this.curLog.slice(-2), mode: this.curatorMode() }),
+      credentials: 'omit',
+      signal: ctl ? ctl.signal : undefined
+    }).then(function (r) {
+      return r.json().then(function (d) { return { status: r.status, d: d || {} }; });
+    }).then(function (res) {
+      clearTimeout(timer);
+      if (res.d.answer) cb(res.d.answer);
+      else if (res.status === 429 && res.d.error) cb(res.d.error);
+      else local();
+    }).catch(function () { clearTimeout(timer); local(); });
+  };
+
+  Widget.prototype.buildCurator = function () {
+    var self = this;
+    var p = el('div', 'artc-cur');
+    p.setAttribute('role', 'dialog');
+    p.setAttribute('aria-label', 'Вопрос куратору');
+    p.innerHTML =
+      '<div class="artc-cur__head">' +
+        '<img class="artc-cur__face" src="' + esc(this.base + 'curator/face.webp') + '" alt="" width="44" height="44">' +
+        '<div class="artc-cur__who"><b>' + esc(this.curatorName || 'Куратор выставки') + '</b>' +
+          '<span>«Арт-Ростов» · 16–25 апреля 2027</span></div>' +
+        '<button type="button" class="artc-cur__close" aria-label="Закрыть">' +
+          '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
+      '</div>' +
+      '<div class="artc-cur__log" aria-live="polite"></div>' +
+      '<div class="artc-cur__chips"></div>' +
+      '<form class="artc-cur__form">' +
+        '<input type="text" class="artc-cur__input" maxlength="300" autocomplete="off" enterkeyhint="send" ' +
+          'placeholder="Спросите о выставке" aria-label="Ваш вопрос">' +
+        '<button type="submit" class="artc-cur__send" aria-label="Спросить">' +
+          '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>' +
+      '</form>';
+    this.curLog = [];
+    var log = p.querySelector('.artc-cur__log');
+    var input = p.querySelector('.artc-cur__input');
+
+    // окно — часть сцены: жесты и колесо над ним не ходят по залу
+    ['pointerdown', 'mousedown', 'touchstart', 'wheel'].forEach(function (ev) {
+      p.addEventListener(ev, function (e) { e.stopPropagation(); }, { passive: true });
+    });
+    p.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') self.closeCurator();
+      e.stopPropagation();
+    });
+    p.querySelector('.artc-cur__close').addEventListener('click', function () { self.closeCurator(); });
+    p.querySelector('.artc-cur__form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var q = input.value.replace(/\s+/g, ' ').trim();
+      if (q.length < 2 || self.curBusy) return;
+      input.value = '';
+      self.curatorSay(q);
+    });
+    p.querySelector('.artc-cur__chips').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-q]');
+      if (!b || self.curBusy) return;
+      b.parentNode.removeChild(b);
+      self.curatorSay(b.getAttribute('data-q'));
+    });
+    log.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-go]');
+      if (b) self.curatorGo(+b.getAttribute('data-go'));
+    });
+
+    this.curatorData(function (faq) {
+      self.curatorMsg('cur', faq.greeting || 'Здравствуйте! ' + CUR_HELLO, true);
+      var chips = p.querySelector('.artc-cur__chips');
+      (faq.chips || []).forEach(function (id) {
+        (faq.items || []).forEach(function (it) {
+          if (it.id !== id || !it.q) return;
+          var b = el('button', 'artc-cur__chip', esc(it.q));
+          b.type = 'button';
+          b.setAttribute('data-q', it.q);
+          chips.appendChild(b);
+        });
+      });
+    });
+    return p;
+  };
+
+  /* Реплика в окне: who — 'cur' (куратор) или 'me' (посетитель) */
+  Widget.prototype.curatorMsg = function (who, text, instant, go) {
+    var log = this.curPanel.querySelector('.artc-cur__log');
+    var m = el('div', 'artc-cur__msg artc-cur__msg--' + who);
+    log.appendChild(m);
+    var end = function () {
+      if (go >= 0) {
+        var b = el('button', 'artc-cur__go', 'Перейти к работам →');
+        b.type = 'button';
+        b.setAttribute('data-go', go);
+        m.appendChild(b);
+      }
+      log.scrollTop = log.scrollHeight;
+    };
+    if (instant || who === 'me' || prefersReducedMotion()) {
+      m.textContent = text;
+      end();
+      return m;
+    }
+    // ответ «печатается» — как будто куратор говорит; целиком за 1–2.5 с
+    var i = 0, step = Math.max(2, Math.round(text.length / 70));
+    var span = document.createElement('span');
+    m.appendChild(span);
+    m.classList.add('is-talking');
+    var self = this;
+    var tick = function () {
+      if (!m.parentNode) return;
+      i = Math.min(text.length, i + step);
+      span.textContent = text.slice(0, i);
+      log.scrollTop = log.scrollHeight;
+      if (i < text.length) self.curType = setTimeout(tick, 30);
+      else { m.classList.remove('is-talking'); end(); }
+    };
+    tick();
+    return m;
+  };
+
+  Widget.prototype.curatorSay = function (q) {
+    var self = this, p = this.curPanel;
+    var log = p.querySelector('.artc-cur__log');
+    this.curatorMsg('me', q);
+    var dots = el('div', 'artc-cur__msg artc-cur__msg--cur artc-cur__dots', '<i></i><i></i><i></i>');
+    dots.setAttribute('aria-label', 'Куратор отвечает');
+    log.appendChild(dots);
+    log.scrollTop = log.scrollHeight;
+    this.curBusy = true;
+    p.classList.add('is-busy');
+    var t0 = Date.now();
+    this.curatorAsk(q, function (a) {
+      // многоточие — хотя бы полсекунды, иначе ответ «выпрыгивает»
+      setTimeout(function () {
+        if (dots.parentNode) dots.parentNode.removeChild(dots);
+        self.curBusy = false;
+        p.classList.remove('is-busy');
+        self.curLog.push({ q: q, a: a });
+        self.curatorMsg('cur', a, false, self.curatorArtist(q));
+      }, Math.max(0, 600 - (Date.now() - t0)));
+    });
+  };
+
+  /* Открыть окно внутри host (сцена зала — так оно видно и во весь экран) */
+  Widget.prototype.openCurator = function (host) {
+    if (!host) return;
+    var p = this.curPanel || (this.curPanel = this.buildCurator());
+    if (p.parentNode !== host) host.appendChild(p);
+    p.hidden = false;
+    host.classList.add('has-cur');
+    if (this.hall && this.hall.wall) this.stopTour();
+    // на телефоне поле само не фокусируем: выскочила бы клавиатура
+    if (!isTouch()) {
+      var input = p.querySelector('.artc-cur__input');
+      setTimeout(function () { try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); } }, 60);
+    }
+  };
+
+  Widget.prototype.closeCurator = function () {
+    var p = this.curPanel;
+    if (!p || p.hidden) return;
+    p.hidden = true;
+    var host = p.parentNode;
+    if (host) {
+      host.classList.remove('has-cur');
+      try { host.focus({ preventScroll: true }); } catch (e) { /* старый браузер */ }
+    }
+  };
+
+  /* «Перейти к работам»: в 3D — подойти к первой работе, в простом зале —
+     к художнику на стене (в его разделе) */
+  Widget.prototype.curatorGo = function (gi) {
+    this.closeCurator();
+    if (this.gl) { this.gl.goToArtist(gi); return; }
+    var si = -1;
+    this.sections.forEach(function (sec, i) { if (sec.list.indexOf(gi) >= 0) si = i; });
+    if (si < 0) return;
+    if (si !== this.section) this.switchSection(si);
+    var h = this.hall, sec = this.sections[this.section];
+    if (!h || !h.wall || !sec) return;
+    var room = h.rooms[sec.list.indexOf(gi)];
+    if (!room) return;
+    var target = h.stops[room.stop].s;
+    if (Math.abs(target - h.s) > 6000) h.s = target + (target > h.s ? -900 : 900);
+    this.wallGo(room.stop);
   };
 
   /* ---------------- модальные окна: каркас ---------------- */

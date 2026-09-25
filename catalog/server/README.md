@@ -19,6 +19,7 @@
 ├── gallery.js         ← 3D-галерея, грузится, когда зритель долистал до неё
 ├── gallery-assets/    ← фактуры помещения (hi — компьютер, lo — телефон), ~11 МБ
 ├── music/             ← тихая музыка зала: 7 пьес MP3 (~22 МБ) и CREDITS.txt
+├── curator/           ← куратор: faq.json, kb.md, figure.webp, face.webp
 ├── catalog.css
 ├── hall.css
 ├── artists.json
@@ -34,7 +35,7 @@
     └── masterskaya/ …
 ```
 
-Всего 182 файла, ~50 МБ (почти все — бинарные: картинки, фактуры, музыка, шрифт). Права: файлы 644, папки 755.
+Всего 186 файлов, ~50 МБ (почти все — бинарные: картинки, фактуры, музыка, шрифт). Права: файлы 644, папки 755.
 
 **Атлас превью для 3D-галереи.** После заливки картинок откройте в браузере
 `tools/build-atlas.html` из репозитория, укажите адрес
@@ -59,7 +60,7 @@
 
 ### Быстрее: одним архивом
 
-182 файла по SFTP заливаются долго, часть может не докачаться. Надёжнее
+186 файлов по SFTP заливаются долго, часть может не докачаться. Надёжнее
 загрузить архив и распаковать его на сервере (терминал в WinSCP — Ctrl+T):
 
 ```bash
@@ -81,7 +82,7 @@ rm -rf repo.zip art-claude-repository-overview-h8lcj2
 
 ```bash
 cd /home/develop/donexpo/static/artcatalog
-find . -type f | wc -l    # 182 (после сборки атласа — больше)
+find . -type f | wc -l    # 186 (после сборки атласа — больше)
 du -sh .                  # ~50M
 ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 ```
@@ -90,15 +91,19 @@ ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 
 | Файл | Байт |
 |---|---|
-| `catalog.js` | 116 861 |
+| `catalog.js` | 134 625 |
 | `catalog.css` | 22 662 |
-| `hall.css` | 35 496 |
+| `hall.css` | 41 902 |
 | `artists.json` | 329 957 |
 | `artists.js` | 261 991 |
-| `catalog-standalone.css` | 85 526 |
-| `gallery.js` | 984 803 |
+| `catalog-standalone.css` | 91 932 |
+| `gallery.js` | 989 915 |
 | `fonts/parangon.woff2` | 20 328 |
 | `img/logo.webp` | 31 726 |
+| `curator/figure.webp` | 42 828 |
+| `curator/face.webp` | 3 276 |
+| `curator/faq.json` | 6 844 |
+| `curator/kb.md` | 3 299 |
 
 Признак испорченного шрифта — заголовки каталога рисуются обычным шрифтом
 вместо фирменного каллиграфического; испорченные изображения не открываются.
@@ -246,6 +251,7 @@ sudo systemctl reload nginx
 - новые работы → изображения в `img/<slug>/` + запись в `artists.json`
   (формат описан в `../README.md`);
 - правки виджета → `catalog.js`, `catalog.css`, `hall.css`, `gallery.js`;
+- ответы куратора → `curator/faq.json`, сведения для нейросети → `curator/kb.md`;
 - после любых изменений состава работ — пересобрать атлас
   (`tools/build-atlas.html`) и залить `atlas.json` и новые `img/atlas/*`.
 

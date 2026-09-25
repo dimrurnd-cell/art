@@ -29,6 +29,7 @@ import { PBR_OPTS } from './pbr.js';
 import { Atmosphere } from './atmosphere.js';
 import { Sound } from './audio.js';
 import { Props } from './props.js';
+import { Curator } from './curator.js';
 import { CSS } from './ui-css.js';
 
 const LIGHT_KEY = 'artg-light';
@@ -79,6 +80,7 @@ class Gallery {
             '<button type="button" class="artg-mi" data-a="hall" role="menuitem"><span class="artg-mi__t">В холл</span><i class="artg-mi__i"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg></i></button>' +
             '<button type="button" class="artg-mi" data-a="map" role="menuitem"><span class="artg-mi__t">План залов</span><i class="artg-mi__i"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg></i></button>' +
             '<button type="button" class="artg-mi" data-a="list" role="menuitem"><span class="artg-mi__t">Художники</span><i class="artg-mi__i"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></i></button>' +
+            (bridge.curator ? '<button type="button" class="artg-mi" data-a="cur" role="menuitem"><span class="artg-mi__t">Спросить куратора</span><i class="artg-mi__i"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.4A8 8 0 1 1 21 12z"/><path d="M9 10.5h6M9 13.5h4"/></svg></i></button>' : '') +
             '<button type="button" class="artg-mi" data-a="snd" role="menuitemcheckbox" aria-checked="false"><span class="artg-mi__t">Звук</span><i class="artg-mi__i">' +
               '<svg class="artg-snd-on" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>' +
               '<svg class="artg-snd-off" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5zM16 9l6 6M22 9l-6 6"/></svg></i></button>' +
@@ -106,6 +108,7 @@ class Gallery {
           '<small></small>' +
         '</div>' +
         '<div class="artg-hint"></div>' +
+        (bridge.curator ? '<button type="button" class="artg-say" tabindex="-1" aria-hidden="true">Могу ли я Вам чем-то помочь?</button>' : '') +
         '<div class="artg-tour" hidden aria-live="polite"></div>' +
         '<div class="artg-joy" aria-hidden="true"><i></i></div>' +
         '<div class="artg-move">' +
@@ -162,6 +165,7 @@ class Gallery {
     this.world.props = this.props;
     this.marks = new FloorMarks(this.world.scene);
     this.world.build();
+    this.curator = bridge.curator ? new Curator(this.world, bridge) : null;
     this.buildMs = Math.round(performance.now() - tb);
     this.scene = this.world.scene;
     // тени спотов (на компьютере); сама карта теней включена всегда, а
@@ -293,6 +297,10 @@ class Gallery {
     st.querySelector('[data-a="list"]').addEventListener('click', () => { this.toggleMap(false); this.togglePanel(); });
     st.querySelector('[data-a="map"]').addEventListener('click', () => { this.togglePanel(false); this.toggleMap(); });
     st.querySelector('[data-a="share"]').addEventListener('click', () => this.share());
+    const curBtn = st.querySelector('[data-a="cur"]');
+    if (curBtn) curBtn.addEventListener('click', () => this.askCurator());
+    this.say = st.querySelector('.artg-say');
+    if (this.say) this.say.addEventListener('click', () => this.askCurator());
     st.querySelector('.artg-map__list').addEventListener('click', (e) => {
       const b = e.target.closest('[data-room]');
       if (!b) return;
@@ -763,7 +771,7 @@ class Gallery {
     let down = null;
 
     st.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.artg-top, .artg-menu, .artg-panel, .artg-move, .artg-map, .artg-qpanel, .artg-tour, .artg-joy')) return;
+      if (e.target.closest('.artg-top, .artg-menu, .artg-panel, .artg-move, .artg-map, .artg-qpanel, .artg-tour, .artg-joy, .artg-say, .artc-cur')) return;
       // открыта панель — касание сцены её закрывает, а не ведёт по залу
       if (this.anyPanel()) { this.closePanels(); return; }
       if (this.tour.running) this.tour.stop();
@@ -852,6 +860,7 @@ class Gallery {
       let o = h.object, vis = true;
       while (o) { if (!o.visible) { vis = false; break; } o = o.parent; }
       if (!vis) continue;
+      if (h.object.userData.curator && !this.curator.hit(h.uv)) continue;
       // стена закрывает всё, что за ней
       return h.object.userData.blocker ? null : h;
     }
@@ -864,7 +873,7 @@ class Gallery {
     this.hoverT = now;
     const h = this.pick(e);
     const u = h && h.object.userData;
-    const link = u && (u.art || u.plaque || u.action || u.banner);
+    const link = u && (u.art || u.plaque || u.action || u.banner || u.curator);
     this.stage.style.cursor = link ? 'pointer' : '';
     // табличка или имя на стене под курсором — чуть крупнее: видно, что это ссылка
     this.setHover(u && (u.plaque || u.banner) ? h.object : null);
@@ -929,6 +938,8 @@ class Gallery {
       this.focusArt(u.plaque, () => this.bridge.openArtist(u.plaque.gi));
     } else if (u.banner) {
       this.bridge.openArtist(u.banner.gi);
+    } else if (u.curator) {
+      this.askCurator();
     } else if (u.action) {
       const a = u.action;
       if (a.type === 'enter') this.goToRoom(a.room);
@@ -939,6 +950,36 @@ class Gallery {
       const p = this.nav.clampToPlan(h.point.x, h.point.z);
       if (p) { this.nav.goTo(p.x, p.z, null); this.marks.target(p.x, p.z); }
     }
+  }
+
+  /* ---------------- куратор ---------------- */
+
+  askCurator() {
+    if (!this.bridge.curator) return;
+    if (this.tour.running) this.tour.stop();
+    this.closePanels();
+    this.nav.keys = {};
+    this.bridge.curator(this.stage);
+  }
+
+  /* Облачко над головой: только в холле, когда куратор близко и в кадре,
+     и пока не открыты окно вопросов, панели или экскурсия */
+  placeSay() {
+    const b = this.say;
+    if (!b) return;
+    const st = this.stage, w = st.clientWidth, h = st.clientHeight;
+    let p = null;
+    if (this.revealed && this.curator.ready && this.room < 0 && !this.tour.running &&
+        !st.classList.contains('has-cur') && !st.classList.contains('has-panel')) {
+      p = this.curator.head(this.camera, w, h);
+      if (p && (p.d > 15 || p.d < 1.2 || p.x < 12 || p.x > w - 60 || p.y < 70 || p.y > h - 40)) p = null;
+    }
+    const on = !!p;
+    if (on !== this.sayOn) {
+      this.sayOn = on;
+      b.classList.toggle('is-on', on);
+    }
+    if (on) b.style.transform = 'translate(' + Math.round(p.x - 20) + 'px,' + Math.round(p.y - 10) + 'px) translateY(-100%)';
   }
 
   /* ---------------- перемещения ---------------- */
@@ -1111,6 +1152,7 @@ class Gallery {
     cam.position.set(nav.x + Math.cos(nav.yaw) * sway, EYE + dip + breath, nav.z - Math.sin(nav.yaw) * sway);
     cam.rotation.set(nav.pitch + 0.0012 * Math.sin(tt * 1.5 + 1), nav.yaw, 0.0028 * Math.sin(this.bobPhase) * this.bobAmp);
     this.world.camLight.position.set(nav.x, EYE + 0.6, nav.z);
+    if (this.curator) { this.curator.face(cam); this.placeSay(); }
 
     if (this.tick++ % 6 === 0) {
       this.world.update(nav);

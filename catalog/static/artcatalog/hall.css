@@ -692,3 +692,111 @@
   .artc-hw__where b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 @media (prefers-reduced-motion: reduce) { .artc-hw__art { transition: none; } }
+
+/* ==================== куратор ====================
+   В простом зале — фигура перед вступительной стеной раздела, лицом к
+   зрителю, с облачком над головой. Окно вопросов — общее для простого зала
+   и 3D-галереи, лежит внутри сцены (так оно видно и во весь экран). */
+.artc-hw__seg.has-guide { justify-content: flex-end; padding-right: 60px; }
+.artc-hw__guide {
+  position: absolute; left: 0; top: 0;
+  appearance: none; border: 0; padding: 0; margin: 0; background: none; cursor: pointer;
+  transform-origin: 50% 100%;
+  -webkit-backface-visibility: hidden; backface-visibility: hidden;
+}
+.artc-hw__guide img { display: block; width: 100%; height: 100%; pointer-events: none; -webkit-user-drag: none; }
+.artc-hw__guide::after {                /* тень на полу */
+  content: ""; position: absolute; left: 4%; right: 4%; bottom: -10px; height: 24px; z-index: -1;
+  background: radial-gradient(closest-side, rgba(40, 30, 20, .3), rgba(40, 30, 20, 0));
+}
+.artc-hw__say {
+  position: absolute; left: 56%; bottom: calc(100% + 16px);
+  width: max-content; max-width: 250px;
+  padding: 12px 16px; border-radius: 18px;
+  background: #fff; color: #2A2A2A;
+  font: 400 19px/1.3 "Inter", "Helvetica Neue", Arial, sans-serif; text-align: left;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .14);
+  transition: opacity .3s ease, background-color .2s ease, color .2s ease;
+}
+.artc-hw__say::after {
+  content: ""; position: absolute; left: 20px; top: 100%;
+  border: 10px solid transparent; border-top-color: #fff; border-bottom: 0; border-left-width: 4px;
+  transition: border-color .2s ease;
+}
+.artc-hw__guide:hover .artc-hw__say, .artc-hw__guide:focus-visible .artc-hw__say { background: #2A2A2A; color: #fff; }
+.artc-hw__guide:hover .artc-hw__say::after, .artc-hw__guide:focus-visible .artc-hw__say::after { border-top-color: #2A2A2A; }
+.artc-hw__guide:focus-visible { outline: none; }
+.has-cur .artc-hw__say { opacity: 0; }
+
+.artc-cur {
+  position: absolute; left: 16px; bottom: 16px; z-index: 30;
+  width: min(390px, calc(100% - 32px)); max-height: calc(100% - 90px);
+  display: flex; flex-direction: column;
+  background: rgba(255, 255, 255, .97); color: #2A2A2A;
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .22), 0 2px 6px rgba(0, 0, 0, .08);
+  font: 400 15px/1.4 "Inter", "Helvetica Neue", Arial, sans-serif; text-align: left;
+  overflow: hidden; cursor: auto;
+  -webkit-user-select: text; user-select: text;
+  animation: artc-cur-in .28s ease-out;
+}
+.artc-cur[hidden] { display: none; }
+@keyframes artc-cur-in { from { opacity: 0; transform: translateY(12px); } }
+.artc-cur button { font-family: inherit; }
+.artc-cur__head { flex: none; display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 14px; border-bottom: 1px solid rgba(0, 0, 0, .07); }
+.artc-cur__face { flex: none; width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: #ECE7DF; }
+.artc-cur__who { flex: 1 1 auto; min-width: 0; line-height: 1.25; }
+.artc-cur__who b { display: block; font-weight: 600; font-size: 15px; }
+.artc-cur__who span { font-size: 12.5px; color: #6F6F6B; }
+.artc-cur__close {
+  flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%; padding: 0;
+  display: grid; place-items: center;
+  background: #F1F0EE; color: #2A2A2A; cursor: pointer;
+}
+.artc-cur__close:hover { background: #E4E2DD; }
+.artc-cur__log {
+  flex: 1 1 auto; min-height: 80px; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
+  display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 8px;
+}
+.artc-cur__msg { max-width: 88%; padding: 10px 14px; border-radius: 18px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.artc-cur__msg--cur { align-self: flex-start; background: #F3F1EC; border-bottom-left-radius: 6px; }
+.artc-cur__msg--me { align-self: flex-end; background: #2A2A2A; color: #fff; border-bottom-right-radius: 6px; }
+.artc-cur__go {
+  display: block; margin: 8px 0 2px; padding: 0; border: 0; background: none; cursor: pointer;
+  color: #D4574F; font-size: 13px; font-weight: 600; letter-spacing: .02em;
+}
+.artc-cur__go:hover { text-decoration: underline; text-underline-offset: 3px; }
+.artc-cur__dots { display: flex; gap: 5px; padding: 15px 16px; }
+.artc-cur__dots i { width: 7px; height: 7px; border-radius: 50%; background: #9A968E; animation: artc-cur-dot 1.1s infinite ease-in-out; }
+.artc-cur__dots i:nth-child(2) { animation-delay: .15s; }
+.artc-cur__dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes artc-cur-dot { 0%, 60%, 100% { opacity: .3; transform: none; } 30% { opacity: 1; transform: translateY(-3px); } }
+.artc-cur__chips { flex: none; display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 14px 10px; }
+.artc-cur__chips:empty { display: none; }
+.artc-cur__chip {
+  border: 1px solid rgba(42, 42, 42, .2); background: #fff; color: #2A2A2A; cursor: pointer;
+  border-radius: 99px; padding: 7px 12px; font-size: 13px; font-weight: 500; line-height: 1.2;
+}
+.artc-cur__chip:hover { border-color: #2A2A2A; }
+.artc-cur__form { flex: none; display: flex; gap: 8px; padding: 10px 12px 12px; border-top: 1px solid rgba(0, 0, 0, .07); }
+.artc-cur__input {
+  flex: 1 1 auto; min-width: 0; margin: 0;
+  border: 1px solid rgba(42, 42, 42, .18); border-radius: 99px; padding: 10px 16px;
+  background: #fff; color: #2A2A2A;
+  font: 400 16px/1.2 "Inter", "Helvetica Neue", Arial, sans-serif;   /* мельче 16 px iPhone приближает страницу */
+}
+.artc-cur__input:focus { outline: none; border-color: #2A2A2A; }
+.artc-cur__send {
+  flex: none; width: 42px; height: 42px; border: 0; border-radius: 50%; padding: 0;
+  display: grid; place-items: center;
+  background: #D4574F; color: #fff; cursor: pointer;
+}
+.artc-cur__send:hover { background: #BF4A43; }
+.artc-cur.is-busy .artc-cur__send { opacity: .5; cursor: default; }
+.artc-cur__close:focus-visible, .artc-cur__chip:focus-visible, .artc-cur__send:focus-visible, .artc-cur__go:focus-visible { outline: 2px solid #2A2A2A; outline-offset: 2px; }
+@media (max-width: 560px) {
+  .artc-cur { left: 8px; right: 8px; bottom: 8px; width: auto; max-height: calc(100% - 64px); border-radius: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .artc-cur, .artc-cur__dots i { animation: none; }
+}
