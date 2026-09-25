@@ -7,6 +7,10 @@
    появляется, когда пришла, — сцена не ждёт загрузки. */
 import * as THREE from 'three';
 
+/* Бережный режим памяти (Android, мало ОЗУ): фактуры уменьшаются при
+   загрузке до max px — вместо ~95 МБ видеопамяти около 24 МБ */
+export const PBR_OPTS = { max: 0 };
+
 export class PBR {
   constructor(renderer, bridge, small) {
     this.bridge = bridge;
@@ -24,7 +28,17 @@ export class PBR {
     if (this.cache[key]) return this.cache[key];
     this.pending++;
     const done = () => { this.pending--; if (this.onLoad) this.onLoad(this.pending); };
-    const t = this.loader.load(this.bridge.url('gallery-assets/' + this.tier + '/' + key + '.webp'), done, undefined, done);
+    const url = this.bridge.url('gallery-assets/' + this.tier + '/' + key + '.webp');
+    let t;
+    if (PBR_OPTS.max && typeof createImageBitmap === 'function') {
+      t = new THREE.Texture();
+      t.flipY = false;                         // переворот сделан при декодировании (как у TextureLoader)
+      fetch(url, { mode: 'cors', credentials: 'omit' })
+        .then((r) => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+        .then((b) => createImageBitmap(b, { imageOrientation: 'flipY', premultiplyAlpha: 'none', colorSpaceConversion: 'none',
+          resizeWidth: PBR_OPTS.max, resizeHeight: PBR_OPTS.max, resizeQuality: 'high' }))
+        .then((bmp) => { t.image = bmp; t.needsUpdate = true; done(); }, done);
+    } else t = this.loader.load(url, done, undefined, done);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.anisotropy = this.aniso;
     t.colorSpace = kind === 'color' ? THREE.SRGBColorSpace : THREE.NoColorSpace;

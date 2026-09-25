@@ -20,9 +20,12 @@ import * as THREE from 'three';
 const MB = 1024 * 1024;
 
 export class TextureManager {
-  constructor(renderer, bridge, small) {
+  constructor(renderer, bridge, small, lean) {
     this.bridge = bridge;
     this.small = small;
+    // бережный режим памяти (Android, мало ОЗУ): меньше крупных картинок и
+    // вдвое меньший атлас — иначе текстуры не помещаются и рисуются чёрными
+    this.lean = !!lean;
     this.aniso = Math.min(small ? 4 : 12, renderer.capabilities.getMaxAnisotropy());
     this.active = 0;
     this.limit = small ? 4 : 6;
@@ -31,7 +34,7 @@ export class TextureManager {
        плотности 2), с 45 м — ~70 px, как клетка атласа. 1600 нужна только
        вплотную — у работы, к которой подошли. */
     this.near = small ? [0, 7, 32] : [3.2, 10, 45];
-    this.budget = (small ? 110 : 300) * MB;
+    this.budget = (lean ? 50 : small ? 110 : 300) * MB;
     this.bytes = 0;
     this.fails = 0;
     this.oks = 0;
@@ -46,7 +49,7 @@ export class TextureManager {
   /* Низкое качество: крупные картинки ближе, как на телефоне */
   setQuality(level) {
     const low = level === 'low' || this.small;
-    this.near = low ? [0, 7, 32] : [3.2, 10, 45];
+    this.near = this.lean ? [0, 5, 22] : low ? [0, 7, 32] : [3.2, 10, 45];
   }
 
   levelFor(d) {
@@ -75,7 +78,9 @@ export class TextureManager {
         for (const it of paintings) it.cell = json.items[it.work.thumb] || null;
         let n = 0;
         done(0, json.pages.length);
-        return Promise.all(json.pages.map((p, i) => this.fetchImage(this.bridge.url(p)).then((img) => {
+        // бережный режим: страницы атласа вдвое меньше — вчетверо меньше памяти
+        const half = this.lean && json.size ? Math.round(json.size / 2) : 0;
+        return Promise.all(json.pages.map((p, i) => this.fetchImage(this.bridge.url(p), half).then((img) => {
           const t = this.makeTexture(img);
           this.atlas.pages[i] = t;
           for (const it of this.plan) {
@@ -112,11 +117,12 @@ export class TextureManager {
 
   /* ---------------- загрузка ---------------- */
 
-  fetchImage(src) {
+  fetchImage(src, width) {
     if (this.bitmaps) {
       return fetch(src, { mode: 'cors', credentials: 'omit' })
         .then((r) => { if (!r.ok) throw new Error(r.status); return r.blob(); })
-        .then((b) => createImageBitmap(b, { premultiplyAlpha: 'none', colorSpaceConversion: 'none' }))
+        .then((b) => createImageBitmap(b, Object.assign({ premultiplyAlpha: 'none', colorSpaceConversion: 'none' },
+          width ? { resizeWidth: width, resizeQuality: 'high' } : {})))
         .catch((e) => {
           if (/\.webp(\?|$)/.test(src)) return this.fetchImage(src.replace(/\.webp(\?|$)/, '.jpg$1'));
           throw e;
@@ -282,7 +288,7 @@ export class TextureManager {
       noImage: blank,
       atlasPages: this.atlas ? this.atlas.pages.filter(Boolean).length : 0,
       // атлас живёт в памяти постоянно и в бюджет крупных картинок не входит
-      atlasMB: this.atlas ? +(this.atlas.pages.filter(Boolean).length * this.atlas.json.size ** 2 * 4 * 1.34 / MB).toFixed(1) : 0,
+      atlasMB: this.atlas ? +(this.atlas.pages.filter(Boolean).reduce((s, t) => s + (t.userData.bytes || 0), 0) / MB).toFixed(1) : 0,
     }, this.stats);
   }
 

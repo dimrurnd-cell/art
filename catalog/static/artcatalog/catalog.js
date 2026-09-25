@@ -1095,6 +1095,10 @@
 
     var stage = host.querySelector('.artc-stage');
     if (isTouch()) stage.classList.add('is-touch');
+    // Android даёт странице мало видеопамяти: слои зала не успевают
+    // дорисовываться (полупрозрачные прямоугольники вместо стен) — сразу
+    // облегчённый режим и меньше одновременно загруженных картин
+    var leanHall = isHandheld() && (/Android/i.test(navigator.userAgent) || (navigator.deviceMemory && navigator.deviceMemory <= 4));
     var modeBtn = host.querySelector('.artc-mode');
     if (modeBtn) {
       var widget = this;
@@ -1358,9 +1362,10 @@
       bob: 0, yaw: 0, pitch: 0, focus: null,
       look: 0, targetLook: 0, lookHold: 0,
       progress: 0, moving: false, hitsPlaced: false, t0: Date.now(), tick: 0,
-      probeN: 0, probeMs: 0, probeLast: 0, lite: false,
-      small: isHandheld(), loadMax: isHandheld() ? LOAD_MAX_SMALL : LOAD_MAX
+      probeN: 0, probeMs: 0, probeLast: 0, lite: leanHall,
+      small: isHandheld(), loadMax: leanHall ? 16 : isHandheld() ? LOAD_MAX_SMALL : LOAD_MAX
     };
+    if (leanHall) stage.classList.add('is-lite');
 
     // «влёт» в зал при первом открытии
     var startAt = rooms.length ? rooms[0].z : 0;

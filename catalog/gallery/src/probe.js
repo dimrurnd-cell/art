@@ -72,6 +72,7 @@ export class Probe {
 
   /* Снять помещение: box — { min, max } в мировых координатах, pos — точка съёмки */
   capture(box, pos) {
+    if (this.off) return;                        // видеочип не умеет рисовать в формат с плавающей точкой
     this.cam.position.copy(pos);
     const fog = this.scene.fog;
     this.scene.fog = null;                       // в снимке дымка не нужна — её добавит кадр

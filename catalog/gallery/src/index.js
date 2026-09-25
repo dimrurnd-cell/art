@@ -24,6 +24,7 @@ import { Quality, NAMES } from './quality.js';
 import { Tour } from './tour.js';
 import { Spots } from './lights.js';
 import { Probe } from './probe.js';
+import { PBR_OPTS } from './pbr.js';
 import { Atmosphere } from './atmosphere.js';
 import { Sound } from './audio.js';
 import { Props } from './props.js';
@@ -148,6 +149,23 @@ class Gallery {
     this.pr = this.maxPR;
     renderer.setPixelRatio(this.pr);
 
+    // Бережный режим памяти: Android и устройства с малой памятью. Браузер
+    // там даёт странице мало видеопамяти, и не поместившиеся текстуры
+    // рисуются чёрными (iPhone выделяет больше — ему не нужно)
+    const ua = navigator.userAgent;
+    const force = /[?&#]artlean\b/.test(location.search + location.hash);
+    this.lean = force || (this.small && (/Android/i.test(ua) || (navigator.deviceMemory && navigator.deviceMemory <= 4)));
+    PBR_OPTS.max = this.lean ? 512 : 0;
+    // отражения снимаются в формат с плавающей точкой — не все видеочипы это умеют
+    const gl = renderer.getContext();
+    this.floatRT = !!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));
+    this.diag = { shaderErrors: [], glErrors: 0, lost: 0 };
+    renderer.debug.onShaderError = (g, program, vs, fs) => {
+      const log = (g.getProgramInfoLog(program) || '') + ' ' + (g.getShaderInfoLog(fs) || '') + ' ' + (g.getShaderInfoLog(vs) || '');
+      this.diag.shaderErrors.push(log.trim().slice(0, 300));
+      console.warn('[artgallery] шейдер не собрался:', log);
+    };
+
     this.plan = buildLayout(bridge.artists, bridge.sections);
     const tb = performance.now();
     this.world = new World(renderer, this.plan, bridge);
@@ -170,12 +188,13 @@ class Gallery {
     try { lightPref = localStorage.getItem(LIGHT_KEY) || ''; } catch (e) { /* приватный режим */ }
     this.naturalLight = lightPref === 'natural';
     this.probe = new Probe(renderer, this.scene, this.small);
+    this.probe.off = !this.floatRT;
     this.world.reflectMats().forEach((m) => this.probe.patch(m));
     this.probeKey = '';
     this.camera = new THREE.PerspectiveCamera(62, 1, 0.05, 140);
     this.camera.rotation.order = 'YXZ';
     this.nav = new Nav(this.plan);
-    this.tex = new TextureManager(renderer, bridge, this.small);
+    this.tex = new TextureManager(renderer, bridge, this.small, this.lean);
     // мебель и оборудование: отражения, растения, экран, скульптура, свет по датчику, звуки
     const pr = this.props;
     pr.reflectMats().forEach((m) => this.probe.patch(m));
@@ -237,6 +256,7 @@ class Gallery {
     });
 
     if (this.touch) this.stage.classList.add('is-touch');
+    if (/[?&#]artdebug\b/.test(location.search + location.hash)) this.debugPanel();
     this.bindUi();
     this.tour = new Tour(this);
     this.bindInput();
@@ -250,6 +270,7 @@ class Gallery {
     document.addEventListener('fullscreenchange', this.fsHandler);
     document.addEventListener('webkitfullscreenchange', this.fsHandler);
     this.canvas.addEventListener('webglcontextlost', (e) => {
+      this.diag.lost++;
       e.preventDefault();
       this.dead = true;
       if (bridge.fallback) bridge.fallback('context');
@@ -483,6 +504,46 @@ class Gallery {
           (artists[gi].city ? '<i>' + esc(artists[gi].city) + '</i>' : '') + '</button>').join('');
     }).join('');
     this.stage.querySelector('.artg-panel__list').innerHTML = html || '<p class="artg-panel__none">Никого не нашлось</p>';
+  }
+
+  /* Диагностика (адрес с #artdebug): видеочип, память, ошибки. Нужна, чтобы
+     разбирать проблемы на конкретном телефоне по одному скриншоту */
+  debugPanel() {
+    const d = document.createElement('div');
+    d.className = 'artg-debug';
+    d.style.cssText = 'position:absolute;left:8px;bottom:8px;z-index:9;max-width:calc(100% - 16px);box-sizing:border-box;' +
+      'background:rgba(0,0,0,.8);color:#fff;font:11px/1.4 ui-monospace,Menlo,monospace;padding:8px 10px;border-radius:8px;' +
+      'white-space:pre-wrap;word-break:break-word;pointer-events:auto;-webkit-user-select:text;user-select:text';
+    this.stage.appendChild(d);
+    const r = this.renderer, gl = r.getContext();
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    const gpu = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+    const hp = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT);
+    let frames = 0, t0 = performance.now();
+    const count = () => { frames++; if (!this.dead) requestAnimationFrame(count); };
+    requestAnimationFrame(count);
+    const tick = () => {
+      if (this.dead) return;
+      let e;
+      while ((e = gl.getError()) !== gl.NO_ERROR) { this.diag.glErrors++; this.diag.lastGl = '0x' + e.toString(16); }
+      const now = performance.now(), fps = frames * 1000 / (now - t0);
+      frames = 0; t0 = now;
+      const t = this.tex.report(), m = r.info.memory;
+      d.textContent = [
+        'GPU: ' + gpu,
+        'ОЗУ: ' + (navigator.deviceMemory || '?') + ' ГБ · экран ' + screen.width + '×' + screen.height + ' ×' + (window.devicePixelRatio || 1) +
+          ' · рендер ×' + this.pr.toFixed(2),
+        'качество: ' + this.quality.level + (this.quality.mode === 'auto' ? ' (авто)' : '') + ' · бережный: ' + (this.lean ? 'да' : 'нет') +
+          ' · отражения: ' + (this.floatRT ? 'да' : 'нет') + ' · highp: ' + (hp && hp.precision > 0 ? 'да' : 'нет'),
+        'макс. текстура ' + r.capabilities.maxTextureSize + ' · текстур ' + m.textures + ' · геометрий ' + m.geometries + ' · шейдеров ' + (r.info.programs || []).length,
+        'картины ' + t.gpuMB + '/' + t.budgetMB + ' МБ · атлас ' + t.atlasMB + ' МБ · уровни ' + t.byLevel.join('/') + ' · без картинки ' + t.noImage,
+        'кадров/с ' + fps.toFixed(0) + ' · вызовов ' + r.info.render.calls,
+        'ошибки GL: ' + this.diag.glErrors + (this.diag.lastGl ? ' (' + this.diag.lastGl + ')' : '') + ' · потеря контекста: ' + this.diag.lost,
+        'ошибки шейдеров: ' + (this.diag.shaderErrors.length ? '\n' + this.diag.shaderErrors.join('\n') : 'нет'),
+      ].join('\n');
+      setTimeout(tick, 1000);
+    };
+    tick();
   }
 
   /* Естественный свет: выбор запоминается в браузере */
