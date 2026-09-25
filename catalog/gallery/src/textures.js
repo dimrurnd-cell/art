@@ -22,7 +22,13 @@ const MB = 1024 * 1024;
 export class TextureManager {
   constructor(renderer, bridge, small, lean) {
     this.bridge = bridge;
+    this.renderer = renderer;
     this.small = small;
+    // готовые картинки ждут очереди в видеопамять: не больше ~2 МБ за кадр
+    // на телефоне (одна 800 px), иначе несколько выгрузок в одном кадре
+    // и генерация мип-уровней дают остановку при ходьбе
+    this.ready = [];
+    this.uploadCap = (small ? 2 : 8) * MB;
     // бережный режим памяти (Android, мало ОЗУ): меньше крупных картинок и
     // вдвое меньший атлас — иначе текстуры не помещаются и рисуются чёрными
     this.lean = !!lean;
@@ -46,9 +52,9 @@ export class TextureManager {
     this.stats = { ticks: 0, blankTicks: 0, blankMax: 0, loads: 0, evictions: 0, downgrades: 0 };
   }
 
-  /* Низкое качество: крупные картинки ближе, как на телефоне */
+  /* SD на компьютере — пороги как у HD: картинки те же, дешевле только свет */
   setQuality(level) {
-    const low = level === 'low' || this.small;
+    const low = this.small;
     this.near = this.lean ? [0, 5, 22] : low ? [0, 7, 32] : [3.2, 10, 45];
   }
 
@@ -190,17 +196,36 @@ export class TextureManager {
     this.stats.loads++;
     this.fetchImage(src).then((img) => {
       this.active--; it.loading = 0; this.oks++;
-      // пока грузилось, зритель ушёл: картинка ниже нужной и ниже текущей — не нужна
-      if (level < it.want && level <= it.level) { if (img.close) img.close(); return; }
-      const t = this.makeTexture(img);
-      this.setUV(t, 0, 0, 1, 1);
-      this.swap(it, t, level, t.userData.bytes);
+      it.queued = level;
+      this.ready.push({ it, img, level });
     }, () => {
       this.active--; it.loading = 0;
       (it.failed = it.failed || {})[level] = true;
       this.fails++;
       this.checkCors(src);
     });
+  }
+
+  /* Каждый кадр: из готовых картинок — в видеопамять ближайшие, в пределах
+     лимита байт на кадр (одна — всегда) */
+  flush() {
+    if (!this.ready.length) return;
+    if (this.ready.length > 1) this.ready.sort((a, b) => (a.it.dist || 0) - (b.it.dist || 0));
+    let spent = 0;
+    while (this.ready.length) {
+      const { it, img, level } = this.ready[0];
+      const bytes = Math.round(img.width * img.height * 4 * 1.34);
+      if (spent && spent + bytes > this.uploadCap) break;
+      this.ready.shift();
+      if (it.queued === level) it.queued = 0;
+      // пока ждала, зритель ушёл: картинка ниже нужной и ниже текущей — не нужна
+      if ((level < it.want && level <= it.level) || level === it.level) { if (img.close) img.close(); continue; }
+      const t = this.makeTexture(img);
+      this.setUV(t, 0, 0, 1, 1);
+      this.renderer.initTexture(t);                 // выгрузка сейчас, а не посреди отрисовки
+      this.swap(it, t, level, t.userData.bytes);
+      spent += bytes;
+    }
   }
 
   /* ---------------- каждый тик ---------------- */
@@ -233,7 +258,7 @@ export class TextureManager {
       it.want = lv;
       if (lv === 0 && it.level > 0 && it.cell && this.atlas) {
         if (this.toAtlas(it)) this.stats.downgrades++;
-      } else if (lv !== it.level && it.loading !== lv && !(lv === 0 && !it.cell)) {
+      } else if (lv !== it.level && it.loading !== lv && it.queued !== lv && !(lv === 0 && !it.cell)) {
         // очки: ближе и по курсу — раньше; апгрейды раньше даунгрейдов
         // спуск с 1600 освобождает много памяти — его не откладываем
         it.score = it.dist * (inView ? 0.6 : 1.5) + (lv < it.level ? (it.level === 3 ? 0 : 60) : 0);
@@ -249,7 +274,7 @@ export class TextureManager {
     want.sort((a, b) => a.score - b.score);
     for (const it of want) {
       if (this.active >= this.limit) break;
-      if (it.loading) continue;
+      if (it.loading || it.queued) continue;
       // крупную картинку не начинаем, если бюджет уже исчерпан
       if (it.want > it.level && this.bytes > this.budget * 0.92 && it.want > 1) continue;
       this.load(it, it.want);

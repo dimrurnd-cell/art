@@ -828,13 +828,12 @@ export class World {
     };
   }
 
-  /* Детали, которые снимаются на низком качестве */
+  /* Мягкие тени у стыков — на обоих уровнях: на HD их дополняет GTAO,
+     поэтому полосы бледнее, чтобы не удваивать */
   setDetail(level) {
-    const on = level !== 'low';
-    this.mat.ao.visible = on;
-    this.mat.shadow.visible = on;
-    // на высоком тени считает GTAO — заранее заданные полосы бледнее, чтобы не удваивать
-    this.mat.ao.opacity = level === 'high' ? 0.08 : 0.2;
+    this.mat.ao.visible = true;
+    this.mat.shadow.visible = true;
+    this.mat.ao.opacity = level === 'hd' ? 0.08 : 0.2;
   }
 
   /* Полоса мягкой тени: p0–p1 — линия стыка, off — куда тень спадает.

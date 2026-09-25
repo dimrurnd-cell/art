@@ -70,25 +70,60 @@ export class Probe {
     this.mats.push(mat);
   }
 
-  /* Снять помещение: box — { min, max } в мировых координатах, pos — точка съёмки */
-  capture(box, pos) {
-    if (this.off) return;                        // видеочип не умеет рисовать в формат с плавающей точкой
-    this.cam.position.copy(pos);
-    const fog = this.scene.fog;
-    this.scene.fog = null;                       // в снимке дымка не нужна — её добавит кадр
-    this.cam.update(this.renderer, this.scene);
-    this.scene.fog = fog;
+  /* Снять помещение: box — { min, max } в мировых координатах, pos — точка съёмки.
+     Снимок идёт по частям — одна грань куба за вызов step(), фильтрация
+     седьмым: шесть отрисовок сцены в одном кадре на телефоне давали
+     заметную остановку при входе в каждый зал. */
+  begin(box, pos) {
+    if (this.off) return false;                  // видеочип не умеет рисовать в формат с плавающей точкой
+    this.job = { box, pos: pos.clone(), face: 0 };
+    return true;
+  }
+
+  /* Следующий шаг съёмки; true — снимок готов и уже в материалах */
+  step() {
+    const j = this.job, r = this.renderer;
+    if (!j) return true;
+    if (j.face < 6) {
+      const cam = this.cam;
+      cam.position.copy(j.pos);
+      cam.updateMatrixWorld();
+      if (cam.coordinateSystem !== r.coordinateSystem) {
+        cam.coordinateSystem = r.coordinateSystem;
+        cam.updateCoordinateSystem();
+      }
+      const prev = r.getRenderTarget();
+      const fog = this.scene.fog;
+      this.scene.fog = null;                     // в снимке дымка не нужна — её добавит кадр
+      const tex = this.rt.texture, mips = tex.generateMipmaps;
+      tex.generateMipmaps = j.face === 5 ? mips : false;
+      r.setRenderTarget(this.rt, j.face);
+      r.render(this.scene, cam.children[j.face]);
+      tex.generateMipmaps = mips;
+      r.setRenderTarget(prev);
+      this.scene.fog = fog;
+      j.face++;
+      return false;
+    }
+    this.job = null;
     const env = this.pm.fromCubemap(this.rt.texture);
     if (this.env) this.env.dispose();
     this.env = env;
-    this.u.bpMin.value.copy(box.min);
-    this.u.bpMax.value.copy(box.max);
-    this.u.bpPos.value.copy(pos);
+    this.u.bpMin.value.copy(j.box.min);
+    this.u.bpMax.value.copy(j.box.max);
+    this.u.bpPos.value.copy(j.pos);
     for (const m of this.mats) {
       const first = !m.envMap;
       m.envMap = env.texture;
       if (first) m.needsUpdate = true;          // дальше размер карты тот же — пересборка шейдера не нужна
     }
+    return true;
+  }
+
+  /* Снять целиком за один вызов (при первом входе, пока сцена скрыта загрузчиком) */
+  capture(box, pos) {
+    if (!this.begin(box, pos)) return;
+    while (!this.step());
   }
 
   dispose() {

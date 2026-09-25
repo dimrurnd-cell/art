@@ -1,15 +1,24 @@
-/* Уровни качества картинки и автоматический выбор по частоте кадров.
+/* Качество картинки: два уровня и подстройка разрешения.
 
-   high   — объёмное затенение (GTAO) в постобработке, сглаживание
-            мультисэмплингом в буфере постобработки, плотность пикселей до 2;
-   medium — без постобработки, сглаживание самого холста, плотность до 1.5;
-   low    — плотность 1 (при нехватке — до 0.75), без мягких теней у стыков,
-            крупные картинки подгружаются ближе.
+   HD — постобработка: объёмное затенение (GTAO), свечение ярких ламп,
+        тон-маппинг кадра, мультисэмплинг; тени от рам; плотность до 2;
+   SD — без постобработки, со сглаживанием самого холста; мягкие тени у
+        стыков и под рамами остаются (они дешёвые и дают объём — без них
+        зал плоский и серый); на телефоне — без лучей спотов и света от
+        экрана: это полупрозрачные площади поверх всего кадра, дорогие
+        для мобильного видеочипа. Плотность до 2 на телефоне, 1.5 — на
+        компьютере.
 
-   «Авто» стартует с high на компьютере и medium на телефоне и опускается
-   на ступень, если средний кадр дольше ~22 мс (меньше 45 кадров в
-   секунду) две секунды подряд. Вверх само не поднимается — иначе качество
-   «дышало» бы туда-обратно; вверх — только вручную. Выбор зрителя
+   Разрешение подстраивается само под частоту кадров (цель — 30 кадров/с
+   на телефоне, 45 на компьютере): ступенями по 0.25 плотности вниз, если
+   не успеваем, и вверх, если запас большой; ступень, на которой уже не
+   успели, второй раз не берётся. Когда зритель стоит и смотрит (камера
+   неподвижна полсекунды), кадр рисуется в полной чёткости — движения нет,
+   и частота кадров не важна; с первым шагом возвращается рабочая плотность.
+
+   «Авто» стартует с HD на компьютере и SD на телефоне; если HD не
+   успевает и на пониженной плотности — переходит на SD. Запрет на
+   ступень, где не успели, снимается через 20 секунд. Выбор зрителя
    запоминается в браузере. */
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -50,50 +59,72 @@ const FilmShader = {
     }`,
 };
 
-export const LEVELS = ['low', 'medium', 'high'];
-export const NAMES = { auto: 'Авто', high: 'Высокое', medium: 'Среднее', low: 'Низкое' };
+export const LEVELS = ['sd', 'hd'];
+export const NAMES = { auto: 'Авто', hd: 'HD', sd: 'SD' };
 const KEY = 'artg-quality';
-const SLOW = 22;              // мс на кадр, после которых опускаемся
-const WINDOW = 120;           // кадров в замере
+const OLD = { high: 'hd', medium: 'sd', low: 'sd' };   // сохранённый выбор прежних версий
+const WINDOW = 60;            // кадров в замере
+const STILL = 30;             // кадров без движения — и рисуем в полной чёткости
 
 export class Quality {
   constructor(g) {
     this.g = g;
     let saved = '';
     try { saved = localStorage.getItem(KEY) || ''; } catch (e) { /* приватный режим */ }
+    saved = OLD[saved] || saved;
     this.mode = NAMES[saved] ? saved : 'auto';
     this.level = null;
     this.frames = [];
     this.skip = 0;
+    this.still = 0;
+    this.rest = false;
     this.onChange = null;
-    this.set(this.mode === 'auto' ? (g.small ? 'medium' : 'high') : this.mode);
+    // цель по времени кадра: телефон — 30 кадров/с, компьютер — 45
+    this.budget = g.small ? 33 : 22;
+    this.set(this.mode === 'auto' ? this.autoLevel() : this.mode);
   }
+
+  autoLevel() { return this.g.small ? 'sd' : 'hd'; }
 
   choose(mode) {
     this.mode = mode;
     try { localStorage.setItem(KEY, mode); } catch (e) { /* приватный режим */ }
-    this.set(mode === 'auto' ? (this.g.small ? 'medium' : 'high') : mode);
+    this.set(mode === 'auto' ? this.autoLevel() : mode);
   }
 
   set(level) {
     const g = this.g;
+    const hd = level === 'hd';
     this.level = level;
     this.frames.length = 0;
     this.skip = 30;                             // первые кадры после смены не считаем
+    this.rest = false;
+    this.still = 0;
     const dpr = window.devicePixelRatio || 1;
-    g.maxPR = Math.min(dpr, level === 'high' ? 2 : level === 'medium' ? 1.5 : 1);
-    g.pr = g.maxPR;
-    g.renderer.setPixelRatio(g.pr);
-    if (level === 'high') this.makeComposer(); else this.dropComposer();
+    g.maxPR = Math.min(dpr, hd || g.small ? 2 : 1.5);
+    g.minPR = Math.min(g.maxPR, g.small ? 1 : 0.75);
+    this.ceil = g.maxPR;
+    // телефон начинает с 1.5: полная плотность 2 редкому видеочипу по силам
+    this.work = g.small ? Math.min(g.maxPR, 1.5) : g.maxPR;
+    this.applyPR(this.work);
+    if (hd) this.makeComposer(); else this.dropComposer();
     g.world.setDetail(level);
-    if (g.spots) g.spots.setShadows(level === 'high');
-    if (g.atmo) g.atmo.setEnabled(level !== 'low');
-    if (g.world && g.world.invTM) g.world.invTM.value = level === 'high' ? 1 : 0;
-    // свет от экрана в холле — площадной источник, на низком его нет
-    if (g.props && g.props.screenLight) g.props.screenLight.visible = level !== 'low';
+    if (g.spots) g.spots.setShadows(hd);
+    const light = hd || !g.small;
+    if (g.atmo) g.atmo.setEnabled(light);
+    if (g.world && g.world.invTM) g.world.invTM.value = hd ? 1 : 0;
+    // свет от экрана в холле — площадной источник
+    if (g.props && g.props.screenLight) g.props.screenLight.visible = light;
     g.tex.setQuality(level);
-    g.resize();
     if (this.onChange) this.onChange();
+  }
+
+  applyPR(pr) {
+    const g = this.g;
+    if (g.pr === pr && g.renderer.getPixelRatio() === pr) return;
+    g.pr = pr;
+    g.renderer.setPixelRatio(pr);
+    g.resize();
   }
 
   makeComposer() {
@@ -149,22 +180,51 @@ export class Quality {
     else g.renderer.render(g.scene, g.camera);
   }
 
-  /* Замер кадра: при «Авто» — ступенью ниже, если не успеваем; в конце
-     лестницы — плотность пикселей до 0.75 */
-  frame(ms) {
+  /* Замер кадра; moving — камера сдвинулась или повернулась */
+  frame(ms, moving) {
+    const g = this.g;
+    if (!moving) {
+      // стоим: полная чёткость (кроме HD — там перестройка буферов
+      // постобработки на каждой остановке дороже, чем выигрыш)
+      if (++this.still === STILL && this.level === 'sd' && g.pr < g.maxPR) {
+        this.rest = true;
+        this.applyPR(g.maxPR);
+      }
+      if (this.rest) return;
+    } else {
+      this.still = 0;
+      if (this.rest) {
+        this.rest = false;
+        this.applyPR(this.work);
+        this.frames.length = 0;
+        this.skip = 10;
+        return;
+      }
+    }
     if (this.skip > 0) { this.skip--; return; }
     this.frames.push(ms);
     if (this.frames.length < WINDOW) return;
-    const avg = this.frames.reduce((a, b) => a + b, 0) / this.frames.length;
+    // медиана, а не среднее: разовая задержка (сборка зала) не должна
+    // опускать качество
+    const f = this.frames.slice().sort((a, b) => a - b);
+    const med = f[f.length >> 1];
     this.frames.length = 0;
-    if (avg <= SLOW) return;
-    const i = LEVELS.indexOf(this.level);
-    if (this.mode === 'auto' && i > 0) { this.set(LEVELS[i - 1]); return; }
-    const g = this.g;
-    if (g.pr > 0.75) {
-      g.pr = Math.max(0.75, g.pr - 0.25);
-      g.renderer.setPixelRatio(g.pr);
-      g.resize();
+    if (med > this.budget * 1.08) {
+      if (this.work > g.minPR) {
+        this.ceil = Math.min(this.ceil, this.work - 0.25);   // на этой ступени не успели
+        this.ceilAt = performance.now();
+        this.work = Math.max(g.minPR, this.work - 0.25);
+        this.applyPR(this.work);
+      } else if (this.mode === 'auto' && this.level === 'hd') {
+        this.set('sd');
+      }
+    } else if (med < this.budget * 0.62) {
+      // запрет ступени — на 20 с: медленным мог быть разовый отрезок (загрузка, сборка залов)
+      if (performance.now() - (this.ceilAt || 0) > 20000) this.ceil = g.maxPR;
+      if (this.work + 0.25 > this.ceil) return;
+      this.work += 0.25;
+      this.applyPR(this.work);
+      this.skip = 20;
     }
   }
 }

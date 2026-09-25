@@ -108,7 +108,7 @@ class Gallery {
         '<div class="artg-qpanel" hidden role="radiogroup" aria-label="Качество изображения">' +
           '<div class="artg-phead"><b>Качество изображения</b><button type="button" class="artg-close" data-close aria-label="Закрыть">' +
             '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
-          ['auto', 'high', 'medium', 'low'].map((m) => '<button type="button" role="radio" data-q="' + m + '">' + NAMES[m] + '</button>').join('') +
+          [['auto', 'Авто'], ['hd', 'HD · объём и свечение'], ['sd', 'SD · плавнее, для телефона']].map(([m, t]) => '<button type="button" role="radio" data-q="' + m + '">' + t + '</button>').join('') +
           '<small></small>' +
         '</div>' +
         '<div class="artg-more" hidden role="menu">' +
@@ -434,7 +434,7 @@ class Gallery {
       b.setAttribute('aria-checked', String(on));
     });
     p.querySelector('small').textContent = q.mode === 'auto'
-      ? 'Сейчас: ' + NAMES[q.level].toLowerCase() + '. Снижается само, если кадры не успевают'
+      ? 'Сейчас: ' + NAMES[q.level] + '. Чёткость подстраивается сама под скорость устройства'
       : 'Выбрано вручную';
   }
 
@@ -1073,6 +1073,7 @@ class Gallery {
       if (!map.hidden && this.tick % 12 === 1) this.drawMap();
     }
 
+    this.tex.flush();
     this.props.update(dt, nav, speed, this.sub);
     this.stepNatural(dt);
     this.spots.update(dt);
@@ -1081,7 +1082,10 @@ class Gallery {
     this.updateVisibility();
     this.updateProbe();
     this.quality.render();
-    if (this.revealed) this.quality.frame(dt * 1000);
+    // движение для подстройки чёткости: шаг или поворот камеры
+    const turn = Math.abs(nav.yaw - (this.lastYaw || 0)) + Math.abs(nav.pitch - (this.lastPitch || 0));
+    this.lastYaw = nav.yaw; this.lastPitch = nav.pitch;
+    if (this.revealed) this.quality.frame(dt * 1000, moved > 1e-4 || turn > 1e-4 || !!nav.path);
   }
 
   /* Какие залы рисовать: отсечение по проёмам каждый кадр (десяток
@@ -1111,6 +1115,7 @@ class Gallery {
      когда споты уже разгорелись. */
   updateProbe() {
     if (!this.revealed) return;
+    if (this.probeJob) { this.probeFrame(this.probeJob); return; }
     const spot = this.world.probeSpot(this.sub);
     if (spot.key === this.probeKey) return;
     // снимаем, когда свет по датчику уже разгорелся
@@ -1121,12 +1126,20 @@ class Gallery {
       const all = spot.room.sectionRef.rooms;
       [spot.room.idx - 1, spot.room.idx, spot.room.idx + 1].forEach((i) => { if (all[i]) rooms.add(all[i]); });
     } else this.plan.corridors.forEach((c) => rooms.add(c.rooms[0]));
-    this.world.setVisible(!spot.room || spot.room.idx === 0, rooms, null, this.camera);
+    this.probeKey = spot.key;
+    if (!this.probe.begin(spot, spot.pos)) return;
+    // по грани за кадр: с открытыми соседями (в отражении видны проёмы)
+    this.probeJob = { hall: !spot.room || spot.room.idx === 0, rooms };
+    this.probeFrame(this.probeJob);
+  }
+
+  probeFrame(job) {
+    this.world.setVisible(job.hall, job.rooms, null, this.camera);
     const atmoOn = this.atmo.on;
     this.atmo.setEnabled(false);                 // лучи и пыль в отражениях не нужны
-    this.probe.capture(spot, spot.pos);
+    const done = this.probe.step();
     this.atmo.setEnabled(atmoOn);
-    this.probeKey = spot.key;
+    if (done) this.probeJob = null;
     this.updateVisibility();
   }
 
