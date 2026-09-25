@@ -1,5 +1,8 @@
 # Размещение каталога на сервере donexpocentre.ru
 
+> Куратор с нейросетью GigaChat ставится отдельно — пошагово в
+> [`CURATOR.md`](CURATOR.md).
+
 Адрес раздачи: `https://donexpocentre.ru/static/artcatalog/`
 Файлы на сервере: `/home/develop/donexpo/static/artcatalog/`
 

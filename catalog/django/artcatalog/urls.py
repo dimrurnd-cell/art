@@ -6,9 +6,8 @@ try:  # Django 2.0+
 except ImportError:  # Django 1.8–1.11
     from django.conf.urls import url as re_path
 
-from . import curator, views
+from . import views
 
 urlpatterns = [
     re_path(r"^lead/$", views.lead, name="artcatalog_lead"),
-    re_path(r"^curator/ask/$", curator.ask, name="artcatalog_curator_ask"),
 ]

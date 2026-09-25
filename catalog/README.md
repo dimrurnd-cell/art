@@ -26,9 +26,11 @@ catalog/
 ├── tools/prepare-artists.py   ← то же самое из командной строки
 ├── tools/curator-anim.py      ← движение куратора: цикл из кадров ролика (idle.mp4, idle.webp)
 ├── gallery/                   ← исходники WebGL-галереи (three.js), сборка: npm run build
-├── django/artcatalog/         ← Django-приложение: заявки «Хочу купить» и ответы куратора
+├── django/artcatalog/         ← Django-приложение приёма заявок «Хочу купить»
 ├── tilda/                     ← версия для Tilda: статика с CDN jsDelivr
 └── server/                    ← версия для Tilda: статика со своего сервера
+    ├── CURATOR.md             ← установка куратора с нейросетью GigaChat (пошагово)
+    └── curator/               ← служба куратора: curator_server.py, настройки, systemd, nginx
 ```
 
 Для установки на Tilda есть два варианта размещения статики:
@@ -458,8 +460,10 @@ catalog/
     и кнопка перехода. Нет совпадений — вежливое «уточните у организаторов».
     `faq.json` берётся запросом — нужен тот же CORS, что и для
     `artists.json` (без него — только приветствие и «уточните у организаторов»).
-  - С `data-curator` — запрос к Django-приложению (`POST …/curator/ask/`,
-    вопрос, два последних обмена репликами и режим `3d`/`simple`). Сервер
+  - С `data-curator` — запрос к службе куратора на своём сервере
+    (`server/curator/curator_server.py`, установка — `server/CURATOR.md`):
+    `POST …/curator/ask/` — вопрос, два последних обмена репликами и режим
+    `3d`/`simple`. Ключ GigaChat хранится только там. Служба
     отвечает готовым ответом, если вопрос явно про него, иначе спрашивает
     нейросеть GigaChat, передавая ей `kb.md`, список участников и подробности о
     художниках, названных в вопросе. Сервер не ответил за 20 с или вернул
@@ -567,33 +571,10 @@ cd catalog && python3 -m http.server 8000
 
 Миграции не нужны — приложение не создаёт моделей.
 
-**Куратор** (необязательно) подключается тем же `include("artcatalog.urls")` —
-адрес `/api/artcatalog/curator/ask/`. Без настроек он отвечает готовыми
-ответами; нейросеть включается ключом GigaChat:
-
-1. Зарегистрироваться на developers.sber.ru → GigaChat API (тариф Freemium для
-   физлиц), создать проект, в нём — «Ключ авторизации».
-2. В `settings.py`:
-   ```python
-   ARTCATALOG_GIGACHAT_KEY = "…"            # ключ авторизации (Base64), только здесь, не в браузере
-   ARTCATALOG_GIGACHAT_SCOPE = "GIGACHAT_API_PERS"
-   ARTCATALOG_GIGACHAT_CA = "/etc/ssl/certs/russian_trusted_root_ca.pem"   # если сервер не доверяет НУЦ Минцифры
-   ARTCATALOG_CORS_ORIGINS = ["https://monthly-delicious-mirror.tilda.ws", "https://xn----7sbh1cajbjfe.xn--p1ai"]
-   # необязательно:
-   ARTCATALOG_CURATOR_NAME = ""            # имя, если куратор представляется
-   ARTCATALOG_CURATOR_RATE = 20            # вопросов с одного IP…
-   ARTCATALOG_CURATOR_WINDOW = 3600        # …в час
-   ARTCATALOG_CURATOR_DAILY = 3000         # вопросов к нейросети в сутки на весь сайт
-   ARTCATALOG_CURATOR_DIR = "…/static/artcatalog/curator"   # если STATIC_ROOT другой
-   ARTCATALOG_ARTISTS_JSON = "…/static/artcatalog/artists.json"
-   ```
-   Корневой сертификат: https://www.gosuslugi.ru/crt → «Корневой сертификат»
-   (PEM). Кеш Django (`CACHES`) нужен любой, кроме `DummyCache`: в нём счётчики
-   ограничений и ответы нейросети на сутки.
-3. В контейнер виджета добавить `data-curator="https://<сайт>/api/artcatalog/curator/"`.
-4. Проверка: `curl -X POST -H "Content-Type: application/json" -d '{"q":"Расскажите про Шитову"}' https://<сайт>/api/artcatalog/curator/ask/`
-   → `{"answer": "…", "source": "ai"}`; `"source": "faq"` — готовый ответ,
-   `"fallback"` — нейросеть недоступна (подробности в логе `artcatalog.curator`).
+**Куратор** в Django-приложение не входит: это отдельная маленькая служба на
+Python 3 (сайт выставки — на Tilda, где свой код не запустить). Установка —
+`server/CURATOR.md`; nginx любого сайта передаёт ей адрес
+`/api/artcatalog/curator/`.
 
 ### 3. Snippet
 
