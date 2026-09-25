@@ -106,6 +106,7 @@ export class Quality {
     this.ceil = g.maxPR;
     // телефон начинает с 1.5: полная плотность 2 редкому видеочипу по силам
     this.work = g.small ? Math.min(g.maxPR, 1.5) : g.maxPR;
+    this.nextPR = null;
     this.applyPR(this.work);
     if (hd) this.makeComposer(); else this.dropComposer();
     g.world.setDetail(level);
@@ -171,8 +172,15 @@ export class Quality {
     this.composer.setSize(w, h);
   }
 
+  /* Смена плотности из замера кадра — только перед отрисовкой. Замер идёт
+     после неё, а смена размера холста его стирает: до следующего кадра на
+     экране оставался пустой холст, сквозь него — светлый фон сцены
+     (белая вспышка при остановке и начале ходьбы, во весь экран заметнее). */
+  deferPR(pr) { this.nextPR = pr; }
+
   render() {
     const g = this.g;
+    if (this.nextPR != null) { this.applyPR(this.nextPR); this.nextPR = null; }
     if (this.composer) {
       if (this.film) this.film.uniforms.time.value = (performance.now() / 1000) % 100;
       this.composer.render();
@@ -188,14 +196,14 @@ export class Quality {
       // постобработки на каждой остановке дороже, чем выигрыш)
       if (++this.still === STILL && this.level === 'sd' && g.pr < g.maxPR) {
         this.rest = true;
-        this.applyPR(g.maxPR);
+        this.deferPR(g.maxPR);
       }
       if (this.rest) return;
     } else {
       this.still = 0;
       if (this.rest) {
         this.rest = false;
-        this.applyPR(this.work);
+        this.deferPR(this.work);
         this.frames.length = 0;
         this.skip = 10;
         return;
@@ -214,7 +222,7 @@ export class Quality {
         this.ceil = Math.min(this.ceil, this.work - 0.25);   // на этой ступени не успели
         this.ceilAt = performance.now();
         this.work = Math.max(g.minPR, this.work - 0.25);
-        this.applyPR(this.work);
+        this.deferPR(this.work);
       } else if (this.mode === 'auto' && this.level === 'hd') {
         this.set('sd');
       }
@@ -223,7 +231,7 @@ export class Quality {
       if (performance.now() - (this.ceilAt || 0) > 20000) this.ceil = g.maxPR;
       if (this.work + 0.25 > this.ceil) return;
       this.work += 0.25;
-      this.applyPR(this.work);
+      this.deferPR(this.work);
       this.skip = 20;
     }
   }

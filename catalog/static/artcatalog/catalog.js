@@ -2117,18 +2117,41 @@
 
   /* Tilda: подставить контекст в скрытые поля всех форм на странице
      (попап-форма Tilda присутствует в DOM ещё до открытия) и открыть попап */
-  Widget.prototype.openTildaPopup = function (artist, work) {
+  Widget.prototype.openTildaPopup = function (artist, work, retried) {
     var self = this;
 
-    // Попап Tilda живёт в общем DOM страницы, а в полноэкранном режиме
-    // браузер показывает только развёрнутый элемент — форма осталась бы
-    // невидимой. Поэтому сначала сворачиваем зал, затем открываем форму.
+    // Попап Tilda живёт в общем DOM страницы, а во весь экран его не видно:
+    // браузер показывает только развёрнутый элемент, а на iPhone зал лежит
+    // слоем поверх всей страницы. Поэтому сначала сворачиваем — и 3D-галерею,
+    // и простой зал, — затем открываем форму (повтор один: не зациклиться).
     var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
-    if (fsEl || this.fsFake) {
-      this.toggleFullscreen();
-      setTimeout(function () { self.openTildaPopup(artist, work); }, 320);
+    var glFake = this.gl && this.gl.fsFake;
+    if ((fsEl || this.fsFake || glFake) && !retried) {
+      if (fsEl) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      else if (glFake) this.gl.toggleFullscreen();
+      else this.fsFallback(false);
+      setTimeout(function () { self.openTildaPopup(artist, work, true); }, 350);
       return;
     }
+
+    // Попап Tilda появляется не сразу (около секунды): кнопка это показывает
+    var busy = document.querySelectorAll('.artc-modal.is-open .artc-buy');
+    var restore = function () {
+      for (var i = 0; i < busy.length; i++) {
+        if (busy[i].getAttribute('data-label')) busy[i].textContent = busy[i].getAttribute('data-label');
+        busy[i].removeAttribute('aria-busy');
+      }
+    };
+    for (var bi = 0; bi < busy.length; bi++) {
+      if (!busy[bi].getAttribute('data-label')) busy[bi].setAttribute('data-label', busy[bi].textContent);
+      busy[bi].textContent = 'Открываем форму…';
+      busy[bi].setAttribute('aria-busy', 'true');
+    }
+    var waited = 0;
+    var poll = setInterval(function () {
+      waited += 150;
+      if (document.querySelector('.t-popup_show') || waited > 4000) { clearInterval(poll); restore(); }
+    }, 150);
 
     var fill = function (name, value) {
       var inputs = document.querySelectorAll(

@@ -567,3 +567,6 @@
 }
 
 .artc-dots:empty { display: none; }
+
+/* «Хочу купить» на Tilda: попап формы появляется около секунды — кнопка это показывает */
+.artc-buy[aria-busy="true"] { opacity: .75; cursor: progress; }
