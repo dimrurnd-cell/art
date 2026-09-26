@@ -94,7 +94,7 @@ ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 
 | Файл | Байт |
 |---|---|
-| `catalog.js` | 151 987 |
+| `catalog.js` | 151 983 |
 | `catalog.css` | 23 223 |
 | `hall.css` | 43 259 |
 | `artists.json` | 329 957 |

@@ -2650,7 +2650,7 @@
         '<div class="artc-lightbox__actions">' +
           '<button type="button" class="artc-buy">Хочу купить картину</button>' +
           (this.lbFromHall
-            ? '<button type="button" class="artc-back artc-about">О художнике</button>' +
+            ? '<button type="button" class="artc-back artc-about">Об авторе</button>' +
               '<button type="button" class="artc-back artc-tohall">' + ARROW_L + 'Вернуться в зал</button>'
             : '') +
         '</div>' +
