@@ -1182,7 +1182,7 @@
       '<img src="' + esc(this.base + 'curator/figure.webp') + '" alt="" width="' + CUR_W + '" height="' + CUR_H + '" draggable="false">' +
       '<span class="artc-hw__say">' + esc(CUR_HELLO) + '</span>');
     guide.type = 'button';
-    guide.setAttribute('aria-label', 'Куратор выставки: задать вопрос');
+    guide.setAttribute('aria-label', 'Куратор Татьяна: задать вопрос');
     guide.style.width = CUR_W + 'px';
     guide.style.height = CUR_H + 'px';
     guide.style.display = 'none';
@@ -2014,8 +2014,8 @@
     p.innerHTML =
       '<div class="artc-cur__head">' +
         '<img class="artc-cur__face" src="' + esc(this.base + 'curator/face.webp') + '" alt="" width="44" height="44">' +
-        '<div class="artc-cur__who"><b>' + esc(this.curatorName || 'Куратор выставки') + '</b>' +
-          '<span>«Арт-Ростов» · 16–25 апреля 2027</span></div>' +
+        '<div class="artc-cur__who"><b>' + esc(this.curatorName || 'Татьяна') + '</b>' +
+          '<span>куратор выставки «Арт-Ростов»</span></div>' +
         '<button type="button" class="artc-cur__close" aria-label="Закрыть">' +
           '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
       '</div>' +

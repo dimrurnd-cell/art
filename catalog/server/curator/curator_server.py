@@ -31,7 +31,7 @@ https://<сервер>/api/artcatalog/curator/…, страница на Tilda �
     GIGACHAT_CA         путь к корневому сертификату НУЦ Минцифры (PEM)
     CURATOR_STATIC      папка статики каталога (там artists.json и curator/)
     CURATOR_ORIGINS     сайты, с которых можно спрашивать, через запятую
-    CURATOR_NAME        имя куратора, если она представляется (необязательно)
+    CURATOR_NAME        имя куратора (Татьяна)
     CURATOR_HOST, CURATOR_PORT   где слушать (по умолчанию 127.0.0.1:8765)
     CURATOR_RATE=20, CURATOR_WINDOW=3600   вопросов с одного адреса в час
     CURATOR_DAILY=3000  вопросов к нейросети в сутки на весь сайт
@@ -144,7 +144,7 @@ ORIGINS = [o.strip().rstrip("/") for o in E("CURATOR_ORIGINS", ",".join([
     "https://www.xn----7sbh1cajbjfe.xn--p1ai",
     "https://donexpocentre.ru",
 ])).split(",") if o.strip()]
-NAME = E("CURATOR_NAME", "")
+NAME = E("CURATOR_NAME", "Татьяна")
 HOST = E("CURATOR_HOST", "127.0.0.1")
 PORT = int(E("CURATOR_PORT", "8765"))
 RATE = int(E("CURATOR_RATE", "20"))
@@ -353,7 +353,7 @@ SYSTEM = (
     "если выставка ещё не началась — говорите о ней в будущем времени, если идёт — в настоящем. "
     "Не называйте себя нейросетью, но если прямо "
     "спросят — честно скажите, что вы виртуальный помощник куратора."
-) % (("куратор %s," % NAME) if NAME else "куратор")
+) % (("%s, куратор" % NAME) if NAME else "куратор")
 
 MODES = {
     "3d": "Посетитель сейчас в 3D-галерее.",

@@ -25,7 +25,10 @@ function stackedAlpha(mat) {
   mat.onBeforeCompile = (sh) => {
     sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#ifdef USE_MAP
       vec4 sampledDiffuseColor = texture2D( map, vec2( vMapUv.x, 0.5 + vMapUv.y * 0.5 ) );
-      float matte = texture2D( map, vec2( vMapUv.x, vMapUv.y * 0.5 ) ).g;
+      // маска: без растяжки видео в «узком» диапазоне яркости (белое = 235)
+      // давало ~0.9 — фигура выходила полупрозрачной; всё выше порога — непрозрачно,
+      // мягким остаётся только край
+      float matte = smoothstep( 0.1, 0.75, texture2D( map, vec2( vMapUv.x, vMapUv.y * 0.5 ) ).g );
       #ifdef DECODE_VIDEO_TEXTURE
         sampledDiffuseColor = sRGBTransferEOTF( sampledDiffuseColor );
       #endif
@@ -55,8 +58,10 @@ function shadowTexture() {
 export class Curator {
   constructor(world, bridge) {
     const P = world.plan, h = P.hall, c = P.corridors[0];
-    const x = c ? c.cx + ARCH_W / 2 + 2.2 : 0;
-    const z = h.z0 + 1.4;
+    // ближе к входу зрителя (он стоит у южной стены): у северной стены, в 13 м,
+    // она казалась крошечной; здесь — по пути к «Арт-салону», в ~5.5 м
+    const x = c ? Math.max(c.cx + ARCH_W / 2 + 2.2, -2.2) : -2.2;
+    const z = h.z0 + 8.5;
     this.pos = new THREE.Vector3(x, 0, z);
     this.v = new THREE.Vector3();
     this.ready = false;
