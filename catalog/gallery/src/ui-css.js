@@ -163,12 +163,12 @@ export const CSS = `
   .artg-tour__txt b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 }
 /* облачко над головой куратора в холле; ставится по экранным координатам головы */
-.artg-say{position:absolute;left:0;top:0;max-width:230px;padding:10px 14px;border:0;margin:0;border-radius:16px;background:#fff;color:#2a2a2a;
+.artg-say{position:absolute;left:0;top:0;max-width:270px;padding:10px 14px;border:0;margin:0;border-radius:16px;background:#fff;color:#2a2a2a;
   font:400 15px/1.3 "Inter","Helvetica Neue",Arial,sans-serif;text-align:left;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.16);
   opacity:0;visibility:hidden;pointer-events:none;transition:opacity .35s ease,visibility .35s,background-color .2s,color .2s;will-change:transform}
 .artg-say.is-on{opacity:1;visibility:visible;pointer-events:auto}
 .artg-say::after{content:"";position:absolute;left:14px;top:100%;border:9px solid transparent;border-top-color:#fff;border-bottom:0;border-left-width:3px;transition:border-color .2s}
 .artg-say:hover{background:#2a2a2a;color:#fff}
 .artg-say:hover::after{border-top-color:#2a2a2a}
-.artg-stage.is-narrow .artg-say{font-size:13px;max-width:180px;padding:8px 12px}
+.artg-stage.is-narrow .artg-say{font-size:13px;max-width:210px;padding:8px 12px}
 `;

@@ -12,7 +12,6 @@
    ANIM_FIG высоты кадра. Пока ролик не пошёл (или посетитель просит
    меньше движения) — неподвижное фото. */
 import * as THREE from 'three';
-import { ARCH_W } from './layout.js';
 
 const H = 1.66;              // рост, м
 const AR = 513 / 1200;       // пропорции curator/figure.webp
@@ -59,8 +58,8 @@ export class Curator {
   constructor(world, bridge) {
     const P = world.plan, h = P.hall, c = P.corridors[0];
     // ближе к входу зрителя (он стоит у южной стены): у северной стены, в 13 м,
-    // она казалась крошечной; здесь — по пути к «Арт-салону», в ~5.5 м
-    const x = c ? Math.max(c.cx + ARCH_W / 2 + 2.2, -2.2) : -2.2;
+    // она казалась крошечной; здесь — перед входящим, в ~5.5 м
+    const x = -0.9;                  // почти на оси взгляда — видна и на узком экране телефона
     const z = h.z0 + 8.5;
     this.pos = new THREE.Vector3(x, 0, z);
     this.v = new THREE.Vector3();
@@ -131,7 +130,12 @@ export class Curator {
     // VP9 (WebM) — где он есть: Chrome на компьютере показывал H.264 с другим
     // диапазоном яркости, и фигура выглядела белёсой, будто просвечивает.
     // H.264 — Safari и iPhone
-    const vp9 = v.canPlayType('video/webm; codecs="vp9"');
+    // На iPhone, iPad и в Safari — только H.264: они заявляют VP9, но кадры
+    // WebM в WebGL не отдают, и фигура пропадала (оставалась одна тень)
+    const ua = navigator.userAgent;
+    const apple = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ||
+      (/Safari/.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|YaBrowser|Firefox|FxiOS/.test(ua));
+    const vp9 = !apple && v.canPlayType('video/webm; codecs="vp9"');
     v.src = bridge.url(vp9 ? 'curator/idle.webm' : 'curator/idle.mp4');
   }
 

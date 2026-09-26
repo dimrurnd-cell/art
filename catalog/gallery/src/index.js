@@ -108,7 +108,7 @@ class Gallery {
           '<small></small>' +
         '</div>' +
         '<div class="artg-hint"></div>' +
-        (bridge.curator ? '<button type="button" class="artg-say" tabindex="-1" aria-hidden="true">Могу ли я Вам чем-то помочь?</button>' : '') +
+        (bridge.curator ? '<button type="button" class="artg-say" tabindex="-1" aria-hidden="true">Добро пожаловать на виртуальную выставку! Меня зовут Татьяна. Могу Вам помочь?</button>' : '') +
         '<div class="artg-tour" hidden aria-live="polite"></div>' +
         '<div class="artg-joy" aria-hidden="true"><i></i></div>' +
         '<div class="artg-move">' +
