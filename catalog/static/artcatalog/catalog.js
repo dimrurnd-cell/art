@@ -2185,12 +2185,10 @@
       got = true;
     };
     rec.onerror = function (e) {
-      var why = e.error === 'not-allowed' || e.error === 'service-not-allowed'
-        ? 'Разрешите браузеру доступ к микрофону'
-        : e.error === 'no-speech' ? 'Не расслышала — попробуйте ещё раз'
-        : e.error === 'network' ? 'Распознавание речи недоступно — напишите вопрос' : '';
       rec.onend = null;
-      done(why);
+      if (e.error === 'no-speech' || e.error === 'aborted') { done(e.error === 'no-speech' ? 'Не расслышала — нажмите и говорите' : ''); return; }
+      done('');
+      self.curatorMicHelp(e.error);
     };
     rec.onend = function () { done(''); };
     this.curRec = rec;
@@ -2199,6 +2197,45 @@
     input.value = '';
     input.placeholder = 'Говорите…';
     try { rec.start(); } catch (e) { done(''); }
+  };
+
+  /* Микрофон не дали — объясняем в окне, что сделать, а не одной строкой в поле.
+     Встроенные браузеры приложений (почта, мессенджеры) распознавание речи
+     не пускают вовсе — там совет открыть страницу в обычном браузере. */
+  Widget.prototype.curatorMicHelp = function (err) {
+    var ua = navigator.userAgent;
+    var ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    var inApp = /YaMail|YandexMail|Telegram|VKClient|Instagram|FBAN|FBAV|OKApp|Viber|WhatsApp|MicroMessenger|Line\//i.test(ua) ||
+      (ios && !/Safari\//.test(ua));                  // WebView внутри приложения на iPhone
+    var text, copy = false;
+    if (err === 'audio-capture') {
+      text = 'Не нашла микрофон. Проверьте, что он подключён, — или просто напишите вопрос, я отвечу.';
+    } else if (err === 'not-allowed' || err === 'service-not-allowed') {
+      if (inApp) {
+        text = 'Во встроенном браузере приложения голосовой ввод не работает. Откройте страницу в Safari или Chrome ' +
+          '(меню «…» → «Открыть в браузере») — или просто напишите вопрос.';
+        copy = true;
+      } else if (ios) {
+        text = 'Чтобы говорить со мной, разрешите микрофон: нажмите «аА» слева от адреса → «Настройки веб-сайта» → ' +
+          '«Микрофон» → «Разрешить». Если не помогло — включите диктовку: Настройки → Основные → Клавиатура → ' +
+          '«Включить диктовку». Потом снова нажмите на микрофон.';
+      } else {
+        text = 'Чтобы говорить со мной, разрешите микрофон: нажмите на значок слева от адреса сайта (замок или ' +
+          'настройки) → «Микрофон» → «Разрешить», обновите страницу и снова нажмите на микрофон.';
+      }
+    } else {
+      text = 'Распознавание речи сейчас недоступно — напишите вопрос, я отвечу.';
+    }
+    var m = this.curatorMsg('cur', text, true);
+    m.classList.add('artc-cur__msg--help');
+    if (copy && navigator.clipboard) {
+      var b = el('button', 'artc-cur__go', 'Скопировать ссылку на страницу');
+      b.type = 'button';
+      b.addEventListener('click', function () {
+        navigator.clipboard.writeText(location.href).then(function () { b.textContent = 'Ссылка скопирована — вставьте её в браузере'; });
+      });
+      m.appendChild(b);
+    }
   };
 
   Widget.prototype.curatorVoice = function (on, byUser) {
