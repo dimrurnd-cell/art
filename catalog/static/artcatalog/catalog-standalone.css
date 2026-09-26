@@ -1378,6 +1378,20 @@
 }
 .artc-cur__send:hover { background: #BF4A43; }
 .artc-cur.is-busy .artc-cur__send { opacity: .5; cursor: default; }
+.artc-cur__mic, .artc-cur__voice {
+  flex: none; width: 42px; height: 42px; border: 0; border-radius: 50%; padding: 0;
+  display: grid; place-items: center; cursor: pointer;
+  background: #F1F0EE; color: #2A2A2A;
+}
+.artc-cur__voice { width: 36px; height: 36px; }
+.artc-cur__mic:hover, .artc-cur__voice:hover { background: #E4E2DD; }
+.artc-cur__mic.is-on { background: #D4574F; color: #fff; animation: artc-cur-mic 1.2s ease-in-out infinite; }
+@keyframes artc-cur-mic { 0%, 100% { box-shadow: 0 0 0 0 rgba(212, 87, 79, .45); } 50% { box-shadow: 0 0 0 8px rgba(212, 87, 79, 0); } }
+.artc-cur__voice .artc-cur__wave { opacity: .25; }
+.artc-cur__voice.is-on { background: #2A2A2A; color: #fff; }
+.artc-cur__voice.is-on .artc-cur__wave { opacity: 1; }
+.artc-cur__mic:focus-visible, .artc-cur__voice:focus-visible { outline: 2px solid #2A2A2A; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .artc-cur__mic.is-on { animation: none; } }
 .artc-cur__close:focus-visible, .artc-cur__chip:focus-visible, .artc-cur__send:focus-visible, .artc-cur__go:focus-visible { outline: 2px solid #2A2A2A; outline-offset: 2px; }
 @media (max-width: 560px) {
   .artc-cur { left: 8px; right: 8px; bottom: 8px; width: auto; max-height: calc(100% - 64px); border-radius: 18px; }

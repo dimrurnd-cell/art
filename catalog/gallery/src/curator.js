@@ -128,8 +128,11 @@ export class Curator {
     v.addEventListener('playing', () => { this.video.ok = true; });
     v.addEventListener('error', () => { this.video.broken = true; });
     // H.264 — Chrome, Safari, iPhone; где его нет (свободные сборки Chromium) — VP9
-    const h264 = v.canPlayType('video/mp4; codecs="avc1.640028"');
-    v.src = bridge.url(h264 ? 'curator/idle.mp4' : 'curator/idle.webm');
+    // VP9 (WebM) — где он есть: Chrome на компьютере показывал H.264 с другим
+    // диапазоном яркости, и фигура выглядела белёсой, будто просвечивает.
+    // H.264 — Safari и iPhone
+    const vp9 = v.canPlayType('video/webm; codecs="vp9"');
+    v.src = bridge.url(vp9 ? 'curator/idle.webm' : 'curator/idle.mp4');
   }
 
   /* Играть, только пока фигура может быть в кадре: зритель в холле, не

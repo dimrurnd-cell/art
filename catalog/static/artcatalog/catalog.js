@@ -1908,6 +1908,25 @@
     if (a.length < 4 || b.length < 4) return false;
     return a.indexOf(b) === 0 || b.indexOf(a) === 0;
   }
+  var CUR_SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+
+  /* Русский женский голос устройства; мужские (Pavel, Yuri, Dmitry…) — в конец */
+  function curFemaleVoice() {
+    var vs = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
+    var ru = vs.filter(function (v) { return /^ru/i.test(v.lang); });
+    if (!ru.length) return null;
+    var male = /pavel|yuri|dmitr|maxim|maksim|artem|ivan|nikolai|male|муж|павел|юрий|дмитрий|максим/i;
+    var female = /irina|svetlana|milena|ekaterina|katya|alena|alyona|anna|daria|dariya|elena|tatyana|female|женск|алёна|алена|ирина|светлана|милена|google/i;
+    var best = null, bs = -1;
+    ru.forEach(function (v) {
+      var s = (female.test(v.name) ? 2 : 0) - (male.test(v.name) ? 3 : 0) + (/natural|online|neural/i.test(v.name) ? 1 : 0);
+      if (s > bs) { bs = s; best = v; }
+    });
+    return best;
+  }
+  // список голосов в Chrome приходит не сразу — просим заранее
+  if (window.speechSynthesis) { try { speechSynthesis.getVoices(); } catch (e) { /* нет */ } }
+
   function curHas(words, part) {
     for (var i = 0; i < words.length; i++) if (curSame(words[i], part)) return true;
     return false;
@@ -2008,7 +2027,7 @@
 
   Widget.prototype.buildCurator = function () {
     var self = this;
-    var p = el('div', 'artc-cur');
+    var p = this.curPanel = el('div', 'artc-cur');
     p.setAttribute('role', 'dialog');
     p.setAttribute('aria-label', 'Вопрос куратору');
     p.innerHTML =
@@ -2016,6 +2035,8 @@
         '<img class="artc-cur__face" src="' + esc(this.base + 'curator/face.webp') + '" alt="" width="44" height="44">' +
         '<div class="artc-cur__who"><b>' + esc(this.curatorName || 'Татьяна') + '</b>' +
           '<span>куратор выставки «Арт-Ростов»</span></div>' +
+        (window.speechSynthesis ? '<button type="button" class="artc-cur__voice" aria-pressed="false" ' +
+          'aria-label="Озвучивать ответы голосом" title="Озвучивать ответы"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="artc-cur__wave" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg></button>' : '') +
         '<button type="button" class="artc-cur__close" aria-label="Закрыть">' +
           '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
       '</div>' +
@@ -2024,6 +2045,8 @@
       '<form class="artc-cur__form">' +
         '<input type="text" class="artc-cur__input" maxlength="300" autocomplete="off" enterkeyhint="send" ' +
           'placeholder="Спросите о выставке" aria-label="Ваш вопрос">' +
+        (CUR_SR ? '<button type="button" class="artc-cur__mic" aria-pressed="false" ' +
+          'aria-label="Сказать вопрос голосом" title="Сказать голосом"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>' : '') +
         '<button type="submit" class="artc-cur__send" aria-label="Спросить">' +
           '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>' +
       '</form>';
@@ -2040,10 +2063,20 @@
       e.stopPropagation();
     });
     p.querySelector('.artc-cur__close').addEventListener('click', function () { self.closeCurator(); });
+    var mic = p.querySelector('.artc-cur__mic');
+    if (mic) mic.addEventListener('click', function () { self.curatorListen(); });
+    var voice = p.querySelector('.artc-cur__voice');
+    if (voice) {
+      var on = false;
+      try { on = localStorage.getItem('artc-cur-voice') === '1'; } catch (e) { /* приватный режим */ }
+      this.curatorVoice(on);
+      voice.addEventListener('click', function () { self.curatorVoice(!self.curVoiceOn, true); });
+    }
     p.querySelector('.artc-cur__form').addEventListener('submit', function (e) {
       e.preventDefault();
       var q = input.value.replace(/\s+/g, ' ').trim();
       if (q.length < 2 || self.curBusy) return;
+      if (self.curRec) self.curRec.stop();
       input.value = '';
       self.curatorSay(q);
     });
@@ -2111,6 +2144,96 @@
     return m;
   };
 
+  /* ---- голос: вопрос надиктовать, ответ услышать ----
+
+     Распознавание — Web Speech API браузера (Chrome, Edge, Яндекс Браузер,
+     Safari на iPhone и Mac): звук обрабатывает сервис браузера, на наш сервер
+     уходит только текст. Расшифровка появляется в поле по мере речи, отправляет
+     посетитель сам (можно поправить). Нет поддержки (Firefox) — кнопки нет.
+
+     Озвучка — синтез речи самого устройства, бесплатно: русский женский
+     голос (Google русский, Microsoft Irina/Svetlana, Milena на iPhone).
+     Включается кнопкой в заголовке окна и сама — при первом вопросе голосом;
+     выбор запоминается. */
+  Widget.prototype.curatorListen = function () {
+    var self = this, p = this.curPanel;
+    var input = p.querySelector('.artc-cur__input'), mic = p.querySelector('.artc-cur__mic');
+    if (this.curRec) { this.curRec.stop(); return; }
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    // первый вопрос голосом — и ответы голосом (разговор); выключить — кнопкой
+    if (!this.curVoiceAsked && !this.curVoiceOn && p.querySelector('.artc-cur__voice')) this.curatorVoice(true, true);
+    this.curVoiceAsked = true;
+    var rec;
+    try { rec = new CUR_SR(); } catch (e) { return; }
+    rec.lang = 'ru-RU';
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.maxAlternatives = 1;
+    var ph = input.placeholder, got = false;
+    var done = function (note) {
+      self.curRec = null;
+      mic.classList.remove('is-on');
+      mic.setAttribute('aria-pressed', 'false');
+      input.placeholder = note || ph;
+      if (note) setTimeout(function () { if (input.placeholder === note) input.placeholder = ph; }, 4000);
+      if (got && !isTouch()) input.focus();
+    };
+    rec.onresult = function (e) {
+      var t = '';
+      for (var i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
+      input.value = t.charAt(0).toUpperCase() + t.slice(1);
+      got = true;
+    };
+    rec.onerror = function (e) {
+      var why = e.error === 'not-allowed' || e.error === 'service-not-allowed'
+        ? 'Разрешите браузеру доступ к микрофону'
+        : e.error === 'no-speech' ? 'Не расслышала — попробуйте ещё раз'
+        : e.error === 'network' ? 'Распознавание речи недоступно — напишите вопрос' : '';
+      rec.onend = null;
+      done(why);
+    };
+    rec.onend = function () { done(''); };
+    this.curRec = rec;
+    mic.classList.add('is-on');
+    mic.setAttribute('aria-pressed', 'true');
+    input.value = '';
+    input.placeholder = 'Говорите…';
+    try { rec.start(); } catch (e) { done(''); }
+  };
+
+  Widget.prototype.curatorVoice = function (on, byUser) {
+    this.curVoiceOn = !!on;
+    var b = this.curPanel && this.curPanel.querySelector('.artc-cur__voice');
+    if (b) {
+      b.classList.toggle('is-on', this.curVoiceOn);
+      b.setAttribute('aria-pressed', String(this.curVoiceOn));
+      b.setAttribute('aria-label', this.curVoiceOn ? 'Не озвучивать ответы' : 'Озвучивать ответы голосом');
+    }
+    if (!byUser) return;
+    try { localStorage.setItem('artc-cur-voice', this.curVoiceOn ? '1' : '0'); } catch (e) { /* приватный режим */ }
+    if (!window.speechSynthesis) return;
+    speechSynthesis.cancel();
+    // iPhone разрешает говорить только после нажатия: «пустая» фраза сейчас
+    // открывает озвучку для ответов, которые придут позже
+    if (this.curVoiceOn) {
+      var u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0;
+      speechSynthesis.speak(u);
+    }
+  };
+
+  Widget.prototype.curatorSpeak = function (text) {
+    if (!this.curVoiceOn || !window.speechSynthesis || !text) return;
+    speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text.replace(/[«»]/g, ''));
+    u.lang = 'ru-RU';
+    var v = curFemaleVoice();
+    if (v) u.voice = v;
+    u.rate = 1;
+    u.pitch = 1.05;
+    speechSynthesis.speak(u);
+  };
+
   Widget.prototype.curatorSay = function (q) {
     var self = this, p = this.curPanel;
     var log = p.querySelector('.artc-cur__log');
@@ -2130,6 +2253,7 @@
         p.classList.remove('is-busy');
         self.curLog.push({ q: q, a: a });
         self.curatorMsg('cur', a, false, self.curatorArtist(q));
+        self.curatorSpeak(a);
       }, Math.max(0, 600 - (Date.now() - t0)));
     });
   };
@@ -2153,6 +2277,8 @@
     var p = this.curPanel;
     if (!p || p.hidden) return;
     p.hidden = true;
+    if (this.curRec) this.curRec.stop();
+    if (window.speechSynthesis) speechSynthesis.cancel();
     var host = p.parentNode;
     if (host) {
       host.classList.remove('has-cur');
