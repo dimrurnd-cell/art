@@ -1,0 +1,13 @@
+{
+  "name": "artcatalog-gallery",
+  "private": true,
+  "description": "WebGL-галерея «Арт-Ростов»: исходники static/artcatalog/gallery.js",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "three": "0.170.0"
+  }
+}

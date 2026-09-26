@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Проверка: сервер БЕЗ CORS-заголовков</title>
+<style>body{margin:0;background:#f6f1e2;font-family:Arial}.w{max-width:1240px;margin:0 auto;padding:24px 16px}</style>
+<!-- БЛОК 1 (HEAD): один файл стилей со встроенным шрифтом -->
+<link rel="stylesheet" href="http://127.0.0.1:8125/static/artcatalog/catalog-standalone.css">
+</head><body><div class="w">
+<h1 style="font-size:20px;color:#555;font-weight:normal">Статика на другом домене, разрешающих заголовков НЕТ</h1>
+<!-- БЛОК 2 (T123): данные обычным скриптом + сам виджет -->
+<div id="artrostov-catalog"
+     data-base="http://127.0.0.1:8125/static/artcatalog/"
+     data-tilda-popup="popup:artbuy"></div>
+<script src="http://127.0.0.1:8125/static/artcatalog/artists.js"></script>
+<script src="http://127.0.0.1:8125/static/artcatalog/catalog.js" defer></script>
+<div class="fake-popup" id="fakePopup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;z-index:999999">
+  <form class="t-form" style="background:#EFE3C3;padding:30px;border-radius:16px;width:360px">
+    <input type="tel" name="phone"><input type="email" name="email">
+    <input type="hidden" name="artist"><input type="hidden" name="work">
+    <button type="button" onclick="fakePopup.style.display='none'">Отправить</button>
+  </form></div>
+<script>document.addEventListener('click',function(e){var a=e.target.closest('a[href*="#popup:"]');
+if(a){e.preventDefault();document.getElementById('fakePopup').style.display='flex';}});</script>
+</div></body></html>

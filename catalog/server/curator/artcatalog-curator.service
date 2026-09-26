@@ -1,0 +1,23 @@
+# Служба куратора. Скопировать в /etc/systemd/system/artcatalog-curator.service,
+# в строке User= указать владельца папки статики (шаг 3 инструкции),
+# в ExecStart= — путь к Python из шага 1 (на CentOS 7 без python3 — /usr/bin/python), затем:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now artcatalog-curator
+[Unit]
+Description=Куратор выставки Арт-Ростов (ответы GigaChat)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=develop
+EnvironmentFile=/etc/artcatalog-curator.env
+ExecStart=/usr/bin/python3 /opt/artcatalog-curator/curator_server.py
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

@@ -7,10 +7,17 @@
      1) статика виджета выложена в /static/artcatalog/
      2) приложение artcatalog подключено (эндпоинт /api/artcatalog/lead/)
      3) в data-policy указана реальная ссылка на политику ПДн
+     4) для 3D-галереи рядом лежат gallery.js и атлас превью
+        (atlas.json + img/atlas/, собирается tools/build-atlas.html)
+
+     data-hall — вид зала: "webgl" (3D-галерея), "css" (простой зал)
+     или пусто — виджет выберет сам (3D, если браузер умеет WebGL2).
      ============================================================ -->
 <link rel="stylesheet" href="/static/artcatalog/catalog.css">
+<link rel="stylesheet" href="/static/artcatalog/hall.css">
 <div id="artrostov-catalog"
      data-base="/static/artcatalog/"
      data-endpoint="/api/artcatalog/lead/"
-     data-policy="/ru/privacy/"></div>
+     data-policy="/ru/privacy/"
+     data-ticket-url="#"></div>
 <script src="/static/artcatalog/catalog.js" defer></script>

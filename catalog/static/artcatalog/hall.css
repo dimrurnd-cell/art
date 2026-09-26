@@ -1,0 +1,823 @@
+/* ============================================================
+   Арт-Ростов — виртуальный зал (3D-тур)
+   Дополнение к catalog.css. Только CSS-трансформы, без библиотек.
+   Все классы с префиксом .artc- (изоляция от стилей сайта).
+   ============================================================ */
+
+/* ------------------ переключатель режимов ------------------ */
+.artc-views {
+  position: relative; z-index: 3;
+  display: flex; gap: 8px; justify-content: center;
+  margin: 0 auto 22px;
+  background: rgba(33, 29, 23, .07);
+  border-radius: 999px;
+  padding: 5px;
+  width: -moz-fit-content;
+  width: fit-content;
+}
+.artc-views__btn {
+  border: none; cursor: pointer;
+  background: transparent;
+  color: var(--artc-ink);
+  font-size: 15px;
+  padding: 9px 22px;
+  border-radius: 999px;
+  display: flex; align-items: center; gap: 8px;
+  transition: background .28s ease, color .28s ease, box-shadow .28s ease;
+}
+.artc-views__btn svg { width: 17px; height: 17px; opacity: .75; }
+.artc-views__btn:hover { background: rgba(255, 255, 255, .55); }
+.artc-views__btn.is-active {
+  background: var(--artc-ink); color: #F7EFDA;
+  box-shadow: 0 6px 18px rgba(33, 29, 23, .3);
+}
+.artc-views__btn.is-active svg { opacity: 1; }
+.artc-views__btn:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+
+.artc-view { display: none; }
+.artc-view.is-active { display: block; animation: artc-view-in .5s ease-out; }
+@keyframes artc-view-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+/* ---------------------- сцена зала ------------------------- */
+.artc-stage {
+  --hw: 430px;          /* половина ширины зала   */
+  --hh: 315px;          /* половина высоты зала   */
+  --step: 720px;        /* шаг между картинами    */
+  --art-h: 300px;       /* высота полотна         */
+  --wall: #E9DCBC;
+  --wall-dark: #D6C69F;
+
+  position: relative;
+  z-index: 1;
+  max-width: 1160px;
+  margin: 0 auto;
+  height: clamp(480px, 80vh, 760px);
+  border-radius: 22px;
+  overflow: hidden;
+  background: #CBBB92;
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, .55), var(--artc-shadow);
+  cursor: -webkit-grab;
+  cursor: grab;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: pan-y;
+}
+.artc-stage.is-grabbing { cursor: -webkit-grabbing; cursor: grabbing; }
+
+/* Дальняя часть коридора: соседка мира внутри камеры. Мир едет, она стоит,
+   и её transform после сборки не меняется ни разу — ни рывков, ни лишней
+   перерисовки. */
+
+/* Слои сцены прозрачны для курсора: иначе плоскости пола, стен и самой
+   камеры (они ближе к зрителю, чем полотна) перехватывали бы все клики. */
+
+/* --- пол, потолок, стены --- */
+
+/* --- дальняя часть коридора ---
+   Те же четыре плоскости, но вчетверо мельче и растянутые обратно через
+   scale(4) в transform: браузер растрирует плоскость по её собственному
+   размеру, а не по месту на экране, поэтому такой коридор обходится
+   вчетверо дешевле сплошного. Все размеры здесь тоже делятся на четыре —
+   иначе плинтус, карниз и разметка пола растянулись бы вместе с плоскостью.
+   Множитель продублирован в js (FAR_K); правится в паре.
+
+   Плоскости уходят в темноту: сплошного края у коридора нет, и конец
+   прорисовки не читается. Направления перехода у всех четырёх разные —
+   плоскости повёрнуты друг относительно друга, и «вдаль» у каждой своя
+   сторона (проверено снимками с раскрашенными половинками). */
+
+/* заглушка в самом конце: дальше не рисуется ничего */
+
+/* --- дальняя стена с логотипом --- */
+
+/* содержимое дальней стены — единым блоком строго по центру */
+
+/* --- имя художника на стене --- */
+/* backface-visibility — чтобы при довороте камеры к работе не показывалась
+   зеркальная изнанка надписей и рам */
+
+/* ------------------------ полотно -------------------------- */
+
+/* рамка — отдельная кнопка: по ней работа открывается во весь экран */
+
+/* свет софита над полотном (радиальный градиент — дёшево для GPU) */
+
+/* табличка под полотном: фото художника + название */
+/* табличка — вторая кнопка: по ней открывается карточка художника */
+
+/* наведение / фокус: полотно выступает из стены, свет ярче */
+
+/* табличка отзывается на курсор сама по себе — это отдельная кнопка */
+
+/* появление полотен при входе в зал */
+
+/* --------------------- атмосфера ---------------------------- */
+
+/* ------------------------- HUD ------------------------------ */
+
+/* полоса прогресса — только индикатор: нажатия ей ни к чему, а лежит она
+   ровно над зоной шага «назад» и перехватывала их */
+
+.artc-hint {
+  position: absolute;
+  top: 18px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex; align-items: center; gap: 9px;
+  background: rgba(18, 13, 5, .58);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #FBF3E0;
+  font-size: 13px;
+  padding: 9px 17px;
+  border-radius: 999px;
+  pointer-events: none;
+  animation: artc-hint-in 1s .9s ease-out both, artc-pulse 3.4s 2s ease-in-out infinite;
+  max-width: calc(100% - 28px);
+  text-align: left;
+  margin: 0;
+}
+.artc-hint b { font-weight: 700; }
+.artc-hint svg { width: 16px; height: 16px; flex: 0 0 16px; }
+.artc-hint.is-hidden { animation: artc-hint-out .5s ease-in both; }
+@keyframes artc-hint-in { from { opacity: 0; transform: translate(-50%, -14px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes artc-hint-out { to { opacity: 0; transform: translate(-50%, -14px); } }
+@keyframes artc-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(228, 115, 111, 0); } 50% { box-shadow: 0 0 0 7px rgba(228, 115, 111, .13); } }
+
+/* «шторка» на входе в зал */
+
+/* ------------------- адаптивность зала ---------------------- */
+@media (max-width: 900px) {
+  .artc-stage { --hw: 360px; --hh: 285px; --step: 620px; --art-h: 240px; }
+  
+}
+@media (max-width: 600px) {
+  .artc-stage {
+    --hw: 250px; --hh: 245px; --step: 500px; --art-h: 180px;
+    height: clamp(360px, 62vh, 520px);
+    border-radius: 16px;
+  }
+  
+     /* см. основной блок */
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  /* под кнопкой «3D-галерея», а не поверх неё */
+  /* ширина по тексту, но не шире сцены: иначе подсказка сжималась в узкую колонку */
+  .artc-hint { font-size: 11.5px; padding: 7px 12px; top: 62px; line-height: 1.35; width: max-content; max-width: calc(100% - 28px); box-sizing: border-box; }
+  .artc-views__btn { padding: 8px 16px; font-size: 14px; }
+}
+
+/* --------- бережный режим: без движения и мерцания ---------- */
+@media (prefers-reduced-motion: reduce) {
+  
+  
+  
+   .artc-hint, .artc-view { animation: none !important; }
+}
+
+/* ============================================================
+   Дополнительные анимации: свет, появление карточки, акценты
+   ============================================================ */
+
+/* мягкое «дыхание» освещения — на лёгком слое поверх сцены,
+   а не фильтром по гигантской плоскости потолка */
+
+/* блик, пробегающий по раме при наведении */
+
+/* карточка художника: содержимое проявляется по очереди */
+.artc-artist__head  { animation: artc-rise .55s .04s cubic-bezier(.2, .8, .3, 1) both; }
+.artc-artist__bio,
+.artc-more          { animation: artc-rise .55s .12s cubic-bezier(.2, .8, .3, 1) both; }
+.artc-links         { animation: artc-rise .55s .18s cubic-bezier(.2, .8, .3, 1) both; }
+.artc-works         { animation: artc-rise .55s .24s cubic-bezier(.2, .8, .3, 1) both; }
+.artc-artist__foot  { animation: artc-rise .55s .32s cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes artc-rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* работы в карточке проявляются каскадом */
+.artc-works .artc-work { animation: artc-work-in .5s cubic-bezier(.2, .8, .3, 1) both; }
+.artc-works .artc-work:nth-child(1) { animation-delay: .28s; }
+.artc-works .artc-work:nth-child(2) { animation-delay: .35s; }
+.artc-works .artc-work:nth-child(3) { animation-delay: .42s; }
+.artc-works .artc-work:nth-child(4) { animation-delay: .49s; }
+.artc-works .artc-work:nth-child(n+5) { animation-delay: .56s; }
+@keyframes artc-work-in {
+  from { opacity: 0; transform: translateY(16px) scale(.94); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* кнопка покупки: живой блик и мягкая пульсация тени */
+.artc-buy { position: relative; overflow: hidden; }
+.artc-buy::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0; left: -60%;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .42), transparent);
+  transform: skewX(-18deg);
+  animation: artc-buy-shine 4.6s 1.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes artc-buy-shine {
+  0%, 62% { left: -60%; }
+  86%     { left: 120%; }
+  100%    { left: 120%; }
+}
+.artc-artist__foot .artc-buy { animation: artc-buy-beat 3.6s 1s ease-in-out infinite; }
+@keyframes artc-buy-beat {
+  0%, 100% { box-shadow: 0 8px 20px rgba(228, 115, 111, .45); }
+  50%      { box-shadow: 0 10px 30px rgba(228, 115, 111, .72); }
+}
+
+/* карточки карусели «дышат» при наведении, обложка приближается */
+.artc-card__cover img { transition: transform .7s cubic-bezier(.2, .7, .3, 1); }
+.artc-card__inner:hover .artc-card__cover img,
+.artc-card__inner:focus-visible .artc-card__cover img { transform: scale(1.07); }
+
+/* логотип в шапке мягко проявляется */
+.artc-head__logo { animation: artc-logo-in 1.1s cubic-bezier(.2, .8, .3, 1) both; }
+.artc-head__title { animation: artc-rise .7s .16s cubic-bezier(.2, .8, .3, 1) both; }
+.artc-head__sub { animation: artc-rise .7s .26s cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes artc-logo-in {
+  from { opacity: 0; transform: translateY(-12px) scale(.96); filter: blur(6px); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .artc-buy::after, .artc-artist__foot .artc-buy,
+  .artc-head__logo, .artc-head__title, .artc-head__sub,
+  .artc-artist__head, .artc-artist__bio, .artc-more, .artc-links,
+  .artc-works, .artc-works .artc-work, .artc-artist__foot { animation: none !important; }
+}
+
+/* ============================================================
+   Напольная навигация, арт-объекты и глубина коридора
+   ============================================================ */
+
+/* --- стрелки-указатели, лежащие на полу зала --- */
+
+/* --- арт-объекты зала: вазы, скульптура --- */
+
+/* тень объекта на полу */
+
+/* --- ритм архитектуры: пилястры и карниз для глубины --- */
+/* пилястры — отдельные узкие элементы внутри стены: тот же ритм,
+   но рисуется десяток полос вместо заливки всей плоскости */
+
+/* ------------------------------------------------------------
+   Облегчённый режим: включается автоматически, если устройство
+   не тянет полную сцену (замер частоты кадров при входе в зал).
+   ------------------------------------------------------------ */
+
+/* ============================================================
+   Полноэкранный режим и удобные зоны нажатия для шага
+   ============================================================ */
+
+/* большие прозрачные зоны поверх сцены: попасть по «наклейке» на полу
+   курсором почти невозможно — она сплющена перспективой, поэтому
+   нажатие ловит зона, а сама стрелка остаётся только рисунком */
+
+/* подсветка нарисованной стрелки, когда курсор в её зоне */
+
+/* --- боковые стрелки обзора (сенсорные экраны) ---
+   Мышью зал осматривают движением курсора, пальцем — этими кнопками:
+   касание в сцене означает шаг по коридору, и обзор ему не подчинить.
+   Ставим их по краям на уровне глаз: там нет ни зон шага (они внизу),
+   ни полотен, к которым зритель тянется пальцем. */
+
+/* пока открыт список художников, стрелки не мешаются */
+
+/* --- кнопка «во весь экран» --- */
+.artc-fs {
+  position: absolute;
+  top: 14px; right: 14px;
+  z-index: 5;
+  width: 44px; height: 44px;
+  border-radius: 50%; border: none;
+  cursor: pointer;
+  background: rgba(18, 13, 5, .55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #FBF3E0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .25s ease, transform .25s ease;
+}
+.artc-fs svg { width: 20px; height: 20px; }
+.artc-fs:hover { background: var(--artc-coral); transform: scale(1.08); }
+.artc-fs:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+.artc-fs .artc-fs__exit { display: none; }
+.artc-stage.is-fs .artc-fs .artc-fs__exit { display: block; }
+.artc-stage.is-fs .artc-fs .artc-fs__enter { display: none; }
+
+/* Запасной полноэкранный режим (iPhone): зал переезжает в body внутрь
+   этой обёртки — она и растягивается на экран. Отступы и фон каталога
+   здесь сброшены, от .artc-root нужны только css-переменные. */
+.artc-fs-host {
+  position: fixed;
+  inset: 0;
+  z-index: 99980;
+  padding: 0;
+  border-radius: 0;
+  background: #1A150C;
+  overflow: hidden;
+}
+.artc-fs-host::after { display: none; }   /* зернистая текстура тут не нужна */
+.artc-fs-host .artc-stage {
+  max-width: none;
+  height: 100%;
+  margin: 0;
+  border-radius: 0;
+}
+
+/* Во весь экран странице уже нечего прокручивать, поэтому зал забирает
+   себе и вертикальные жесты: провести пальцем сверху вниз — самое
+   естественное движение «пройти по коридору». В обычном же режиме
+   вертикаль остаётся за страницей, иначе виджет запер бы прокрутку. */
+.artc-stage.is-fs { touch-action: none; }
+
+/* сцена, растянутая на весь экран */
+.artc-stage:fullscreen,
+.artc-stage:-webkit-full-screen {
+  width: 100vw; height: 100vh;
+  max-width: none;
+  border-radius: 0;
+}
+
+@media (max-width: 600px) {
+  .artc-fs { width: 38px; height: 38px; top: 10px; right: 10px; }
+  .artc-fs svg { width: 17px; height: 17px; }
+  
+}
+
+/* ------------------- автоэкскурсия и фокус ------------------- */
+
+.artc-stage.is-touring .artc-tour__play { display: none; }
+.artc-stage.is-touring .artc-tour__stop { display: block; }
+
+/* осмотр поворотом телефона: пока включён — кнопка активна, а камера
+   ходит за датчиком без сглаживающего перехода (иначе взгляд запаздывает) */
+
+/* полотно, к которому подошли: свет ярче, рама чуть выступает */
+
+/* ============================================================
+   Разделы выставки и поиск художника в длинном зале
+   ============================================================ */
+
+/* переключатель «Арт-салон / Галереи» — под переключателем режима просмотра */
+.artc-sections {
+  position: relative; z-index: 3;
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  margin: -8px auto 22px;
+}
+.artc-sections__btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid rgba(33, 29, 23, .16);
+  background: rgba(255, 255, 255, .5);
+  color: var(--artc-ink);
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background .25s ease, border-color .25s ease, transform .25s ease;
+}
+.artc-sections__btn i {
+  font-style: normal; font-size: 12px;
+  padding: 1px 8px; border-radius: 999px;
+  background: rgba(33, 29, 23, .1);
+}
+.artc-sections__btn:hover { background: #fff; transform: translateY(-1px); }
+.artc-sections__btn.is-active {
+  background: var(--artc-teal); border-color: var(--artc-teal); color: #fff;
+}
+.artc-sections__btn.is-active i { background: rgba(255, 255, 255, .26); }
+.artc-sections__btn:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
+
+/* кнопка со списком художников вместо ряда фамилий */
+
+/* сама панель поиска — внутри сцены, поэтому работает и в полноэкранном режиме */
+.artc-find {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  width: min(460px, calc(100% - 28px));
+  max-height: min(78%, 560px);
+  display: flex; flex-direction: column;
+  background: rgba(24, 18, 8, .92);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, .55);
+  overflow: hidden;
+  animation: artc-find-in .25s ease-out;
+}
+@keyframes artc-find-in {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(.97); }
+}
+.artc-find[hidden] { display: none; }
+.artc-find__head { display: flex; gap: 8px; padding: 12px 12px 10px; }
+.artc-find__input {
+  flex: 1 1 auto; min-width: 0;
+  border: 1px solid rgba(255, 247, 228, .26);
+  background: rgba(255, 247, 228, .1);
+  color: #FBF3E0;
+  border-radius: 12px;
+  padding: 11px 14px;
+  font: inherit; font-size: 16px;   /* мельче 16 px iPhone приближает страницу при вводе */
+}
+.artc-find__input::placeholder { color: rgba(251, 243, 224, .55); }
+.artc-find__input:focus { outline: 2px solid var(--artc-teal); outline-offset: 1px; }
+.artc-find__close {
+  flex: 0 0 42px; width: 42px; height: 42px;
+  border: none; border-radius: 50%;
+  background: rgba(255, 247, 228, .12);
+  color: #FBF3E0; font-size: 16px; cursor: pointer;
+}
+.artc-find__close:hover { background: var(--artc-coral); }
+.artc-find__list {
+  list-style: none; margin: 0; padding: 0 8px 10px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.artc-find__list button {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%;
+  border: none; background: none;
+  color: #FBF3E0;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font: inherit;
+  cursor: pointer;
+}
+.artc-find__list button:hover,
+.artc-find__list button:focus-visible {
+  background: rgba(255, 247, 228, .14);
+  outline: none;
+}
+.artc-find__ava {
+  flex: 0 0 40px; width: 40px; height: 40px;
+  border-radius: 50%; overflow: hidden;
+  background: rgba(255, 247, 228, .12);
+}
+.artc-find__ava img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.artc-find__meta { min-width: 0; }
+.artc-find__meta b { display: block; font-weight: 600; font-size: 15px; }
+.artc-find__meta span { display: block; font-size: 12px; color: rgba(251, 243, 224, .6); }
+.artc-find__empty { margin: 0; padding: 6px 22px 20px; color: rgba(251, 243, 224, .6); font-size: 14px; }
+
+@media (max-width: 600px) {
+  .artc-sections { margin: -4px auto 18px; gap: 6px; }
+  .artc-sections__btn { padding: 7px 14px; font-size: 13.5px; }
+  .artc-find { width: calc(100% - 16px); max-height: 84%; }
+  .artc-find__list button { padding: 7px 8px; }
+  
+}
+
+/* указатель по буквам внутри панели поиска зала */
+.artc-find__abc {
+  padding: 0 12px 10px;
+  gap: 4px;
+}
+.artc-find__abc button {
+  min-width: 28px; height: 28px;
+  border: none; border-radius: 8px;
+  background: rgba(255, 247, 228, .1);
+  color: #FBF3E0;
+  font: inherit; font-size: 13.5px;
+  cursor: pointer;
+}
+.artc-find__abc button:hover { background: rgba(255, 247, 228, .24); }
+.artc-find__abc button.is-active { background: var(--artc-coral); }
+.artc-find__abc[hidden] { display: none; }
+
+/* ---------- загрузчик WebGL-галереи ----------
+   Сразу вместо заставки: песочные часы пересыпаются по ходу загрузки,
+   рядом проценты и сколько осталось. Светлый, как сама галерея. */
+.artc-glwrap {
+  position: relative;
+  z-index: 1;
+  max-width: 1160px;
+  margin: 0 auto;
+  min-height: clamp(480px, 80vh, 760px);
+}
+.artc-glload {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  box-sizing: border-box;
+  padding: 24px;
+  border-radius: 22px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  color: #2A2A2A;
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  background: linear-gradient(180deg, #F7F7F5 0%, #F1F0EE 62%, #D9D8D4 62.2%, #E4E3E0 100%);
+  box-shadow: 0 18px 50px rgba(0,0,0,.12);
+  transition: opacity .5s ease, visibility .5s;
+}
+.artc-glload.is-done { opacity: 0; visibility: hidden; pointer-events: none; }
+.artc-glload__glass { width: 64px; height: 96px; margin-bottom: 6px; animation: artc-hg-tilt 3.2s ease-in-out infinite; }
+.artc-glload__frame { fill: none; stroke: #2A2A2A; stroke-width: 2; stroke-linejoin: round; }
+.artc-glload__cap { fill: #2A2A2A; }
+.artc-glload__sand { fill: #E4736F; transition: y .4s ease, height .4s ease; }
+.artc-glload__stream { stroke: #E4736F; stroke-width: 1.6; stroke-dasharray: 3 4; animation: artc-hg-flow .5s linear infinite; }
+.artc-glload.is-done .artc-glload__stream { display: none; }
+@keyframes artc-hg-flow { to { stroke-dashoffset: -7; } }
+@keyframes artc-hg-tilt { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+.artc-glload h3 {
+  margin: 0;
+  font: 300 clamp(22px, 3.6vw, 34px)/1.1 "Inter", "Helvetica Neue", Arial, sans-serif;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.artc-glload__txt { margin: 0; font-size: 15px; color: #6F6F6B; min-height: 1.5em; }
+.artc-glload__num { font: 300 44px/1 "Inter", "Helvetica Neue", Arial, sans-serif; letter-spacing: .02em; }
+.artc-glload__num b { font-weight: 400; }
+.artc-glload__bar { width: min(320px, 70%); height: 4px; border-radius: 4px; background: rgba(0,0,0,.08); overflow: hidden; }
+.artc-glload__bar i { display: block; height: 100%; width: 0; background: #2A2A2A; border-radius: 4px; transition: width .4s ease; }
+.artc-glload__eta { margin: 0; font-size: 13px; color: #8C8C88; min-height: 1.4em; }
+.artc-glload__css,
+.artc-mode {
+  appearance: none;
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid rgba(42,42,42,.28); border-radius: 999px;
+  background: rgba(255,255,255,.85); color: #2A2A2A;
+  padding: 10px 18px; cursor: pointer;
+  font: 500 14px/1 "Inter", "Helvetica Neue", Arial, sans-serif;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.artc-glload__css { margin-top: 10px; }
+.artc-glload__css svg, .artc-mode svg { width: 17px; height: 17px; flex-shrink: 0; }
+.artc-glload__css:hover, .artc-mode:hover { background: #fff; border-color: rgba(42,42,42,.5); }
+.artc-glload__css:focus-visible, .artc-mode:focus-visible { outline: 2px solid #2A2A2A; outline-offset: 3px; }
+.artc-glload small { max-width: 360px; font-size: 12px; color: #8C8C88; }
+/* кнопка «3D-галерея» в простом зале — слева сверху, всегда на виду */
+          /* летающая пыль отвлекала — выключена */
+.artc-mode { position: absolute; left: 14px; top: 14px; z-index: 7; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+@media (max-width: 600px) {
+  .artc-glwrap { min-height: clamp(440px, 74vh, 640px); }
+  .artc-glload { border-radius: 16px; gap: 8px; }
+  .artc-glload__num { font-size: 36px; }
+  .artc-mode { padding: 8px 12px; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .artc-glload__glass, .artc-glload__stream { animation: none; }
+}
+
+/* низкий экран (телефон горизонтально): зал и загрузчик не выше экрана,
+   иначе кнопки внизу уходят за край */
+@media (max-height: 520px) {
+  .artc-stage { height: calc(100vh - 24px); height: calc(100svh - 24px); min-height: 260px; }
+  .artc-glwrap { min-height: calc(100vh - 24px); min-height: calc(100svh - 24px); }
+  .artc-glload { gap: 6px; padding: 12px; }
+  .artc-glload__glass { width: 40px; height: 60px; margin: 0; }
+  .artc-glload small { display: none; }
+}
+
+/* ==================== простой зал: стена с работами ====================
+   Одна длинная стена слева от зрителя, отрезок на художника, излом между
+   ними. Пол и потолок — градиенты фона сцены; справа дневной свет из
+   проёмов противоположной стены (полосы плывут при ходьбе). */
+.artc-stage.artc-hw {
+  background: linear-gradient(#F5F3EF 0%, #EFECE6 44%, #E6E1D8 55%, #DAD4C8 100%);
+  box-shadow: var(--artc-shadow);
+  cursor: grab;
+}
+.artc-hw__day {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(270deg, rgba(255, 252, 240, .9) 0%, rgba(255, 252, 240, 0) 36%),
+    repeating-linear-gradient(90deg, rgba(255, 250, 232, 0) 0 420px, rgba(255, 250, 232, .5) 520px 700px, rgba(255, 250, 232, 0) 800px 1400px);
+  -webkit-mask-image: linear-gradient(270deg, #000 0%, rgba(0,0,0,.35) 45%, transparent 75%);
+  mask-image: linear-gradient(270deg, #000 0%, rgba(0,0,0,.35) 45%, transparent 75%);
+}
+.artc-hw__scene { position: absolute; inset: 0; perspective: 900px; perspective-origin: 50% 46%; overflow: hidden; }
+.artc-hw__world { position: absolute; left: 50%; top: 46%; width: 0; height: 0; transform-style: preserve-3d; }
+.artc-hw__seg {
+  position: absolute; left: 0; top: 0;
+  -webkit-backface-visibility: hidden; backface-visibility: hidden;
+  background: linear-gradient(180deg, #FAF9F6 0%, #F4F2ED 70%, #ECE9E2 100%);
+}
+.artc-hw__seg.is-shade { background: linear-gradient(180deg, #F2F0EB 0%, #ECE9E3 70%, #E4E1D9 100%); }
+.artc-hw__seg::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 10px; background: #DCD8CF; z-index: 0; }
+.artc-hw__seg > * { z-index: 1; }   /* плинтус — под табличками, а не поверх */
+.artc-hw__name {
+  position: absolute; left: 34px; top: 26px; right: 34px;
+  appearance: none; border: 0; background: none; padding: 0; margin: 0; text-align: left; cursor: pointer;
+  color: #2A2A2A; font: 300 44px/1.15 "Inter", "Helvetica Neue", Arial, sans-serif; letter-spacing: .01em;
+}
+.artc-hw__name small { display: block; margin-top: 6px; font-size: .42em; letter-spacing: .2em; color: #8C8C88; font-weight: 400; text-transform: uppercase; }
+.artc-hw__name i { display: inline-block; margin-top: 8px; font-style: normal; font-size: .34em; letter-spacing: .14em; color: #D4574F; font-weight: 600; text-transform: uppercase; }
+.artc-hw__name:hover i { text-decoration: underline; text-underline-offset: 4px; }
+.artc-hw__spot { position: absolute; pointer-events: none; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 248, 232, .75), rgba(255, 248, 232, 0)); }
+.artc-hw__art {
+  position: absolute; box-sizing: border-box; padding: 0; margin: 0; cursor: pointer;
+  border: 6px solid #1C1C1C; background: #E8E5DF;
+  box-shadow: 0 14px 26px rgba(0, 0, 0, .18), 0 2px 4px rgba(0, 0, 0, .12);
+  transition: box-shadow .2s ease;
+}
+.artc-hw__art img { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.artc-hw__art:hover { box-shadow: 0 18px 34px rgba(0, 0, 0, .26), 0 2px 4px rgba(0, 0, 0, .14); }
+.artc-hw__plq {
+  position: absolute; appearance: none; border: 0; margin: 0; cursor: pointer; text-align: left;
+  background: #fff; padding: 8px 10px 9px; box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+  font: 400 13px/1.25 "Inter", "Helvetica Neue", Arial, sans-serif; color: #2A2A2A;
+}
+.artc-hw__plq b { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; overflow-wrap: anywhere; font-weight: 600; }
+.artc-hw__plq span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; color: #6F6F6B; }
+.artc-hw__plq i { display: inline-block; margin-top: 6px; background: #D4574F; color: #fff; font-style: normal; font-weight: 600; font-size: 11px; padding: 3px 8px; border-radius: 99px; }
+.artc-hw__art:focus-visible, .artc-hw__plq:focus-visible, .artc-hw__name:focus-visible { outline: 3px solid #2A2A2A; outline-offset: 4px; }
+.artc-hw__end { display: flex; align-items: center; justify-content: center; }
+.artc-hw__fin { text-align: center; color: #2A2A2A; font-family: "Inter", "Helvetica Neue", Arial, sans-serif; }
+.artc-hw__fin picture, .artc-hw__fin img { display: block; width: 240px; margin: 0 auto 14px; }
+.artc-hw__fin h3 { font-weight: 300; font-size: 32px; margin: 0 0 8px; }
+.artc-hw__fin p { margin: 0 0 8px; color: #6F6F6B; font-size: 16px; }
+.artc-hw__fin .artc-hw__invite { margin-bottom: 20px; }
+.artc-hw__go { appearance: none; margin: 4px; padding: 11px 20px; border-radius: 99px; border: 0; background: #2A2A2A; color: #fff; font: 500 15px/1 "Inter", Arial, sans-serif; cursor: pointer; }
+.artc-hw__go--light { background: #fff; color: #2A2A2A; box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
+
+/* надписи и кнопки поверх сцены */
+.artc-hw__top { position: absolute; left: 16px; top: 14px; right: 14px; z-index: 5; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; pointer-events: none; }
+.artc-hw__where { min-width: 0; line-height: 1.3; }
+.artc-hw__where b { display: block; font: 500 12px/1.3 "Inter", Arial, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #2A2A2A; }
+.artc-hw__who { pointer-events: auto; appearance: none; border: 0; background: none; padding: 0; margin: 2px 0 0; cursor: pointer; text-align: left;
+  font: 400 14px/1.3 "Inter", Arial, sans-serif; color: #6F6F6B; text-decoration: underline; text-decoration-color: rgba(42,42,42,.3); text-underline-offset: 3px;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.artc-hw__who:hover { color: #2A2A2A; }
+.artc-hw__btns { display: flex; gap: 8px; pointer-events: auto; flex-shrink: 0; }
+.artc-hw .artc-mode { position: static; border: 0; background: rgba(255, 255, 255, .92); box-shadow: 0 4px 14px rgba(0,0,0,.1); padding: 0 16px; height: 42px; }
+.artc-hw__fin--intro h3 { font-size: 64px; letter-spacing: .02em; }
+.artc-hw__fin--intro p { font-size: 20px; }
+.artc-hw__fin--intro .artc-hw__invite { color: #D4574F; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: 16px; }
+.artc-hw__btn, .artc-hw .artc-fs {
+  position: static; width: 42px; height: 42px; border-radius: 50%; border: 0; cursor: pointer; flex-shrink: 0;
+  background: rgba(255, 255, 255, .92); color: #2A2A2A; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .1); transition: background .2s ease, transform .2s ease;
+}
+.artc-hw__btn svg, .artc-hw .artc-fs svg { width: 20px; height: 20px; }
+.artc-hw__btn:hover, .artc-hw .artc-fs:hover { background: #fff; transform: none; }
+.artc-hw__btn:disabled { opacity: .35; cursor: default; }
+.artc-hw__btn:focus-visible { outline: 2px solid #2A2A2A; outline-offset: 2px; }
+.artc-hw__tour[aria-pressed="true"], .artc-hw__music[aria-pressed="true"] { background: #2A2A2A; color: #fff; }
+.artc-hw__nav { position: absolute; left: 0; right: 0; bottom: max(14px, env(safe-area-inset-bottom)); z-index: 5; display: flex; justify-content: center; align-items: center; gap: 12px; pointer-events: none; }
+.artc-hw__nav > * { pointer-events: auto; }
+.artc-hw__nav .artc-hw__prev, .artc-hw__nav .artc-hw__next { width: 48px; height: 48px; }
+.artc-hw__count { font: 500 13px/1 "Inter", Arial, sans-serif; color: #2A2A2A; background: rgba(255, 255, 255, .88); padding: 10px 14px; border-radius: 99px; min-width: 7.5em; text-align: center; }
+.artc-hw .artc-hint { top: auto; bottom: 78px; background: rgba(42, 42, 42, .72); color: #fff; }
+.artc-stage.artc-hw.is-fs .artc-hw__top { top: max(14px, env(safe-area-inset-top)); left: max(16px, env(safe-area-inset-left)); right: max(14px, env(safe-area-inset-right)); }
+@media (max-width: 600px) {
+  .artc-hw__btn, .artc-hw .artc-fs { width: 38px; height: 38px; }
+  .artc-hw .artc-mode span { display: none; }
+  .artc-hw .artc-mode { padding: 0; width: 38px; height: 38px; justify-content: center; }
+  .artc-hw__count { min-width: 0; padding: 9px 12px; }
+  .artc-hw__who { display: none; }
+  .artc-hw__where b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+@media (prefers-reduced-motion: reduce) { .artc-hw__art { transition: none; } }
+
+/* ==================== куратор ====================
+   В простом зале — фигура перед вступительной стеной раздела, лицом к
+   зрителю, с облачком над головой. Окно вопросов — общее для простого зала
+   и 3D-галереи, лежит внутри сцены (так оно видно и во весь экран). */
+.artc-hw__seg.has-guide { justify-content: flex-end; padding-right: 60px; }
+.artc-hw__guide {
+  position: absolute; left: 0; top: 0;
+  appearance: none; border: 0; padding: 0; margin: 0; background: none; cursor: pointer;
+  transform-origin: 50% 100%;
+  -webkit-backface-visibility: hidden; backface-visibility: hidden;
+}
+.artc-hw__guide img { display: block; width: 100%; height: 100%; pointer-events: none; -webkit-user-drag: none; }
+/* движение: кадр ролика выше фигуры (стоящая — 90 % кадра), низ — пол */
+.artc-hw__guide .artc-hw__anim {
+  position: absolute; left: 50%; bottom: 0; width: auto; height: 111.112%; max-width: none;
+  transform: translateX(-50%); opacity: 0;
+}
+.artc-hw__guide.is-anim .artc-hw__anim { opacity: 1; }
+.artc-hw__guide.is-anim .artc-hw__anim + img { opacity: 0; }
+.artc-hw__guide::after {                /* тень на полу */
+  content: ""; position: absolute; left: 4%; right: 4%; bottom: -10px; height: 24px; z-index: -1;
+  background: radial-gradient(closest-side, rgba(40, 30, 20, .3), rgba(40, 30, 20, 0));
+}
+.artc-hw__say {
+  position: absolute; left: 56%; bottom: calc(100% + 16px);
+  width: max-content; max-width: 300px;
+  padding: 12px 16px; border-radius: 18px;
+  background: #fff; color: #2A2A2A;
+  font: 400 19px/1.3 "Inter", "Helvetica Neue", Arial, sans-serif; text-align: left;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .14);
+  transition: opacity .3s ease, background-color .2s ease, color .2s ease;
+}
+.artc-hw__say::after {
+  content: ""; position: absolute; left: 20px; top: 100%;
+  border: 10px solid transparent; border-top-color: #fff; border-bottom: 0; border-left-width: 4px;
+  transition: border-color .2s ease;
+}
+.artc-hw__guide:hover .artc-hw__say, .artc-hw__guide:focus-visible .artc-hw__say { background: #2A2A2A; color: #fff; }
+.artc-hw__guide:hover .artc-hw__say::after, .artc-hw__guide:focus-visible .artc-hw__say::after { border-top-color: #2A2A2A; }
+.artc-hw__guide:focus-visible { outline: none; }
+.has-cur .artc-hw__say { opacity: 0; }
+
+.artc-cur {
+  position: absolute; left: 16px; bottom: 16px; z-index: 30;
+  width: min(390px, calc(100% - 32px)); max-height: calc(100% - 90px);
+  display: flex; flex-direction: column;
+  background: rgba(255, 255, 255, .97); color: #2A2A2A;
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .22), 0 2px 6px rgba(0, 0, 0, .08);
+  font: 400 15px/1.4 "Inter", "Helvetica Neue", Arial, sans-serif; text-align: left;
+  overflow: hidden; cursor: auto;
+  -webkit-user-select: text; user-select: text;
+  animation: artc-cur-in .28s ease-out;
+}
+.artc-cur[hidden] { display: none; }
+@keyframes artc-cur-in { from { opacity: 0; transform: translateY(12px); } }
+.artc-cur button { font-family: inherit; }
+.artc-cur__head { flex: none; display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 14px; border-bottom: 1px solid rgba(0, 0, 0, .07); }
+.artc-cur__face { flex: none; width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: #ECE7DF; }
+.artc-cur__who { flex: 1 1 auto; min-width: 0; line-height: 1.25; }
+.artc-cur__who b { display: block; font-weight: 600; font-size: 15px; }
+.artc-cur__who span { font-size: 12.5px; color: #6F6F6B; }
+.artc-cur__close {
+  flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%; padding: 0;
+  display: grid; place-items: center;
+  background: #F1F0EE; color: #2A2A2A; cursor: pointer;
+}
+.artc-cur__close:hover { background: #E4E2DD; }
+.artc-cur__log {
+  flex: 1 1 auto; min-height: 80px; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
+  display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 8px;
+}
+.artc-cur__msg { max-width: 88%; padding: 10px 14px; border-radius: 18px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.artc-cur__msg--cur { align-self: flex-start; background: #F3F1EC; border-bottom-left-radius: 6px; }
+.artc-cur__msg--me { align-self: flex-end; background: #2A2A2A; color: #fff; border-bottom-right-radius: 6px; }
+.artc-cur__go {
+  display: block; margin: 8px 0 2px; padding: 0; border: 0; background: none; cursor: pointer;
+  color: #D4574F; font-size: 13px; font-weight: 600; letter-spacing: .02em;
+}
+.artc-cur__go:hover { text-decoration: underline; text-underline-offset: 3px; }
+.artc-cur__dots { display: flex; gap: 5px; padding: 15px 16px; }
+.artc-cur__dots i { width: 7px; height: 7px; border-radius: 50%; background: #9A968E; animation: artc-cur-dot 1.1s infinite ease-in-out; }
+.artc-cur__dots i:nth-child(2) { animation-delay: .15s; }
+.artc-cur__dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes artc-cur-dot { 0%, 60%, 100% { opacity: .3; transform: none; } 30% { opacity: 1; transform: translateY(-3px); } }
+.artc-cur__chips { flex: none; display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 14px 10px; }
+.artc-cur__chips:empty { display: none; }
+.artc-cur__chip {
+  border: 1px solid rgba(42, 42, 42, .2); background: #fff; color: #2A2A2A; cursor: pointer;
+  border-radius: 99px; padding: 7px 12px; font-size: 13px; font-weight: 500; line-height: 1.2;
+}
+.artc-cur__chip:hover { border-color: #2A2A2A; }
+.artc-cur__form { flex: none; display: flex; gap: 8px; padding: 10px 12px 12px; border-top: 1px solid rgba(0, 0, 0, .07); }
+.artc-cur__input {
+  flex: 1 1 auto; min-width: 0; margin: 0;
+  border: 1px solid rgba(42, 42, 42, .18); border-radius: 99px; padding: 10px 16px;
+  background: #fff; color: #2A2A2A;
+  font: 400 16px/1.2 "Inter", "Helvetica Neue", Arial, sans-serif;   /* мельче 16 px iPhone приближает страницу */
+}
+.artc-cur__input:focus { outline: none; border-color: #2A2A2A; }
+.artc-cur__send {
+  flex: none; width: 42px; height: 42px; border: 0; border-radius: 50%; padding: 0;
+  display: grid; place-items: center;
+  background: #D4574F; color: #fff; cursor: pointer;
+}
+.artc-cur__send:hover { background: #BF4A43; }
+.artc-cur.is-busy .artc-cur__send { opacity: .5; cursor: default; }
+.artc-cur__mic, .artc-cur__voice {
+  flex: none; width: 42px; height: 42px; border: 0; border-radius: 50%; padding: 0;
+  display: grid; place-items: center; cursor: pointer;
+  background: #F1F0EE; color: #2A2A2A;
+}
+.artc-cur__voice { width: 36px; height: 36px; }
+.artc-cur__mic:hover, .artc-cur__voice:hover { background: #E4E2DD; }
+.artc-cur__mic.is-on { background: #D4574F; color: #fff; animation: artc-cur-mic 1.2s ease-in-out infinite; }
+@keyframes artc-cur-mic { 0%, 100% { box-shadow: 0 0 0 0 rgba(212, 87, 79, .45); } 50% { box-shadow: 0 0 0 8px rgba(212, 87, 79, 0); } }
+.artc-cur__voice .artc-cur__wave { opacity: .25; }
+.artc-cur__voice.is-on { background: #2A2A2A; color: #fff; }
+.artc-cur__voice.is-on .artc-cur__wave { opacity: 1; }
+.artc-cur__mic:focus-visible, .artc-cur__voice:focus-visible { outline: 2px solid #2A2A2A; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .artc-cur__mic.is-on { animation: none; } }
+.artc-cur__close:focus-visible, .artc-cur__chip:focus-visible, .artc-cur__send:focus-visible, .artc-cur__go:focus-visible { outline: 2px solid #2A2A2A; outline-offset: 2px; }
+@media (max-width: 560px) {
+  .artc-cur { left: 8px; right: 8px; bottom: 8px; width: auto; max-height: calc(100% - 64px); border-radius: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .artc-cur, .artc-cur__dots i { animation: none; }
+}

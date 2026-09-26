@@ -1,9 +1,13 @@
-from django.urls import path
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
+try:  # Django 2.0+
+    from django.urls import re_path
+except ImportError:  # Django 1.8–1.11
+    from django.conf.urls import url as re_path
 
 from . import views
 
-app_name = "artcatalog"
-
 urlpatterns = [
-    path("lead/", views.lead, name="lead"),
+    re_path(r"^lead/$", views.lead, name="artcatalog_lead"),
 ]
