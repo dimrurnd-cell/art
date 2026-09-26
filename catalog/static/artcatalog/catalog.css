@@ -375,7 +375,14 @@
 .artc-lightbox .artc-arrow:hover { background: var(--artc-coral); }
 .artc-lightbox .artc-arrow--prev { left: 10px; }
 .artc-lightbox .artc-arrow--next { right: 10px; }
-.artc-lightbox .artc-modal__close { background: rgba(255,255,255,.16); }
+.artc-lightbox__frame { position: relative; display: inline-block; max-width: 100%; line-height: 0; }
+.artc-lightbox__frame picture { display: block; }
+/* крестик на углу работы — рядом с картиной, где его ищет взгляд */
+.artc-lightbox .artc-modal__close {
+  top: -18px; right: -18px;
+  background: rgba(33,29,23,.92); border: 2px solid rgba(255,247,228,.55);
+  box-shadow: 0 4px 14px rgba(0,0,0,.45);
+}
 .artc-lightbox .artc-modal__close:hover { background: var(--artc-coral); }
 .artc-lightbox .artc-buy { padding: 11px 26px; font-size: 15px; }
 
@@ -473,6 +480,8 @@
   .artc-works { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .artc-lightbox__stage { padding: 54px 8px 20px; }
   .artc-lightbox .artc-arrow--prev { left: 4px; }
+  /* на узком экране угол работы у края — крестик заходит на неё */
+  .artc-lightbox .artc-modal__close { top: 8px; right: 8px; }
   .artc-lightbox .artc-arrow--next { right: 4px; }
   .artc-lightbox__img { max-height: calc(100vh - 210px); }
   /* На телефоне карточка длинная, и главная кнопка уезжала под нижний край

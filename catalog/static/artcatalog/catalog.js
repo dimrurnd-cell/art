@@ -938,12 +938,7 @@
       url: this.url,
       ticketUrl: this.ticketUrl,
       objects: OBJECTS,
-      openWork: function (gi, wi) {
-        self.fromHall = true;
-        self.lbFromHall = true;
-        self.openArtist(gi);
-        self.openWork(wi);
-      },
+      openWork: function (gi, wi) { self.viewWork(gi, wi); },
       openArtist: function (gi) {
         self.fromHall = true;
         self.lbFromHall = false;
@@ -1493,10 +1488,7 @@
       var art = e.target.closest('.artc-hw__art');
       if (art) {
         user();
-        self.fromHall = true;
-        self.lbFromHall = true;
-        self.openArtist(+art.getAttribute('data-artist'));
-        self.openWork(+art.getAttribute('data-work'));
+        self.viewWork(+art.getAttribute('data-artist'), +art.getAttribute('data-work'));
         return;
       }
       var card = e.target.closest('.artc-hw__plq, .artc-hw__name');
@@ -1536,7 +1528,7 @@
       else if (k === 'End') { user(); self.wallGo(h.stops.length - 1); e.preventDefault(); }
       else if (k === 'Enter' && e.target === stage) {
         var st = h.stops[h.cur];
-        if (st && st.it) { self.fromHall = true; self.lbFromHall = true; self.openArtist(st.seg.gi); self.openWork(st.it.wi); }
+        if (st && st.it) self.viewWork(st.seg.gi, st.it.wi);
       }
     };
     document.addEventListener('keydown', onKey);
@@ -2530,7 +2522,7 @@
 
   /* ---------------- карточка художника ---------------- */
 
-  Widget.prototype.openArtist = function (i) {
+  Widget.prototype.pickArtist = function (i) {
     var n = this.artists.length;
     this.artistIdx = ((i % n) + n) % n;
     // если художник из другого раздела (переход из зала) — переключим раздел
@@ -2538,6 +2530,20 @@
     if (target && target.secIndex !== this.section && this.sections.length > 1) {
       this.switchSection(target.secIndex, true);   // зритель в 3D-зале остаётся на месте
     }
+  };
+
+  // щелчок по картине в зале: только сама работа крупно, без карточки
+  // художника под ней; закрыли — снова в зале
+  Widget.prototype.viewWork = function (gi, wi) {
+    this.fromHall = true;
+    this.lbFromHall = true;
+    if (this.artistModal.classList.contains('is-open')) this.artistModal.classList.remove('is-open');
+    this.pickArtist(gi);
+    this.openWork(wi);
+  };
+
+  Widget.prototype.openArtist = function (i) {
+    this.pickArtist(i);
     var a = this.artists[this.artistIdx];
     var self = this;
 
@@ -2629,19 +2635,23 @@
 
     this.lightbox.innerHTML =
       '<div class="artc-lightbox__stage">' +
-        '<button type="button" class="artc-modal__close" aria-label="Закрыть">&#10005;</button>' +
         '<button type="button" class="artc-arrow artc-arrow--prev" aria-label="Предыдущая работа">' + ARROW_L + '</button>' +
-        '<picture>' +
-          '<source srcset="' + esc(this.url(w.full)) + '" type="image/webp">' +
-          '<img class="artc-lightbox__img" src="' + esc(this.url(w.full).replace(/\.webp$/, '.jpg')) + '" ' +
-            'alt="' + esc((w.title || 'Работа') + ' — ' + a.name) + '">' +
-        '</picture>' +
+        // крестик — у угла самой работы, а не в углу экрана
+        '<div class="artc-lightbox__frame">' +
+          '<picture>' +
+            '<source srcset="' + esc(this.url(w.full)) + '" type="image/webp">' +
+            '<img class="artc-lightbox__img" src="' + esc(this.url(w.full).replace(/\.webp$/, '.jpg')) + '" ' +
+              'alt="' + esc((w.title || 'Работа') + ' — ' + a.name) + '">' +
+          '</picture>' +
+          '<button type="button" class="artc-modal__close" aria-label="Закрыть">&#10005;</button>' +
+        '</div>' +
         '<button type="button" class="artc-arrow artc-arrow--next" aria-label="Следующая работа">' + ARROW_R + '</button>' +
         '<p class="artc-lightbox__caption">' + caption + '</p>' +
         '<div class="artc-lightbox__actions">' +
           '<button type="button" class="artc-buy">Хочу купить картину</button>' +
           (this.lbFromHall
-            ? '<button type="button" class="artc-back">' + ARROW_L + 'Вернуться в зал</button>'
+            ? '<button type="button" class="artc-back artc-about">О художнике</button>' +
+              '<button type="button" class="artc-back artc-tohall">' + ARROW_L + 'Вернуться в зал</button>'
             : '') +
         '</div>' +
       '</div>';
@@ -2651,11 +2661,14 @@
     lb.querySelector('.artc-arrow--prev').addEventListener('click', function () { self.openWork(self.workIdx - 1); });
     lb.querySelector('.artc-arrow--next').addEventListener('click', function () { self.openWork(self.workIdx + 1); });
     lb.querySelector('.artc-buy').addEventListener('click', function () { self.openForm(a, w); });
-    var back = lb.querySelector('.artc-back');
-    if (back) back.addEventListener('click', function () {
+    var about = lb.querySelector('.artc-about');
+    // карточка открывается вместо работы; её крестик тоже ведёт в зал
+    if (about) about.addEventListener('click', function () {
+      self.openArtist(self.artistIdx);
       self.closeModal(lb);
-      if (self.artistModal.classList.contains('is-open')) self.closeModal(self.artistModal);
     });
+    var back = lb.querySelector('.artc-tohall');
+    if (back) back.addEventListener('click', function () { self.closeModal(lb); });
     this.bindSwipeLightbox(lb.querySelector('.artc-lightbox__stage'));
     this.openModal(lb);
   };
