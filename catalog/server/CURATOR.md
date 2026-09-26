@@ -283,3 +283,33 @@ curl -s -X POST -H "Content-Type: application/json" -d '{"q":"Расскажит
   куратор сам переходит на готовые ответы.
 - **Выключить** — убрать `data-curator` в Tilda (куратор снова на готовых
   ответах) и `sudo systemctl disable --now artcatalog-curator`.
+
+## Шаг 10. Живой голос — Яндекс SpeechKit (по желанию)
+
+Без этого шага Татьяна отвечает вслух голосом устройства (у всех разный,
+часто «роботный»). С ним — голосом **Вера** (модель LiveTTS, амплуа
+«разговорный»), одинаковым на всех телефонах и компьютерах.
+
+1. Ключ: консоль Yandex Cloud → сервисный аккаунт с ролью
+   `ai.speechkit-tts.user` → «Создать API-ключ» (область действия
+   `yc.ai.speechkitTts.execute`). Секрет показывают один раз — сохраните его
+   **только** на сервере, никому не пересылайте.
+2. Допишите в `/etc/artcatalog-curator.env` (`sudo nano /etc/artcatalog-curator.env`):
+   ```
+   YANDEX_TTS_KEY=секрет_ключа
+   YANDEX_TTS_VOICE=vera
+   YANDEX_TTS_ROLE=casual
+   YANDEX_TTS_MODEL=livetts
+   ```
+3. Проверка: `sudo /usr/bin/python3.6 /opt/artcatalog-curator/curator_server.py --check --env /etc/artcatalog-curator.env`
+   — в конце строка «✓ голос готов: …mp3». Ошибка 401/403 — неверный секрет
+   или у аккаунта нет роли.
+4. `sudo systemctl restart artcatalog-curator`.
+
+Как устроено: ключ остаётся на сервере; к каждому ответу служба добавляет
+подписанную ссылку `voice/….mp3`, браузер берёт звук по ней. Готовые MP3
+лежат в `~/.cache/artcatalog-voice` пользователя службы (`YANDEX_TTS_DIR`),
+одинаковые ответы второй раз не синтезируются. Цена LiveTTS — 0,25 ₽ за
+запрос до 250 знаков; не больше 1500 синтезов в сутки (`YANDEX_TTS_DAILY`).
+Если SpeechKit недоступен — через 12 секунд звучит голос устройства.
+Выключить — стереть значение `YANDEX_TTS_KEY` и перезапустить службу.

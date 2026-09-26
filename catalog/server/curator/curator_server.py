@@ -35,6 +35,11 @@ https://<сервер>/api/artcatalog/curator/…, страница на Tilda �
     CURATOR_HOST, CURATOR_PORT   где слушать (по умолчанию 127.0.0.1:8765)
     CURATOR_RATE=20, CURATOR_WINDOW=3600   вопросов с одного адреса в час
     CURATOR_DAILY=3000  вопросов к нейросети в сутки на весь сайт
+    Голос ответов — Яндекс SpeechKit (API v3), без ключа озвучку делает устройство посетителя:
+    YANDEX_TTS_KEY      секретный API-ключ сервисного аккаунта (роль ai.speechkit-tts.user)
+    YANDEX_TTS_VOICE=vera, YANDEX_TTS_ROLE=casual, YANDEX_TTS_MODEL=livetts
+    YANDEX_TTS_DIR      где хранить готовые mp3 (по умолчанию ~/.cache/artcatalog-voice)
+    YANDEX_TTS_DAILY=1500   синтезов в сутки (повторы из файлов не считаются)
 
 Проверка ключа и сертификата без nginx и браузера (ключ читается из файла,
 а не из командной строки — в списке процессов его не видно):
@@ -43,7 +48,9 @@ https://<сервер>/api/artcatalog/curator/…, страница на Tilda �
 """
 from __future__ import print_function, unicode_literals
 
+import base64
 import hashlib
+import hmac
 import io
 import json
 import os
@@ -57,13 +64,14 @@ import uuid
 try:  # Python 3
     from http.server import BaseHTTPRequestHandler, HTTPServer
     from socketserver import ThreadingMixIn
-    from urllib.parse import urlencode
+    from urllib.parse import urlencode, quote, urlparse, parse_qs
     from urllib.request import Request, urlopen
 except ImportError:  # Python 2.7
     from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
     from SocketServer import ThreadingMixIn
-    from urllib import urlencode
+    from urllib import urlencode, quote
     from urllib2 import Request, urlopen
+    from urlparse import urlparse, parse_qs
 
 PY2 = sys.version_info[0] == 2
 TEXT = type("")          # str в Python 3, unicode в 2.7
@@ -150,6 +158,16 @@ PORT = int(E("CURATOR_PORT", "8765"))
 RATE = int(E("CURATOR_RATE", "20"))
 WINDOW = int(E("CURATOR_WINDOW", "3600"))
 DAILY = int(E("CURATOR_DAILY", "3000"))
+
+TTS_KEY = E("YANDEX_TTS_KEY", "").strip()
+TTS_VOICE = E("YANDEX_TTS_VOICE", "vera")
+TTS_ROLE = E("YANDEX_TTS_ROLE", "casual")
+TTS_MODEL = E("YANDEX_TTS_MODEL", "livetts")
+TTS_URL = E("YANDEX_TTS_URL", "https://tts.api.cloud.yandex.net/tts/v3/utteranceSynthesis")
+TTS_DIR = os.path.expanduser(E("YANDEX_TTS_DIR", "~/.cache/artcatalog-voice"))
+TTS_DAILY = int(E("YANDEX_TTS_DAILY", "1500"))
+# подпись ссылок на озвучку: озвучить можно только то, что ответила служба
+TTS_SECRET = hashlib.sha256(("artcatalog-voice:" + TTS_KEY).encode("utf-8")).digest()
 
 Q_MAX = 300          # вопрос длиннее не принимаем
 ANSWER_MAX = 600     # ответ длиннее обрезаем
@@ -397,6 +415,69 @@ def ask_ai(q, history, mode):
     return text[:ANSWER_MAX]
 
 
+# ---------------- голос: Яндекс SpeechKit ----------------
+
+def voice_id(text):
+    msg = ("%s|%s|%s|%s" % (TTS_MODEL, TTS_VOICE, TTS_ROLE, text)).encode("utf-8")
+    return hmac.new(TTS_SECRET, msg, hashlib.sha256).hexdigest()[:32]
+
+
+def voice_link(text):
+    """Ссылка на mp3 с ответом (относительно адреса куратора) или None"""
+    if not TTS_KEY or not text:
+        return None
+    return "voice/%s.mp3?t=%s" % (voice_id(text), quote(text.encode("utf-8"), safe=str("")))
+
+
+def synthesize(text):
+    """mp3 голосом из настроек. Ответ API v3 — строки JSON с кусками аудио в Base64"""
+    body = json.dumps({
+        "text": text,
+        "hints": [{"voice": TTS_VOICE}, {"role": TTS_ROLE}],
+        "model": TTS_MODEL,
+        "outputAudioSpec": {"containerAudio": {"containerAudioType": "MP3"}},
+    }, ensure_ascii=False)
+    if isinstance(body, TEXT):
+        body = body.encode("utf-8")
+    req = request(TTS_URL, body, {"Authorization": "Api-Key " + TTS_KEY, "Content-Type": "application/json"})
+    raw = fetch(req, 20).read().decode("utf-8")
+    audio = b""
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        obj = json.loads(line)
+        if "error" in obj:
+            raise RuntimeError("SpeechKit: %s" % txt(obj["error"]))
+        chunk = ((obj.get("result") or obj).get("audioChunk") or {}).get("data")
+        if chunk:
+            audio += base64.b64decode(chunk)
+    if not audio:
+        raise RuntimeError("SpeechKit не вернул звук: %s" % raw[:200])
+    return audio
+
+
+_voice_lock = threading.Lock()
+
+
+def voice_file(vid, text):
+    """Путь к mp3: из кеша на диске, иначе синтез (с лимитом в сутки)"""
+    path = os.path.join(TTS_DIR, vid + ".mp3")
+    if os.path.exists(path):
+        return path
+    if not store.tts_budget():
+        raise RuntimeError("исчерпан суточный лимит озвучки (YANDEX_TTS_DAILY)")
+    audio = synthesize(text)
+    with _voice_lock:
+        if not os.path.isdir(TTS_DIR):
+            os.makedirs(TTS_DIR)
+        tmp = path + ".tmp"
+        with open(tmp, "wb") as f:
+            f.write(audio)
+        os.rename(tmp, path)
+    return path
+
+
 # ---------------- ограничения и кеш (в памяти процесса) ----------------
 
 class Store:
@@ -404,6 +485,7 @@ class Store:
         self.lock = threading.Lock()
         self.hits = {}        # адрес → [время вопроса, …]
         self.day = ("", 0)    # (дата, вопросов к нейросети)
+        self.tts_day = ("", 0)
         self.answers = {}     # ключ вопроса → (время, ответ)
         self.last_error = ""
         self.down_until = 0   # нейросеть сбоила — минуту её не спрашиваем
@@ -425,6 +507,14 @@ class Store:
             n = n + 1 if d == today else 1
             self.day = (today, n)
             return n <= DAILY
+
+    def tts_budget(self):
+        today = time.strftime("%Y%m%d")
+        with self.lock:
+            d, n = self.tts_day
+            n = n + 1 if d == today else 1
+            self.tts_day = (today, n)
+            return n <= TTS_DAILY
 
     def cached(self, key):
         with self.lock:
@@ -478,8 +568,8 @@ class Handler(BaseHTTPRequestHandler):
         return (self.headers.get("X-Real-IP") or (self.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
                 or self.client_address[0])
 
-    def send(self, code, obj=None):
-        body = to_json(obj) if obj is not None else b""
+    def send(self, code, obj=None, raw=None, ctype=None, cache=None):
+        body = raw if raw is not None else (to_json(obj) if obj is not None else b"")
         self.send_response(code)
         origin = (self.headers.get("Origin") or "").rstrip("/")
         if origin and (origin in ORIGINS or "*" in ORIGINS):
@@ -488,10 +578,10 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.send_header("Access-Control-Max-Age", "86400")
-        if obj is not None:
-            self.send_header("Content-Type", "application/json; charset=utf-8")
+        if ctype or obj is not None:
+            self.send_header("Content-Type", ctype or "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", cache or "no-store")
         self.end_headers()
         if body:
             self.wfile.write(body)
@@ -502,11 +592,32 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.rstrip("/").endswith("/ping"):
             d = load()
-            self.send(200, {"ok": True, "ai": bool(KEY), "faq": len(d["faq"].get("items", [])),
+            self.send(200, {"ok": True, "ai": bool(KEY), "voice": bool(TTS_KEY), "faq": len(d["faq"].get("items", [])),
                             "artists": len(d["artists"].get("artists", [])), "kb": len(d["kb"]),
                             "last_error": store.last_error})
+        elif "/voice/" in self.path:
+            self.voice()
         else:
             self.send(404, {"error": "not found"})
+
+    def voice(self):
+        u = urlparse(self.path)
+        m = re.search(r"/voice/([0-9a-f]{32})\.mp3$", u.path)
+        text = txt((parse_qs(u.query).get("t") or [""])[0])
+        if PY2 and not isinstance(text, TEXT):
+            text = text.decode("utf-8")
+        if not TTS_KEY or not m or not text or len(text) > 700 or not getattr(hmac, 'compare_digest', lambda x, y: x == y)(m.group(1), voice_id(text)):
+            self.send(404, {"error": "not found"})
+            return
+        try:
+            path = voice_file(m.group(1), text)
+        except Exception as e:
+            store.last_error = "озвучка: %s: %s" % (type(e).__name__, txt(e))
+            log(store.last_error)
+            self.send(502, {"error": "озвучка недоступна"})
+            return
+        with open(path, "rb") as f:
+            self.send(200, raw=f.read(), ctype="audio/mpeg", cache="public, max-age=604800")
 
     def do_POST(self):
         if not self.path.split("?")[0].rstrip("/").endswith("/ask"):
@@ -535,7 +646,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         source, text = answer(q, history, mode)
         log("вопрос [%s, %s]: %s" % (source, mode, q[:200]))
-        self.send(200, {"answer": text, "source": source})
+        self.send(200, {"answer": text, "source": source, "voice": voice_link(text)})
 
 
 class Server(ThreadingMixIn, HTTPServer):
@@ -586,12 +697,35 @@ def check():
     return ok
 
 
+def check_voice():
+    if not TTS_KEY:
+        say("голос: YANDEX_TTS_KEY не задан — ответы озвучивает устройство посетителя")
+        return True
+    say("голос: Яндекс SpeechKit, %s / %s / %s; файлы — %s" % (TTS_VOICE, TTS_ROLE, TTS_MODEL, TTS_DIR))
+    try:
+        t = "Добро пожаловать на виртуальную выставку! Меня зовут Татьяна."
+        path = voice_file(voice_id(t), t)
+        say("✓ голос готов: %s (%d КБ)" % (path, os.path.getsize(path) // 1024))
+        return True
+    except Exception as e:
+        say("✗ озвучка не получилась:", type(e).__name__, txt(e))
+        t = txt(e)
+        if "401" in t or "403" in t:
+            say("  → ключ не подходит: нужен секретный ключ сервисного аккаунта с ролью ai.speechkit-tts.user")
+        elif "Permission" in t or "denied" in t or "Errno 13" in t:
+            say("  → нет прав на папку для mp3: укажите YANDEX_TTS_DIR, куда может писать пользователь службы")
+        return False
+
+
 def main():
     if "--check" in sys.argv:
-        sys.exit(0 if check() else 1)
+        ok = check()
+        ok = check_voice() and ok
+        sys.exit(0 if ok else 1)
     load()
     srv = Server((str(HOST), PORT), Handler)
-    log("куратор слушает %s:%d; нейросеть %s; сайты: %s" % (HOST, PORT, "включена" if KEY else "ВЫКЛЮЧЕНА (нет GIGACHAT_KEY)", ", ".join(ORIGINS)))
+    log("куратор слушает %s:%d; нейросеть %s; голос %s; сайты: %s" % (HOST, PORT, "включена" if KEY else "ВЫКЛЮЧЕНА (нет GIGACHAT_KEY)",
+        ("Яндекс, " + TTS_VOICE) if TTS_KEY else "устройства", ", ".join(ORIGINS)))
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

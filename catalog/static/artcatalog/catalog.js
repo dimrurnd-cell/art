@@ -2019,7 +2019,7 @@
       return r.json().then(function (d) { return { status: r.status, d: d || {} }; });
     }).then(function (res) {
       clearTimeout(timer);
-      if (res.d.answer) cb(res.d.answer);
+      if (res.d.answer) cb(res.d.answer, res.d.voice ? url + res.d.voice : null);
       else if (res.status === 429 && res.d.error) cb(res.d.error);
       else local();
     }).catch(function () { clearTimeout(timer); local(); });
@@ -2078,12 +2078,14 @@
       if (q.length < 2 || self.curBusy) return;
       if (self.curRec) self.curRec.stop();
       input.value = '';
+      self.curatorAudio();
       self.curatorSay(q);
     });
     p.querySelector('.artc-cur__chips').addEventListener('click', function (e) {
       var b = e.target.closest('[data-q]');
       if (!b || self.curBusy) return;
       b.parentNode.removeChild(b);
+      self.curatorAudio();
       self.curatorSay(b.getAttribute('data-q'));
     });
     log.addEventListener('click', function (e) {
@@ -2176,7 +2178,8 @@
     var mic = p.querySelector('.artc-cur__mic');
     if (this.curRec) { this.curRec.stop(); return; }
     if (this.curMicWait) return;
-    if (window.speechSynthesis) speechSynthesis.cancel();
+    this.curatorStop();
+    this.curatorAudio();
     if (curPlatform().iosNotSafari) { this.curatorMicHelp('ios-app'); return; }
     // первый вопрос голосом — и ответы голосом (разговор); выключить — кнопкой
     if (!this.curVoiceAsked && !this.curVoiceOn && p.querySelector('.artc-cur__voice')) this.curatorVoice(true, true);
@@ -2292,8 +2295,9 @@
     }
     if (!byUser) return;
     try { localStorage.setItem('artc-cur-voice', this.curVoiceOn ? '1' : '0'); } catch (e) { /* приватный режим */ }
+    this.curatorStop();
+    if (this.curVoiceOn) this.curatorAudio();
     if (!window.speechSynthesis) return;
-    speechSynthesis.cancel();
     // iPhone разрешает говорить только после нажатия: «пустая» фраза сейчас
     // открывает озвучку для ответов, которые придут позже
     if (this.curVoiceOn) {
@@ -2303,8 +2307,51 @@
     }
   };
 
-  Widget.prototype.curatorSpeak = function (text) {
-    if (!this.curVoiceOn || !window.speechSynthesis || !text) return;
+  /* Живой голос — mp3 от службы куратора (Яндекс SpeechKit, голос Вера).
+     Играет через Web Audio: на iPhone звук обычного <audio> мешает потом
+     распознаванию речи, а «разблокированный» нажатием AudioContext играет и
+     то, что пришло позже. Не пришло за 12 с или ошибка — голос устройства. */
+  Widget.prototype.curatorAudio = function () {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    try {
+      if (!this.curCtx) this.curCtx = new AC();
+      if (this.curCtx.state === 'suspended') this.curCtx.resume();
+    } catch (e) { return null; }
+    return this.curCtx;
+  };
+
+  Widget.prototype.curatorStop = function () {
+    this.curPlay = (this.curPlay || 0) + 1;          // опоздавший ответ уже не заговорит
+    if (this.curSrc) { try { this.curSrc.stop(); } catch (e) { /* уже */ } this.curSrc = null; }
+    if (window.speechSynthesis) speechSynthesis.cancel();
+  };
+
+  Widget.prototype.curatorSpeak = function (text, voice) {
+    if (!this.curVoiceOn || !text) return;
+    this.curatorStop();
+    var self = this, my = this.curPlay, ctx = voice && window.fetch && this.curatorAudio();
+    var fallback = function () { if (self.curPlay === my) { self.curPlay++; self.curatorDeviceVoice(text); } };
+    if (!ctx) { this.curatorDeviceVoice(text); return; }
+    var timer = setTimeout(fallback, 12000);
+    fetch(voice, { credentials: 'omit' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.arrayBuffer();
+    }).then(function (buf) {
+      return new Promise(function (ok, bad) { ctx.decodeAudioData(buf, ok, bad); });
+    }).then(function (audio) {
+      clearTimeout(timer);
+      if (self.curPlay !== my) return;
+      var src = ctx.createBufferSource();
+      src.buffer = audio;
+      src.connect(ctx.destination);
+      src.start(0);
+      self.curSrc = src;
+    }).catch(function () { clearTimeout(timer); fallback(); });
+  };
+
+  Widget.prototype.curatorDeviceVoice = function (text) {
+    if (!window.speechSynthesis) return;
     speechSynthesis.cancel();
     var u = new SpeechSynthesisUtterance(text.replace(/[«»]/g, ''));
     u.lang = 'ru-RU';
@@ -2326,7 +2373,8 @@
     this.curBusy = true;
     p.classList.add('is-busy');
     var t0 = Date.now();
-    this.curatorAsk(q, function (a) {
+    this.curatorStop();
+    this.curatorAsk(q, function (a, voice) {
       // многоточие — хотя бы полсекунды, иначе ответ «выпрыгивает»
       setTimeout(function () {
         if (dots.parentNode) dots.parentNode.removeChild(dots);
@@ -2334,7 +2382,7 @@
         p.classList.remove('is-busy');
         self.curLog.push({ q: q, a: a });
         self.curatorMsg('cur', a, false, self.curatorArtist(q));
-        self.curatorSpeak(a);
+        self.curatorSpeak(a, voice);
       }, Math.max(0, 600 - (Date.now() - t0)));
     });
   };
@@ -2359,7 +2407,7 @@
     if (!p || p.hidden) return;
     p.hidden = true;
     if (this.curRec) this.curRec.stop();
-    if (window.speechSynthesis) speechSynthesis.cancel();
+    this.curatorStop();
     var host = p.parentNode;
     if (host) {
       host.classList.remove('has-cur');
