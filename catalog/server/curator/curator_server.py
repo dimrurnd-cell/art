@@ -25,7 +25,7 @@ https://<сервер>/api/artcatalog/curator/…, страница на Tilda �
 
     GIGACHAT_KEY        «Ключ авторизации» из личного кабинета GigaChat (Base64)
     GIGACHAT_SCOPE      GIGACHAT_API_PERS (физлицо) | GIGACHAT_API_B2B | GIGACHAT_API_CORP
-    GIGACHAT_MODEL      GigaChat-2
+    GIGACHAT_MODEL      GigaChat-3-Ultra (список доступных ключу — в выводе --check)
     GIGACHAT_URL        https://api.giga.chat/v1
     GIGACHAT_AUTH_URL   https://ngw.devices.sberbank.ru:9443/api/v2/oauth
     GIGACHAT_CA         путь к корневому сертификату НУЦ Минцифры (PEM)
@@ -133,7 +133,7 @@ def E(name, default=""):
 
 KEY = E("GIGACHAT_KEY", "").strip()
 SCOPE = E("GIGACHAT_SCOPE", "GIGACHAT_API_PERS")
-MODEL = E("GIGACHAT_MODEL", "GigaChat-2")
+MODEL = E("GIGACHAT_MODEL", "GigaChat-3-Ultra")
 API = E("GIGACHAT_URL", "https://api.giga.chat/v1").rstrip("/")
 AUTH = E("GIGACHAT_AUTH_URL", "https://ngw.devices.sberbank.ru:9443/api/v2/oauth")
 CA = E("GIGACHAT_CA", "")
@@ -570,6 +570,13 @@ def check():
         else:
             say("  → нет связи с ngw.devices.sberbank.ru:9443: проверьте, что серверу разрешены исходящие соединения на порт 9443")
         return False
+    try:
+        req = request(API + "/models", None, {"Authorization": "Bearer " + gigachat_token(), "Accept": "application/json"})
+        ids = [m.get("id") for m in json.loads(fetch(req, 8).read().decode("utf-8")).get("data", [])]
+        say("  модели, доступные ключу:", ", ".join(i for i in ids if i) or "—")
+        say("  выбрана:", MODEL, "✓" if MODEL in ids else "✗ НЕТ В СПИСКЕ — впишите в GIGACHAT_MODEL одну из моделей выше")
+    except Exception as e:
+        say("  список моделей не получен:", type(e).__name__, txt(e))
     try:
         a = ask_ai("Когда и где проходит выставка?", [], "3d")
         say("✓ GigaChat ответил:", a)
