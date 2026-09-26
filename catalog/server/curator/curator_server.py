@@ -19,7 +19,8 @@ https://<сервер>/api/artcatalog/curator/…, страница на Tilda �
 «уточните у организаторов». faq.json, kb.md и artists.json перечитываются
 раз в 5 минут — правки доезжают без перезапуска.
 
-Только стандартная библиотека Python 3.6+. Настройки — переменные окружения
+Только стандартная библиотека: Python 3.6+ или 2.7 (CentOS 7 — там из
+коробки только он). Настройки — переменные окружения
 (в systemd — файл /etc/artcatalog-curator.env, см. curator.env.example):
 
     GIGACHAT_KEY        «Ключ авторизации» из личного кабинета GigaChat (Base64)
@@ -38,8 +39,12 @@ https://<сервер>/api/artcatalog/curator/…, страница на Tilda �
 Проверка ключа и сертификата без nginx и браузера (ключ читается из файла,
 а не из командной строки — в списке процессов его не видно):
     sudo python3 curator_server.py --check --env /etc/artcatalog-curator.env
+(на CentOS 7 без Python 3 — /usr/bin/python вместо python3)
 """
+from __future__ import print_function, unicode_literals
+
 import hashlib
+import io
 import json
 import os
 import re
@@ -48,10 +53,57 @@ import sys
 import threading
 import time
 import uuid
-from http.server import BaseHTTPRequestHandler, HTTPServer
-from socketserver import ThreadingMixIn
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+
+try:  # Python 3
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    from socketserver import ThreadingMixIn
+    from urllib.parse import urlencode
+    from urllib.request import Request, urlopen
+except ImportError:  # Python 2.7
+    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+    from SocketServer import ThreadingMixIn
+    from urllib import urlencode
+    from urllib2 import Request, urlopen
+
+PY2 = sys.version_info[0] == 2
+TEXT = type("")          # str в Python 3, unicode в 2.7
+
+
+def txt(x):
+    """Текст из чего угодно (в 2.7 байты и исключения — отдельно)"""
+    if isinstance(x, TEXT):
+        return x
+    if isinstance(x, bytes):
+        return x.decode("utf-8", "replace")
+    try:
+        return TEXT(x)
+    except Exception:
+        return repr(x)
+
+
+def out(stream, line):
+    """Строка в журнал или на экран: в 2.7 — байтами UTF-8, иначе кириллица роняет запись"""
+    stream.write(line.encode("utf-8") if PY2 else line)
+    stream.flush()
+
+
+def say(*parts):
+    out(sys.stdout, " ".join(txt(p) for p in parts) + "\n")
+
+
+def request(url, data, headers):
+    """Запрос наружу. В 2.7 адрес и заголовки — байтовые строки: иначе httplib
+    склеивает юникодный заголовок с телом в UTF-8 и падает на кириллице"""
+    if PY2:
+        n = lambda v: v.encode("utf-8") if isinstance(v, TEXT) else v
+        url = n(url)
+        headers = dict((n(k), n(v)) for k, v in headers.items())
+    return Request(url, data=data, headers=headers)
+
+
+def to_json(obj):
+    body = json.dumps(obj, ensure_ascii=False)
+    return body.encode("utf-8") if isinstance(body, TEXT) else body
 
 
 
@@ -60,17 +112,24 @@ def env_file(argv):
     if "--env" not in argv:
         return
     path = argv[argv.index("--env") + 1]
-    with open(path, encoding="utf-8") as f:
+    with io.open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
             k, v = line.split("=", 1)
-            os.environ[k.strip()] = v.strip().strip('"').strip("'")
+            k, v = k.strip(), v.strip().strip('"').strip("'")
+            if PY2:
+                k, v = k.encode("utf-8"), v.encode("utf-8")
+            os.environ[k] = v
 
 
 env_file(sys.argv)
-E = os.environ.get
+
+
+def E(name, default=""):
+    v = os.environ.get(name)
+    return default if v is None else txt(v)
 
 KEY = E("GIGACHAT_KEY", "").strip()
 SCOPE = E("GIGACHAT_SCOPE", "GIGACHAT_API_PERS")
@@ -100,8 +159,7 @@ FALLBACK = "Хороший вопрос! Точно ответят органи�
 
 
 def log(*parts):
-    sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S ") + " ".join(str(p) for p in parts) + "\n")
-    sys.stderr.flush()
+    out(sys.stderr, txt(time.strftime("%Y-%m-%d %H:%M:%S ")) + " ".join(txt(p) for p in parts) + "\n")
 
 
 # ---------------- данные ----------------
@@ -256,6 +314,13 @@ def ssl_ctx():
     return ctx
 
 
+def fetch(req, timeout):
+    try:
+        return urlopen(req, timeout=timeout, context=ssl_ctx())
+    except TypeError:        # очень старый Python 2.7 без параметра context
+        return urlopen(req, timeout=timeout)
+
+
 _token = {"value": None, "exp": 0}
 _token_lock = threading.Lock()
 
@@ -264,13 +329,13 @@ def gigachat_token():
     with _token_lock:
         if _token["value"] and _token["exp"] - 60 > time.time():
             return _token["value"]
-        req = Request(AUTH, data=urlencode({"scope": SCOPE}).encode("utf-8"), headers={
+        req = request(AUTH, urlencode({"scope": SCOPE}).encode("utf-8"), {
             "Authorization": "Basic " + KEY,
             "RqUID": str(uuid.uuid4()),
             "Content-Type": "application/x-www-form-urlencoded",
             "Accept": "application/json",
         })
-        data = json.loads(urlopen(req, timeout=8, context=ssl_ctx()).read().decode("utf-8"))
+        data = json.loads(fetch(req, 8).read().decode("utf-8"))
         _token["value"] = data.get("access_token") or data.get("tok")
         exp = data.get("expires_at") or data.get("exp") or 0
         _token["exp"] = exp / 1000.0 if exp > 1e11 else (exp or time.time() + 1500)
@@ -305,14 +370,16 @@ def ask_ai(q, history, mode):
         messages += [{"role": "user", "content": h["q"][:Q_MAX]}, {"role": "assistant", "content": h["a"][:ANSWER_MAX]}]
     messages.append({"role": "user", "content": q})
     body = json.dumps({"model": MODEL, "messages": messages, "temperature": 0.3, "max_tokens": 220,
-                       "profanity_check": True}, ensure_ascii=False).encode("utf-8")
-    req = Request(API + "/chat/completions", data=body, headers={
+                       "profanity_check": True}, ensure_ascii=False)
+    if isinstance(body, TEXT):
+        body = body.encode("utf-8")
+    req = request(API + "/chat/completions", body, {
         "Authorization": "Bearer " + gigachat_token(),
         "Content-Type": "application/json",
         "Accept": "application/json",
     })
     # страница ждёт ответа 20 с, потом отвечает сама готовыми ответами
-    data = json.loads(urlopen(req, timeout=17, context=ssl_ctx()).read().decode("utf-8"))
+    data = json.loads(fetch(req, 17).read().decode("utf-8"))
     text = data["choices"][0]["message"]["content"].strip()
     text = re.sub(r"[*_#`>]+", "", text)               # без markdown
     return text[:ANSWER_MAX]
@@ -378,7 +445,7 @@ def answer(q, history, mode):
             store.last_error = ""
             return "ai", got
         except Exception as e:
-            store.last_error = "%s: %s" % (type(e).__name__, e)
+            store.last_error = "%s: %s" % (type(e).__name__, txt(e))
             store.down_until = time.time() + 60
             log("нейросеть не ответила —", store.last_error)
     if item:
@@ -400,7 +467,7 @@ class Handler(BaseHTTPRequestHandler):
                 or self.client_address[0])
 
     def send(self, code, obj=None):
-        body = json.dumps(obj, ensure_ascii=False).encode("utf-8") if obj is not None else b""
+        body = to_json(obj) if obj is not None else b""
         self.send_response(code)
         origin = (self.headers.get("Origin") or "").rstrip("/")
         if origin and (origin in ORIGINS or "*" in ORIGINS):
@@ -443,12 +510,12 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, UnicodeDecodeError):
             self.send(400, {"error": "Некорректный запрос."})
             return
-        q = re.sub(r"\s+", " ", str(data.get("q") or "")).strip()[:Q_MAX]
+        q = re.sub(r"\s+", " ", txt(data.get("q") or "")).strip()[:Q_MAX]
         if len(q) < 2:
             self.send(400, {"error": "Задайте вопрос."})
             return
         history = data.get("history") if isinstance(data.get("history"), list) else []
-        history = [h for h in history if isinstance(h, dict) and isinstance(h.get("q"), str) and isinstance(h.get("a"), str)]
+        history = [h for h in history if isinstance(h, dict) and isinstance(h.get("q"), TEXT) and isinstance(h.get("a"), TEXT)]
         mode = "simple" if data.get("mode") == "simple" else "3d"
         ip = self.ip()
         if not store.allow(ip):
@@ -468,34 +535,34 @@ def check():
     """Самопроверка: файлы на месте, ключ и сертификат работают"""
     ok = True
     d = load()
-    print("статика:", STATIC)
-    print("  готовых ответов:", len(d["faq"].get("items", [])), "| kb.md:", len(d["kb"]), "символов",
+    say("статика:", STATIC)
+    say("  готовых ответов:", len(d["faq"].get("items", [])), "| kb.md:", len(d["kb"]), "символов",
           "| художников:", len(d["artists"].get("artists", [])))
     if not d["faq"].get("items") or not d["artists"].get("artists"):
-        print("  ✗ не нашлись faq.json или artists.json — проверьте CURATOR_STATIC")
+        say("  ✗ не нашлись faq.json или artists.json — проверьте CURATOR_STATIC")
         ok = False
     if not KEY:
-        print("✗ GIGACHAT_KEY не задан — куратор будет отвечать только готовыми ответами")
+        say("✗ GIGACHAT_KEY не задан — куратор будет отвечать только готовыми ответами")
         return False
-    print("сертификат:", CA or "(только системные)", "— есть" if (not CA or os.path.exists(CA)) else "— ФАЙЛА НЕТ")
+    say("сертификат:", CA or "(только системные)", "— есть" if (not CA or os.path.exists(CA)) else "— ФАЙЛА НЕТ")
     try:
         gigachat_token()
-        print("✓ ключ принят, токен получен (scope %s)" % SCOPE)
+        say("✓ ключ принят, токен получен (scope %s)" % SCOPE)
     except Exception as e:
-        print("✗ токен не получен:", type(e).__name__, e)
-        t = str(e)
+        say("✗ токен не получен:", type(e).__name__, txt(e))
+        t = txt(e)
         if "CERTIFICATE_VERIFY_FAILED" in t:
-            print("  → сервер не доверяет сертификату Сбера: скачайте корневой сертификат НУЦ Минцифры и укажите его в GIGACHAT_CA")
+            say("  → сервер не доверяет сертификату Сбера: скачайте корневой сертификат НУЦ Минцифры и укажите его в GIGACHAT_CA")
         elif "401" in t or "400" in t or "403" in t:
-            print("  → неверный ключ или scope: ключ — строка «Ключ авторизации» целиком; для юрлица scope GIGACHAT_API_B2B/CORP")
+            say("  → неверный ключ или scope: ключ — строка «Ключ авторизации» целиком; для юрлица scope GIGACHAT_API_B2B/CORP")
         else:
-            print("  → нет связи с ngw.devices.sberbank.ru:9443: проверьте, что серверу разрешены исходящие соединения на порт 9443")
+            say("  → нет связи с ngw.devices.sberbank.ru:9443: проверьте, что серверу разрешены исходящие соединения на порт 9443")
         return False
     try:
         a = ask_ai("Когда и где проходит выставка?", [], "3d")
-        print("✓ GigaChat ответил:", a)
+        say("✓ GigaChat ответил:", a)
     except Exception as e:
-        print("✗ GigaChat не ответил:", type(e).__name__, e)
+        say("✗ GigaChat не ответил:", type(e).__name__, txt(e))
         ok = False
     return ok
 
@@ -504,7 +571,7 @@ def main():
     if "--check" in sys.argv:
         sys.exit(0 if check() else 1)
     load()
-    srv = Server((HOST, PORT), Handler)
+    srv = Server((str(HOST), PORT), Handler)
     log("куратор слушает %s:%d; нейросеть %s; сайты: %s" % (HOST, PORT, "включена" if KEY else "ВЫКЛЮЧЕНА (нет GIGACHAT_KEY)", ", ".join(ORIGINS)))
     try:
         srv.serve_forever()

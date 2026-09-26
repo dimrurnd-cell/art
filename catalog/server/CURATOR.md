@@ -4,7 +4,7 @@
 класть в страницу нельзя: любой посетитель увидит его в коде и сможет тратить
 ваш лимит. Поэтому ключ живёт на вашем сервере **donexpocentre.ru** (том же,
 где лежит статика каталога и где вы настраивали nginx), в маленькой службе
-куратора — один файл на Python 3, без Django и сторонних библиотек.
+куратора — один файл на Python (3.6+ или 2.7), без Django и сторонних библиотек.
 
 ```
 посетитель на Tilda ──вопрос──▶ https://donexpocentre.ru/api/artcatalog/curator/ask/
@@ -24,19 +24,36 @@
 Понадобится: вход на сервер по SSH с правами `sudo` (как при настройке
 nginx), «Ключ авторизации» GigaChat, 20–30 минут.
 
+**Как вводить команды.** Копируйте в терминал только команды — по одной строке
+(или один блок) и нажимайте Enter. Вывод команд обратно в терминал не
+вставляйте: оболочка примет его за новые команды («команда не найдена»). Если
+строка приглашения превратилась в `>` — оболочка ждёт закрывающую кавычку:
+нажмите `Ctrl+C`. Пароль после `[sudo] password for …` при вводе не
+отображается — это нормально.
+
 ---
 
-## Шаг 1. Python 3 на сервере
+## Шаг 1. Какой Python на сервере
 
 ```bash
-python3 --version
+cat /etc/os-release | head -2
+ls /usr/bin/python*
 ```
 
-Нужен **3.6 или новее**. Если команды нет:
-Ubuntu/Debian — `sudo apt install python3`, CentOS/RHEL — `sudo dnf install python3`
-(или `sudo yum install python3`).
+- Есть `/usr/bin/python3` — служба пойдёт на нём.
+- Нет, а система — **CentOS 7 / RHEL 7**: там из коробки только Python 2.7
+  (`/usr/bin/python`), и служба умеет работать на нём. Ставить ничего не
+  нужно. (Можно попробовать `sudo yum install -y python3`; если `yum`
+  ругается на `mirrorlist` — CentOS 7 снят с поддержки, чинить не нужно,
+  берите 2.7.)
+- AlmaLinux / Rocky / RHEL 8–9: `sudo dnf install -y python3`.
 
-Запомните путь к Python: `which python3` (обычно `/usr/bin/python3`).
+Запомните путь — дальше он в командах вместо `$PY`. Удобно сразу задать:
+
+```bash
+PY=/usr/bin/python3     # или PY=/usr/bin/python — если python3 нет
+$PY --version
+```
 
 ## Шаг 2. Корневой сертификат НУЦ Минцифры
 
@@ -117,7 +134,7 @@ GigaChat выпустите новый и замените строку в эт�
 ## Шаг 5. Самопроверка — до nginx и сайта
 
 ```bash
-sudo python3 /opt/artcatalog-curator/curator_server.py --check --env /etc/artcatalog-curator.env
+sudo $PY /opt/artcatalog-curator/curator_server.py --check --env /etc/artcatalog-curator.env
 ```
 
 Хороший результат:
@@ -151,7 +168,7 @@ sudo nano /etc/systemd/system/artcatalog-curator.service
 
 - `User=develop` — имя из шага 3;
 - `ExecStart=/usr/bin/python3 /opt/artcatalog-curator/curator_server.py` —
-  путь к Python из шага 1.
+  путь к Python из шага 1 (на CentOS 7 без Python 3 — `/usr/bin/python`).
 
 Запуск и автозапуск после перезагрузки сервера:
 
@@ -205,6 +222,15 @@ location /api/artcatalog/curator/ {
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
+На CentOS / RHEL / AlmaLinux обычно включён SELinux, а он по умолчанию не
+разрешает nginx обращаться к службам на сервере (будет `502 Bad Gateway`).
+Проверьте и, если нужно, разрешите — один раз:
+
+```bash
+getenforce                                          # Enforcing — значит, нужно
+sudo setsebool -P httpd_can_network_connect 1
+```
+
 Если `nginx -t` ругается — верните копию (`sudo cp /root/nginx-before-curator.conf <файл>`)
 и пришлите текст ошибки.
 
@@ -216,8 +242,8 @@ curl -s -X POST -H "Content-Type: application/json" -d '{"q":"Расскажит
 ```
 
 Второй запрос должен вернуть `"source": "ai"` и ответ про художницу.
-`502 Bad Gateway` — служба не запущена (шаг 6); на CentOS/RHEL с SELinux ещё
-может понадобиться `sudo setsebool -P httpd_can_network_connect 1`.
+`502 Bad Gateway` — служба не запущена (шаг 6) или SELinux не разрешил
+(команда `setsebool` выше).
 `404` — блок вставлен не в тот `server { … }`.
 
 ## Шаг 8. Tilda — включить куратора на странице

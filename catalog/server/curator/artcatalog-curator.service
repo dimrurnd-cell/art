@@ -1,5 +1,6 @@
 # Служба куратора. Скопировать в /etc/systemd/system/artcatalog-curator.service,
-# в строке User= указать владельца папки статики (шаг 3 инструкции), затем:
+# в строке User= указать владельца папки статики (шаг 3 инструкции),
+# в ExecStart= — путь к Python из шага 1 (на CentOS 7 без python3 — /usr/bin/python), затем:
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now artcatalog-curator
 [Unit]
