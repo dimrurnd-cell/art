@@ -2155,14 +2155,56 @@
      голос (Google русский, Microsoft Irina/Svetlana, Milena на iPhone).
      Включается кнопкой в заголовке окна и сама — при первом вопросе голосом;
      выбор запоминается. */
+  /* Где мы: на iPhone распознавание речи есть только в Safari — Chrome,
+     Яндекс Браузер и встроенные браузеры приложений там на движке, которому
+     Apple его не даёт */
+  function curPlatform() {
+    var ua = navigator.userAgent;
+    var ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    return {
+      ios: ios,
+      iosNotSafari: ios && (!/Safari\//.test(ua) || /CriOS|FxiOS|EdgiOS|YaBrowser|OPiOS|GSA\/|YaMail|Telegram|VKClient|Instagram|FBAN|FBAV/.test(ua)),
+      android: /Android/.test(ua)
+    };
+  }
+
+  /* Нажали на микрофон. Как у других сервисов: сначала системное окно
+     «Разрешить доступ к микрофону?» (getUserMedia) — посетителю остаётся
+     нажать «Разрешить»; инструкция — только если доступ уже запрещён */
   Widget.prototype.curatorListen = function () {
     var self = this, p = this.curPanel;
-    var input = p.querySelector('.artc-cur__input'), mic = p.querySelector('.artc-cur__mic');
+    var mic = p.querySelector('.artc-cur__mic');
     if (this.curRec) { this.curRec.stop(); return; }
+    if (this.curMicWait) return;
     if (window.speechSynthesis) speechSynthesis.cancel();
+    if (curPlatform().iosNotSafari) { this.curatorMicHelp('ios-app'); return; }
     // первый вопрос голосом — и ответы голосом (разговор); выключить — кнопкой
     if (!this.curVoiceAsked && !this.curVoiceOn && p.querySelector('.artc-cur__voice')) this.curatorVoice(true, true);
     this.curVoiceAsked = true;
+    if (this.curMicOk || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { this.curatorListenStart(false); return; }
+    this.curMicWait = true;
+    mic.classList.add('is-on');
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      stream.getTracks().forEach(function (t) { t.stop(); });
+      self.curMicWait = false;
+      self.curMicOk = true;
+      mic.classList.remove('is-on');
+      self.curatorListenStart(true);
+    }, function (err) {
+      self.curMicWait = false;
+      mic.classList.remove('is-on');
+      var n = err && err.name;
+      self.curatorMicHelp(n === 'NotAllowedError' || n === 'SecurityError' ? 'not-allowed'
+        : n === 'NotFoundError' || n === 'NotReadableError' ? 'audio-capture' : 'other');
+    });
+  };
+
+  /* justAllowed — только что разрешили в системном окне: на iPhone первый
+     запуск после окна иногда не проходит (нажатие «устарело») — тогда
+     просим нажать на микрофон ещё раз, без инструкций */
+  Widget.prototype.curatorListenStart = function (justAllowed) {
+    var self = this, p = this.curPanel;
+    var input = p.querySelector('.artc-cur__input'), mic = p.querySelector('.artc-cur__mic');
     var rec;
     try { rec = new CUR_SR(); } catch (e) { return; }
     rec.lang = 'ru-RU';
@@ -2187,8 +2229,11 @@
     rec.onerror = function (e) {
       rec.onend = null;
       if (e.error === 'no-speech' || e.error === 'aborted') { done(e.error === 'no-speech' ? 'Не расслышала — нажмите и говорите' : ''); return; }
+      var denied = e.error === 'not-allowed' || e.error === 'service-not-allowed';
+      if (denied && justAllowed) { done('Нажмите на микрофон ещё раз'); return; }
       done('');
-      self.curatorMicHelp(e.error);
+      // микрофон разрешён, а распознавание не пускают — на iPhone это выключенная диктовка
+      self.curatorMicHelp(denied && self.curMicOk ? (curPlatform().ios ? 'dictation' : 'service') : e.error);
     };
     rec.onend = function () { done(''); };
     this.curRec = rec;
@@ -2203,36 +2248,35 @@
      Встроенные браузеры приложений (почта, мессенджеры) распознавание речи
      не пускают вовсе — там совет открыть страницу в обычном браузере. */
   Widget.prototype.curatorMicHelp = function (err) {
-    var ua = navigator.userAgent;
-    var ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-    var inApp = /YaMail|YandexMail|Telegram|VKClient|Instagram|FBAN|FBAV|OKApp|Viber|WhatsApp|MicroMessenger|Line\//i.test(ua) ||
-      (ios && !/Safari\//.test(ua));                  // WebView внутри приложения на iPhone
-    var text, copy = false;
-    if (err === 'audio-capture') {
-      text = 'Не нашла микрофон. Проверьте, что он подключён, — или просто напишите вопрос, я отвечу.';
-    } else if (err === 'not-allowed' || err === 'service-not-allowed') {
-      if (inApp) {
-        text = 'Во встроенном браузере приложения голосовой ввод не работает. Откройте страницу в Safari или Chrome ' +
-          '(меню «…» → «Открыть в браузере») — или просто напишите вопрос.';
-        copy = true;
-      } else if (ios) {
-        text = 'Чтобы говорить со мной, разрешите микрофон: нажмите «аА» слева от адреса → «Настройки веб-сайта» → ' +
-          '«Микрофон» → «Разрешить». Если не помогло — включите диктовку: Настройки → Основные → Клавиатура → ' +
-          '«Включить диктовку». Потом снова нажмите на микрофон.';
-      } else {
-        text = 'Чтобы говорить со мной, разрешите микрофон: нажмите на значок слева от адреса сайта (замок или ' +
-          'настройки) → «Микрофон» → «Разрешить», обновите страницу и снова нажмите на микрофон.';
-      }
+    var pl = curPlatform(), text, copy = false;
+    if (err === 'ios-app') {
+      text = 'На iPhone говорить со мной голосом можно только в Safari. Откройте эту страницу в Safari — или просто напишите вопрос.';
+      copy = true;
+    } else if (err === 'not-allowed' && pl.ios) {
+      text = 'Микрофон для сайтов выключен. Откройте Настройки → Приложения → Safari → Микрофон и выберите «Спрашивать». ' +
+        'Вернитесь сюда и снова нажмите на микрофон. (На iOS 17 и раньше: Настройки → Safari → Микрофон.)';
+    } else if (err === 'not-allowed' && pl.android) {
+      text = 'Микрофон для этого сайта запрещён. Нажмите на значок слева от адреса сайта → «Разрешения» → «Микрофон» → «Разрешить», ' +
+        'затем снова нажмите на микрофон.';
+    } else if (err === 'not-allowed') {
+      text = 'Микрофон для этого сайта запрещён. Нажмите на значок слева от адреса сайта → «Микрофон» → «Разрешить», ' +
+        'обновите страницу и снова нажмите на микрофон.';
+    } else if (err === 'dictation') {
+      text = 'Чтобы я Вас услышала, на iPhone должна быть включена диктовка: Настройки → Основные → Клавиатура → «Включить диктовку». ' +
+        'Потом снова нажмите на микрофон.';
+    } else if (err === 'audio-capture') {
+      text = 'Не нашла микрофон — возможно, он занят другим приложением. Или просто напишите вопрос, я отвечу.';
     } else {
       text = 'Распознавание речи сейчас недоступно — напишите вопрос, я отвечу.';
     }
+    this.curPanel.querySelector('.artc-cur__input').placeholder = 'Спросите о выставке';
     var m = this.curatorMsg('cur', text, true);
     m.classList.add('artc-cur__msg--help');
     if (copy && navigator.clipboard) {
       var b = el('button', 'artc-cur__go', 'Скопировать ссылку на страницу');
       b.type = 'button';
       b.addEventListener('click', function () {
-        navigator.clipboard.writeText(location.href).then(function () { b.textContent = 'Ссылка скопирована — вставьте её в браузере'; });
+        navigator.clipboard.writeText(location.href).then(function () { b.textContent = 'Ссылка скопирована — вставьте её в Safari'; });
       });
       m.appendChild(b);
     }
