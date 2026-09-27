@@ -356,7 +356,7 @@ export class World {
       if (mat === this._wall || mat === this._floor || mat === this._ceil) m.receiveShadow = true;
       if (mat === this._wall) m.castShadow = true;
       if (mat.userData.blocker) this.blocker(m);
-      if (mat.userData.floor) { m.userData.floor = true; this.pickables.push(m); }
+      if (mat.userData.floor) { m.userData.floor = true; this.pickables.push(m); if (this.onFloor) this.onFloor(m); }
     }
   }
 
@@ -743,8 +743,8 @@ export class World {
     // сами полотна
     ws.forEach((it) => {
       // холст: переплетение нитей и неровный лак — видно вблизи и в бликах
-      const cn = this.pbr.tex('canvas', 'normal').clone();
-      const co = this.pbr.tex('canvas', 'orm').clone();
+      const cn = this.pbr.clone('canvas', 'normal');
+      const co = this.pbr.clone('canvas', 'orm');
       cn.repeat.set(it.w / 0.3, it.h / 0.3);
       co.repeat.copy(cn.repeat);
       const mat = this.paintingMat(new THREE.MeshStandardMaterial({

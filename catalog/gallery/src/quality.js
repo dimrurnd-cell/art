@@ -2,6 +2,7 @@
 
    HD — постобработка: объёмное затенение (GTAO), свечение ярких ламп,
         тон-маппинг кадра, мультисэмплинг; тени от рам; плотность до 2;
+        на компьютере — зеркальные отражения в полу (mirror.js);
    SD — без постобработки, со сглаживанием самого холста; мягкие тени у
         стыков и под рамами остаются (они дешёвые и дают объём — без них
         зал плоский и серый); на телефоне — без лучей спотов и света от
@@ -117,6 +118,8 @@ export class Quality {
     // свет от экрана в холле — площадной источник
     if (g.props && g.props.screenLight) g.props.screenLight.visible = light;
     g.tex.setQuality(level);
+    // отражения в полу — второй проход сцены: только HD на компьютере
+    if (g.mirror) g.mirror.setEnabled(hd && !g.small && g.floatRT);
     if (this.onChange) this.onChange();
   }
 
@@ -181,6 +184,7 @@ export class Quality {
   render() {
     const g = this.g;
     if (this.nextPR != null) { this.applyPR(this.nextPR); this.nextPR = null; }
+    if (g.mirror) g.mirror.update(g.camera);
     if (this.composer) {
       if (this.film) this.film.uniforms.time.value = (performance.now() / 1000) % 100;
       this.composer.render();

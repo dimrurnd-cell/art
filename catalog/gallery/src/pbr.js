@@ -19,6 +19,7 @@ export class PBR {
     this.loader = new THREE.TextureLoader();
     this.loader.setCrossOrigin('anonymous');
     this.cache = {};
+    this.clones = {};                        // копии ещё не пришедших фактур — оживут вместе с ними
     this.pending = 0;
     this.onLoad = null;
   }
@@ -28,6 +29,11 @@ export class PBR {
     if (this.cache[key]) return this.cache[key];
     this.pending++;
     const done = () => { this.pending--; if (this.onLoad) this.onLoad(this.pending); };
+    const loaded = () => {
+      (this.clones[key] || []).forEach((c) => { c.needsUpdate = true; });
+      delete this.clones[key];
+      done();
+    };
     const url = this.bridge.url('gallery-assets/' + this.tier + '/' + key + '.webp');
     let t;
     if (PBR_OPTS.max && typeof createImageBitmap === 'function') {
@@ -37,13 +43,27 @@ export class PBR {
         .then((r) => { if (!r.ok) throw new Error(r.status); return r.blob(); })
         .then((b) => createImageBitmap(b, { imageOrientation: 'flipY', premultiplyAlpha: 'none', colorSpaceConversion: 'none',
           resizeWidth: PBR_OPTS.max, resizeHeight: PBR_OPTS.max, resizeQuality: 'high' }))
-        .then((bmp) => { t.image = bmp; t.needsUpdate = true; done(); }, done);
-    } else t = this.loader.load(url, done, undefined, done);
+        .then((bmp) => { t.image = bmp; t.needsUpdate = true; loaded(); }, done);
+    } else t = this.loader.load(url, loaded, undefined, done);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.anisotropy = this.aniso;
     t.colorSpace = kind === 'color' ? THREE.SRGBColorSpace : THREE.NoColorSpace;
     this.cache[key] = t;
     return t;
+  }
+
+  /* Копия фактуры со своим повтором (холст картины). Копия, снятая до
+     загрузки, сразу помечена к загрузке в видеокарту, а картинки ещё нет:
+     three.js ругался бы на каждом кадре. Такая копия ждёт своей фактуры. */
+  clone(name, kind) {
+    const t = this.tex(name, kind);
+    const c = t.clone();
+    if (!t.image) {
+      c.version = 0;
+      const key = name + '_' + kind;
+      (this.clones[key] = this.clones[key] || []).push(c);
+    }
+    return c;
   }
 
   /* Материал из набора: color — есть ли своя карта цвета */
