@@ -526,7 +526,7 @@ export class World {
       g2.font = '200 190px ' + SANS;
       g2.fillText('Арт-Ростов', 20, 210);
       g2.font = '600 190px ' + SANS;
-      g2.fillText('2026', 20, 420);
+      g2.fillText('2027', 20, 420);
       g2.fillStyle = MUTED;
       g2.font = '400 52px ' + SANS;
       wrapText(g2, 'Выставка-продажа современного искусства', 1100).forEach((l, i) => g2.fillText(l, 24, 540 + i * 66));

@@ -419,7 +419,7 @@ export class Props {
         const x0 = i * 128;
         g.fillStyle = col; g.fillRect(x0, 0, 128, hh);
         g.fillStyle = '#fff'; g.font = '600 20px ' + SANS; g.fillText('АРТ-', x0 + 12, 40); g.fillText('РОСТОВ', x0 + 12, 64);
-        g.font = '400 14px ' + SANS; g.fillText('2026', x0 + 12, 160);
+        g.font = '400 14px ' + SANS; g.fillText('2027', x0 + 12, 160);
       });
     });
     const mat = batch(new THREE.MeshStandardMaterial({ map: canvasTexture(cv), roughness: 0.5 }));
@@ -573,7 +573,7 @@ export class Props {
     g.font = '300 46px ' + SANS;
     spaced(g, 'АРТ-РОСТОВ', 48, 92, 6);
     g.font = '600 46px ' + SANS;
-    spaced(g, '2026', 48, 146, 6);
+    spaced(g, '2027', 48, 146, 6);
     g.font = '400 19px ' + SANS;
     g.fillStyle = 'rgba(255,255,255,0.72)';
     spaced(g, 'ВЫСТАВКА-ПРОДАЖА', 50, 192, 4);

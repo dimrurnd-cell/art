@@ -120,15 +120,41 @@ def slugify(name, full=False):
     return parts[0] if parts else "artist"
 
 
-def title_from_filename(path):
-    name = os.path.splitext(os.path.basename(path))[0]
+def clean_title(name, artist=""):
+    """Название работы или "" — если это не название, а имя файла с телефона
+    («WhatsApp 03 12 at 12.17.23», «FullSizeRender», «DSC», код облака).
+    Тогда в зале и карточке будет «Без названия»."""
     name = re.sub(r"[_\-]+", " ", name)
+    name = re.sub(r"(?i)(фото|photo|image|img)\d+", " ", name)   # «Фото1», «Image3»
+    name = re.sub(r"(?i)\bстенд\s+[а-яa-z]\d+\b", " ", name)     # место на выставке: «СТЕНД М3»
     name = NOISE.sub(" ", name)
+    name = re.sub(r"\s*\(\d+\)", " ", name)            # копия файла: «Мальва (2)»
     name = re.sub(r"\s\d{1,2}\s*$", " ", name)       # хвост вида «Ирис 26»
-    name = re.sub(r"\s{2,}", " ", name).strip(" .,-")
-    if not name or not re.search(r"[^\d\s]", name):   # осталась одна нумерация
+    name = re.sub(r"(?i)[\s,.]+г\.?\s*$", "", name)   # остаток года: «холст, масло, г.»
+    name = re.sub(r"\s{2,}", " ", name).strip(" ,-")
+    if not name.endswith("..."):
+        name = name.rstrip(".")
+    # названия на выставке русские: без русского слова это имя файла
+    words = re.findall(r"[А-Яа-яЁё]{3,}", name)
+    if not words:
+        return ""
+    # «Фото1 Моторная» — одна фамилия автора, а не название
+    own = set(re.findall(r"[А-Яа-яЁё]+", artist.lower()))
+    if own and all(w.lower() in own for w in words):
+        return ""
+    # имя автора в начале: «Евгения Аристова. Гладиолусы», «В.Прядьев Альпы»
+    while own:
+        m = re.match(r"([А-ЯЁA-Z]\.\s*)?([А-Яа-яЁё]+)[\s.,]*", name)
+        if not m or m.group(2).lower() not in own or m.end() >= len(name):
+            break
+        name = name[m.end():]
+    if re.fullmatch(r"[А-ЯЁ][а-яё]+[А-ЯЁ]{1,2}", name):     # «ИвановаИС» — фамилия с инициалами
         return ""
     return name[0].upper() + name[1:]
+
+
+def title_from_filename(path, artist=""):
+    return clean_title(os.path.splitext(os.path.basename(path))[0], artist)
 
 
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
@@ -361,7 +387,7 @@ def process_artist(folder, out_root, order, taken, section=""):
         with Image.open(src) as im:
             w, h = save_variants(im, art_dir, "work%d" % i, SIZES)
         works.append({
-            "title": title_from_filename(src),
+            "title": title_from_filename(src, name_from_folder),
             "thumb": "img/%s/work%d-400.webp" % (slug, i),
             "medium": "img/%s/work%d-800.webp" % (slug, i),
             "full": "img/%s/work%d-1600.webp" % (slug, i),

@@ -76,7 +76,7 @@
       "avatar": "img/tochka/avatar.webp",
       "works": [
         {
-          "title": "Стенд м3 Титоренко Тигр Умиротворение",
+          "title": "Тигр Умиротворение",
           "thumb": "img/tochka/work1-400.webp",
           "medium": "img/tochka/work1-800.webp",
           "full": "img/tochka/work1-1600.webp",
@@ -84,7 +84,7 @@
           "h": 1406
         },
         {
-          "title": "Стенд М3 Титоренко портретВасилисы",
+          "title": "ПортретВасилисы",
           "thumb": "img/tochka/work2-400.webp",
           "medium": "img/tochka/work2-800.webp",
           "full": "img/tochka/work2-1600.webp",
@@ -92,7 +92,7 @@
           "h": 2893
         },
         {
-          "title": "СТЕНД М3 титоренко белый тигр",
+          "title": "Белый тигр",
           "thumb": "img/tochka/work4-400.webp",
           "medium": "img/tochka/work4-800.webp",
           "full": "img/tochka/work4-1600.webp",
@@ -117,7 +117,7 @@
       "avatar": "img/aristova/avatar.webp",
       "works": [
         {
-          "title": "Евгения Аристова.Гладиолусы. 80х40. Смешанная техника.",
+          "title": "Гладиолусы. 80х40. Смешанная техника",
           "thumb": "img/aristova/work1-400.webp",
           "medium": "img/aristova/work1-800.webp",
           "full": "img/aristova/work1-1600.webp",
@@ -125,7 +125,7 @@
           "h": 3762
         },
         {
-          "title": "Евгения Аристова. Гортензия 80х40. Смешанная техника.",
+          "title": "Гортензия 80х40. Смешанная техника",
           "thumb": "img/aristova/work2-400.webp",
           "medium": "img/aristova/work2-800.webp",
           "full": "img/aristova/work2-1600.webp",
@@ -133,7 +133,7 @@
           "h": 3728
         },
         {
-          "title": "Евгения Аристова. Пионы. 90х60. Смешанная техника.",
+          "title": "Пионы. 90х60. Смешанная техника",
           "thumb": "img/aristova/work3-400.webp",
           "medium": "img/aristova/work3-800.webp",
           "full": "img/aristova/work3-1600.webp",
@@ -141,7 +141,7 @@
           "h": 3269
         },
         {
-          "title": "Евгения Аристова. Мальва. 80х40. Смешанная техника.",
+          "title": "Мальва. 80х40. Смешанная техника",
           "thumb": "img/aristova/work4-400.webp",
           "medium": "img/aristova/work4-800.webp",
           "full": "img/aristova/work4-1600.webp",
@@ -288,7 +288,7 @@
       "avatar": "img/atmosfera/avatar.webp",
       "works": [
         {
-          "title": "WhatsApp 03 20 at 11.35.55",
+          "title": "",
           "thumb": "img/atmosfera/work1-400.webp",
           "medium": "img/atmosfera/work1-800.webp",
           "full": "img/atmosfera/work1-1600.webp",
@@ -296,7 +296,7 @@
           "h": 1280
         },
         {
-          "title": "WhatsApp 03 20 at 11.35.13",
+          "title": "",
           "thumb": "img/atmosfera/work2-400.webp",
           "medium": "img/atmosfera/work2-800.webp",
           "full": "img/atmosfera/work2-1600.webp",
@@ -304,7 +304,7 @@
           "h": 1280
         },
         {
-          "title": "WhatsApp 03 20 at 11.35.13 (1)",
+          "title": "",
           "thumb": "img/atmosfera/work3-400.webp",
           "medium": "img/atmosfera/work3-800.webp",
           "full": "img/atmosfera/work3-1600.webp",
@@ -312,7 +312,7 @@
           "h": 1280
         },
         {
-          "title": "WhatsApp 03 20 at 11.37.37",
+          "title": "",
           "thumb": "img/atmosfera/work4-400.webp",
           "medium": "img/atmosfera/work4-800.webp",
           "full": "img/atmosfera/work4-1600.webp",
@@ -420,7 +420,7 @@
       "avatar": "img/bezruchko/avatar.webp",
       "works": [
         {
-          "title": "B0f3a9b2 42b2 42fd 945c 4f1cf",
+          "title": "",
           "thumb": "img/bezruchko/work1-400.webp",
           "medium": "img/bezruchko/work1-800.webp",
           "full": "img/bezruchko/work1-1600.webp",
@@ -428,7 +428,7 @@
           "h": 670
         },
         {
-          "title": "A5d3 b03d 4f14 acd1 d a",
+          "title": "",
           "thumb": "img/bezruchko/work2-400.webp",
           "medium": "img/bezruchko/work2-800.webp",
           "full": "img/bezruchko/work2-1600.webp",
@@ -436,7 +436,7 @@
           "h": 873
         },
         {
-          "title": "8df527e6 5d40 42d5 4d faf5",
+          "title": "",
           "thumb": "img/bezruchko/work3-400.webp",
           "medium": "img/bezruchko/work3-800.webp",
           "full": "img/bezruchko/work3-1600.webp",
@@ -444,7 +444,7 @@
           "h": 874
         },
         {
-          "title": "F3e4fb79 89a9 ac3a 2bb23fba",
+          "title": "",
           "thumb": "img/bezruchko/work4-400.webp",
           "medium": "img/bezruchko/work4-800.webp",
           "full": "img/bezruchko/work4-1600.webp",
@@ -452,7 +452,7 @@
           "h": 598
         },
         {
-          "title": "66c171c2 f8e8 40a1 b21b fe7ff49c37af",
+          "title": "",
           "thumb": "img/bezruchko/work5-400.webp",
           "medium": "img/bezruchko/work5-800.webp",
           "full": "img/bezruchko/work5-1600.webp",
@@ -468,7 +468,7 @@
           "h": 862
         },
         {
-          "title": "93a2c024 78bb 4ac4 e8bc6d419b66",
+          "title": "",
           "thumb": "img/bezruchko/work7-400.webp",
           "medium": "img/bezruchko/work7-800.webp",
           "full": "img/bezruchko/work7-1600.webp",
@@ -545,7 +545,7 @@
       "avatar": "img/belozerova/avatar.webp",
       "works": [
         {
-          "title": "WhatsApp 03 15 at 4.23.05 PM (3)",
+          "title": "",
           "thumb": "img/belozerova/work1-400.webp",
           "medium": "img/belozerova/work1-800.webp",
           "full": "img/belozerova/work1-1600.webp",
@@ -553,7 +553,7 @@
           "h": 1600
         },
         {
-          "title": "WhatsApp 03 15 at 4.23.05 PM (2)",
+          "title": "",
           "thumb": "img/belozerova/work2-400.webp",
           "medium": "img/belozerova/work2-800.webp",
           "full": "img/belozerova/work2-1600.webp",
@@ -561,7 +561,7 @@
           "h": 1600
         },
         {
-          "title": "WhatsApp 03 15 at 4.23.05 PM (1)",
+          "title": "",
           "thumb": "img/belozerova/work3-400.webp",
           "medium": "img/belozerova/work3-800.webp",
           "full": "img/belozerova/work3-1600.webp",
@@ -569,7 +569,7 @@
           "h": 1600
         },
         {
-          "title": "WhatsApp 03 15 at 4.23.04 PM",
+          "title": "",
           "thumb": "img/belozerova/work4-400.webp",
           "medium": "img/belozerova/work4-800.webp",
           "full": "img/belozerova/work4-1600.webp",
@@ -630,7 +630,7 @@
       "avatar": "img/bender/avatar.webp",
       "works": [
         {
-          "title": "Edit",
+          "title": "",
           "thumb": "img/bender/work1-400.webp",
           "medium": "img/bender/work1-800.webp",
           "full": "img/bender/work1-1600.webp",
@@ -638,7 +638,7 @@
           "h": 3760
         },
         {
-          "title": "Edit",
+          "title": "",
           "thumb": "img/bender/work2-400.webp",
           "medium": "img/bender/work2-800.webp",
           "full": "img/bender/work2-1600.webp",
@@ -646,7 +646,7 @@
           "h": 2797
         },
         {
-          "title": "Edit",
+          "title": "",
           "thumb": "img/bender/work3-400.webp",
           "medium": "img/bender/work3-800.webp",
           "full": "img/bender/work3-1600.webp",
@@ -654,7 +654,7 @@
           "h": 3358
         },
         {
-          "title": "Edit",
+          "title": "",
           "thumb": "img/bender/work4-400.webp",
           "medium": "img/bender/work4-800.webp",
           "full": "img/bender/work4-1600.webp",
@@ -740,7 +740,7 @@
       "avatar": "img/bordaeva/avatar.webp",
       "works": [
         {
-          "title": "WhatsApp 04 04 at 1.14.20 PM (1)",
+          "title": "",
           "thumb": "img/bordaeva/work1-400.webp",
           "medium": "img/bordaeva/work1-800.webp",
           "full": "img/bordaeva/work1-1600.webp",
@@ -748,7 +748,7 @@
           "h": 629
         },
         {
-          "title": "WhatsApp 04 04 at 1.14.20 PM",
+          "title": "",
           "thumb": "img/bordaeva/work2-400.webp",
           "medium": "img/bordaeva/work2-800.webp",
           "full": "img/bordaeva/work2-1600.webp",
@@ -756,7 +756,7 @@
           "h": 854
         },
         {
-          "title": "WhatsApp 04 04 at 1.14.19 PM (1)",
+          "title": "",
           "thumb": "img/bordaeva/work3-400.webp",
           "medium": "img/bordaeva/work3-800.webp",
           "full": "img/bordaeva/work3-1600.webp",
@@ -764,7 +764,7 @@
           "h": 595
         },
         {
-          "title": "WhatsApp 04 04 at 1.14.19 PM",
+          "title": "",
           "thumb": "img/bordaeva/work4-400.webp",
           "medium": "img/bordaeva/work4-800.webp",
           "full": "img/bordaeva/work4-1600.webp",
@@ -772,7 +772,7 @@
           "h": 566
         },
         {
-          "title": "WhatsApp 04 04 at 1.14.21 PM",
+          "title": "",
           "thumb": "img/bordaeva/work5-400.webp",
           "medium": "img/bordaeva/work5-800.webp",
           "full": "img/bordaeva/work5-1600.webp",
@@ -792,7 +792,7 @@
       "avatar": "img/vlasova/avatar.webp",
       "works": [
         {
-          "title": "Edit",
+          "title": "",
           "thumb": "img/vlasova/work1-400.webp",
           "medium": "img/vlasova/work1-800.webp",
           "full": "img/vlasova/work1-1600.webp",
@@ -967,7 +967,7 @@
       "avatar": "img/gasilova/avatar.webp",
       "works": [
         {
-          "title": "Image3",
+          "title": "",
           "thumb": "img/gasilova/work1-400.webp",
           "medium": "img/gasilova/work1-800.webp",
           "full": "img/gasilova/work1-1600.webp",
@@ -975,7 +975,7 @@
           "h": 2955
         },
         {
-          "title": "Image4",
+          "title": "",
           "thumb": "img/gasilova/work2-400.webp",
           "medium": "img/gasilova/work2-800.webp",
           "full": "img/gasilova/work2-1600.webp",
@@ -983,7 +983,7 @@
           "h": 2587
         },
         {
-          "title": "Image1",
+          "title": "",
           "thumb": "img/gasilova/work3-400.webp",
           "medium": "img/gasilova/work3-800.webp",
           "full": "img/gasilova/work3-1600.webp",
@@ -991,7 +991,7 @@
           "h": 2171
         },
         {
-          "title": "Image2",
+          "title": "",
           "thumb": "img/gasilova/work4-400.webp",
           "medium": "img/gasilova/work4-800.webp",
           "full": "img/gasilova/work4-1600.webp",
@@ -1211,7 +1211,7 @@
           "h": 1014
         },
         {
-          "title": "FullSizeRender",
+          "title": "",
           "thumb": "img/davalova/work2-400.webp",
           "medium": "img/davalova/work2-800.webp",
           "full": "img/davalova/work2-1600.webp",
@@ -1312,7 +1312,7 @@
       "avatar": "img/dzhinaliev/avatar.webp",
       "works": [
         {
-          "title": "Путники (120х80см), холст, масло, г.",
+          "title": "Путники (120х80см), холст, масло",
           "thumb": "img/dzhinaliev/work1-400.webp",
           "medium": "img/dzhinaliev/work1-800.webp",
           "full": "img/dzhinaliev/work1-1600.webp",
@@ -1320,7 +1320,7 @@
           "h": 6665
         },
         {
-          "title": "Глория (100х70см), холст, масло, г.",
+          "title": "Глория (100х70см), холст, масло",
           "thumb": "img/dzhinaliev/work2-400.webp",
           "medium": "img/dzhinaliev/work2-800.webp",
           "full": "img/dzhinaliev/work2-1600.webp",
@@ -1328,7 +1328,7 @@
           "h": 6112
         },
         {
-          "title": "Цветение кизила (100х70см), холст, масло, г.",
+          "title": "Цветение кизила (100х70см), холст, масло",
           "thumb": "img/dzhinaliev/work3-400.webp",
           "medium": "img/dzhinaliev/work3-800.webp",
           "full": "img/dzhinaliev/work3-1600.webp",
@@ -1336,7 +1336,7 @@
           "h": 6384
         },
         {
-          "title": "Город хранит (120х80см), холст, масло, г.",
+          "title": "Город хранит (120х80см), холст, масло",
           "thumb": "img/dzhinaliev/work4-400.webp",
           "medium": "img/dzhinaliev/work4-800.webp",
           "full": "img/dzhinaliev/work4-1600.webp",
@@ -1478,7 +1478,7 @@
           "h": 1500
         },
         {
-          "title": "Kartina mama07",
+          "title": "",
           "thumb": "img/zhegulova/work2-400.webp",
           "medium": "img/zhegulova/work2-800.webp",
           "full": "img/zhegulova/work2-1600.webp",
@@ -1486,7 +1486,7 @@
           "h": 2513
         },
         {
-          "title": "Portret geyshi01",
+          "title": "",
           "thumb": "img/zhegulova/work3-400.webp",
           "medium": "img/zhegulova/work3-800.webp",
           "full": "img/zhegulova/work3-1600.webp",
@@ -1734,7 +1734,7 @@
       "avatar": "img/istomina/avatar.webp",
       "works": [
         {
-          "title": "Елена Истомина Вольный Дон 60 х 130 см холст, масло",
+          "title": "Вольный Дон 60 х 130 см холст, масло",
           "thumb": "img/istomina/work1-400.webp",
           "medium": "img/istomina/work1-800.webp",
           "full": "img/istomina/work1-1600.webp",
@@ -1742,7 +1742,7 @@
           "h": 684
         },
         {
-          "title": "Елена Истомина Вечерний бриз 60х130 см холст, масло",
+          "title": "Вечерний бриз 60х130 см холст, масло",
           "thumb": "img/istomina/work2-400.webp",
           "medium": "img/istomina/work2-800.webp",
           "full": "img/istomina/work2-1600.webp",
@@ -1750,7 +1750,7 @@
           "h": 887
         },
         {
-          "title": "Елена Истомина. Свежесть леса. 60х130 см. Холст, масло",
+          "title": "Свежесть леса. 60х130 см. Холст, масло",
           "thumb": "img/istomina/work3-400.webp",
           "medium": "img/istomina/work3-800.webp",
           "full": "img/istomina/work3-1600.webp",
@@ -1758,7 +1758,7 @@
           "h": 1354
         },
         {
-          "title": "Елена Истомина. Гармония лета. 60х120 см. Холст, масло г",
+          "title": "Гармония лета. 60х120 см. Холст, масло",
           "thumb": "img/istomina/work4-400.webp",
           "medium": "img/istomina/work4-800.webp",
           "full": "img/istomina/work4-1600.webp",
@@ -1778,7 +1778,7 @@
       "avatar": "img/kalinina/avatar.webp",
       "works": [
         {
-          "title": "WhatsApp 03 10 at 11.24.16 PM",
+          "title": "",
           "thumb": "img/kalinina/work1-400.webp",
           "medium": "img/kalinina/work1-800.webp",
           "full": "img/kalinina/work1-1600.webp",
@@ -1786,7 +1786,7 @@
           "h": 1280
         },
         {
-          "title": "WhatsApp 03 10 at 11.24.17 PM (2)",
+          "title": "",
           "thumb": "img/kalinina/work2-400.webp",
           "medium": "img/kalinina/work2-800.webp",
           "full": "img/kalinina/work2-1600.webp",
@@ -1794,7 +1794,7 @@
           "h": 1280
         },
         {
-          "title": "WhatsApp 03 10 at 11.24.17 PM (1)",
+          "title": "",
           "thumb": "img/kalinina/work3-400.webp",
           "medium": "img/kalinina/work3-800.webp",
           "full": "img/kalinina/work3-1600.webp",
@@ -1802,7 +1802,7 @@
           "h": 1280
         },
         {
-          "title": "WhatsApp 03 10 at 11.24.17 PM",
+          "title": "",
           "thumb": "img/kalinina/work4-400.webp",
           "medium": "img/kalinina/work4-800.webp",
           "full": "img/kalinina/work4-1600.webp",
@@ -1908,7 +1908,7 @@
           "h": 4032
         },
         {
-          "title": "DSC",
+          "title": "",
           "thumb": "img/kalugova/work4-400.webp",
           "medium": "img/kalugova/work4-800.webp",
           "full": "img/kalugova/work4-1600.webp",
@@ -1941,7 +1941,7 @@
       "avatar": "img/kargin/avatar.webp",
       "works": [
         {
-          "title": "VOX9iZcaN487JPw7vgF QNTPHlguk1v 2 wXqCSL 8UqOUBtJfbpwqpvFn 88dk6J5rGJvGCdwPLvp2hyyLTdGnT (1)",
+          "title": "",
           "thumb": "img/kargin/work1-400.webp",
           "medium": "img/kargin/work1-800.webp",
           "full": "img/kargin/work1-1600.webp",
@@ -1949,7 +1949,7 @@
           "h": 1543
         },
         {
-          "title": "Lcnk77AA2pL2sfkcONu3k4AuvtlP W 4pwsBWhwRekb52v1D0VnvkKmGHsHffyXaAqSH x1BVRQv6YoxuWgFWCu2 (1)",
+          "title": "",
           "thumb": "img/kargin/work2-400.webp",
           "medium": "img/kargin/work2-800.webp",
           "full": "img/kargin/work2-1600.webp",
@@ -1957,7 +1957,7 @@
           "h": 2232
         },
         {
-          "title": "WT6Zfm OETBHiWFuGnyq98VdunWBUYSfeWIE9vDjtkjGEITOHsULsN63CR1wYitNQkUfBDnb0qwygpnX0n0 4DU",
+          "title": "",
           "thumb": "img/kargin/work3-400.webp",
           "medium": "img/kargin/work3-800.webp",
           "full": "img/kargin/work3-1600.webp",
@@ -1965,7 +1965,7 @@
           "h": 1596
         },
         {
-          "title": "PAdMx4LBV2xMqiWCOosTom0CSuJAtOeGAbK1ugOXVsYcT PooQ5Wjml4p11o MjItHe da IE2grbk1hXTl UUEe",
+          "title": "",
           "thumb": "img/kargin/work4-400.webp",
           "medium": "img/kargin/work4-800.webp",
           "full": "img/kargin/work4-1600.webp",
@@ -2038,7 +2038,7 @@
       "avatar": "img/kobozev/avatar.webp",
       "works": [
         {
-          "title": "MG",
+          "title": "",
           "thumb": "img/kobozev/work1-400.webp",
           "medium": "img/kobozev/work1-800.webp",
           "full": "img/kobozev/work1-1600.webp",
@@ -2046,7 +2046,7 @@
           "h": 5616
         },
         {
-          "title": "Энерго проэкт (11)",
+          "title": "Энерго проэкт",
           "thumb": "img/kobozev/work2-400.webp",
           "medium": "img/kobozev/work2-800.webp",
           "full": "img/kobozev/work2-1600.webp",
@@ -2054,7 +2054,7 @@
           "h": 5616
         },
         {
-          "title": "MG",
+          "title": "",
           "thumb": "img/kobozev/work3-400.webp",
           "medium": "img/kobozev/work3-800.webp",
           "full": "img/kobozev/work3-1600.webp",
@@ -2062,7 +2062,7 @@
           "h": 5616
         },
         {
-          "title": "MG 5.1",
+          "title": "",
           "thumb": "img/kobozev/work4-400.webp",
           "medium": "img/kobozev/work4-800.webp",
           "full": "img/kobozev/work4-1600.webp",
@@ -2163,7 +2163,7 @@
           "h": 4032
         },
         {
-          "title": "19 03 26 08 48 (1)",
+          "title": "",
           "thumb": "img/kolesnik/work3-400.webp",
           "medium": "img/kolesnik/work3-800.webp",
           "full": "img/kolesnik/work3-1600.webp",
@@ -2256,7 +2256,7 @@
       "avatar": "img/komova/avatar.webp",
       "works": [
         {
-          "title": "(3)",
+          "title": "",
           "thumb": "img/komova/work1-400.webp",
           "medium": "img/komova/work1-800.webp",
           "full": "img/komova/work1-1600.webp",
@@ -2264,7 +2264,7 @@
           "h": 2735
         },
         {
-          "title": "(1)",
+          "title": "",
           "thumb": "img/komova/work2-400.webp",
           "medium": "img/komova/work2-800.webp",
           "full": "img/komova/work2-1600.webp",
@@ -2280,7 +2280,7 @@
           "h": 2793
         },
         {
-          "title": "(1)",
+          "title": "",
           "thumb": "img/komova/work4-400.webp",
           "medium": "img/komova/work4-800.webp",
           "full": "img/komova/work4-1600.webp",
@@ -2341,7 +2341,7 @@
           "h": 2480
         },
         {
-          "title": "WhatsApp 12 01 at 20.03.26 (4)",
+          "title": "",
           "thumb": "img/koryagina/work5-400.webp",
           "medium": "img/koryagina/work5-800.webp",
           "full": "img/koryagina/work5-1600.webp",
@@ -2402,7 +2402,7 @@
       "avatar": "img/koe/avatar.webp",
       "works": [
         {
-          "title": "Edit",
+          "title": "",
           "thumb": "img/koe/work1-400.webp",
           "medium": "img/koe/work1-800.webp",
           "full": "img/koe/work1-1600.webp",
@@ -2410,7 +2410,7 @@
           "h": 1297
         },
         {
-          "title": "Edit",
+          "title": "",
           "thumb": "img/koe/work2-400.webp",
           "medium": "img/koe/work2-800.webp",
           "full": "img/koe/work2-1600.webp",
@@ -2418,7 +2418,7 @@
           "h": 1537
         },
         {
-          "title": "Edit",
+          "title": "",
           "thumb": "img/koe/work3-400.webp",
           "medium": "img/koe/work3-800.webp",
           "full": "img/koe/work3-1600.webp",
@@ -2426,7 +2426,7 @@
           "h": 2567
         },
         {
-          "title": "Edit",
+          "title": "",
           "thumb": "img/koe/work4-400.webp",
           "medium": "img/koe/work4-800.webp",
           "full": "img/koe/work4-1600.webp",
@@ -2434,7 +2434,7 @@
           "h": 2197
         },
         {
-          "title": "Edit",
+          "title": "",
           "thumb": "img/koe/work5-400.webp",
           "medium": "img/koe/work5-800.webp",
           "full": "img/koe/work5-1600.webp",
@@ -2442,7 +2442,7 @@
           "h": 2961
         },
         {
-          "title": "Edit",
+          "title": "",
           "thumb": "img/koe/work6-400.webp",
           "medium": "img/koe/work6-800.webp",
           "full": "img/koe/work6-1600.webp",
@@ -2508,7 +2508,7 @@
       "avatar": "img/lazarev/avatar.webp",
       "works": [
         {
-          "title": "Fotor (1)",
+          "title": "",
           "thumb": "img/lazarev/work1-400.webp",
           "medium": "img/lazarev/work1-800.webp",
           "full": "img/lazarev/work1-1600.webp",
@@ -2516,7 +2516,7 @@
           "h": 1987
         },
         {
-          "title": "(1)",
+          "title": "",
           "thumb": "img/lazarev/work2-400.webp",
           "medium": "img/lazarev/work2-800.webp",
           "full": "img/lazarev/work2-1600.webp",
@@ -2524,7 +2524,7 @@
           "h": 1967
         },
         {
-          "title": "Fotor (1)",
+          "title": "",
           "thumb": "img/lazarev/work3-400.webp",
           "medium": "img/lazarev/work3-800.webp",
           "full": "img/lazarev/work3-1600.webp",
@@ -2532,7 +2532,7 @@
           "h": 3999
         },
         {
-          "title": "Fotor (1)",
+          "title": "",
           "thumb": "img/lazarev/work4-400.webp",
           "medium": "img/lazarev/work4-800.webp",
           "full": "img/lazarev/work4-1600.webp",
@@ -2604,7 +2604,7 @@
       "avatar": "img/larkova/avatar.webp",
       "works": [
         {
-          "title": "18 03 26 04 43 (3)",
+          "title": "",
           "thumb": "img/larkova/work1-400.webp",
           "medium": "img/larkova/work1-800.webp",
           "full": "img/larkova/work1-1600.webp",
@@ -2620,7 +2620,7 @@
           "h": 3398
         },
         {
-          "title": "18 03 26 04 43 (2)",
+          "title": "",
           "thumb": "img/larkova/work3-400.webp",
           "medium": "img/larkova/work3-800.webp",
           "full": "img/larkova/work3-1600.webp",
@@ -2628,7 +2628,7 @@
           "h": 3705
         },
         {
-          "title": "18 03 26 04 43 (1)",
+          "title": "",
           "thumb": "img/larkova/work4-400.webp",
           "medium": "img/larkova/work4-800.webp",
           "full": "img/larkova/work4-1600.webp",
@@ -2688,7 +2688,7 @@
           "h": 1674
         },
         {
-          "title": "Screenshot 03 13 21 58 02 76 99c c0de fc8b56c3b",
+          "title": "",
           "thumb": "img/lobanova/work6-400.webp",
           "medium": "img/lobanova/work6-800.webp",
           "full": "img/lobanova/work6-1600.webp",
@@ -2762,7 +2762,7 @@
       "avatar": "img/lymar/avatar.webp",
       "works": [
         {
-          "title": "FullSizeRender (1)",
+          "title": "",
           "thumb": "img/lymar/work1-400.webp",
           "medium": "img/lymar/work1-800.webp",
           "full": "img/lymar/work1-1600.webp",
@@ -2770,7 +2770,7 @@
           "h": 2016
         },
         {
-          "title": "FullSizeRender",
+          "title": "",
           "thumb": "img/lymar/work2-400.webp",
           "medium": "img/lymar/work2-800.webp",
           "full": "img/lymar/work2-1600.webp",
@@ -2822,7 +2822,7 @@
       "avatar": "img/lebedev/avatar.webp",
       "works": [
         {
-          "title": "Морской пейзаж (1)",
+          "title": "Морской пейзаж",
           "thumb": "img/lebedev/work1-400.webp",
           "medium": "img/lebedev/work1-800.webp",
           "full": "img/lebedev/work1-1600.webp",
@@ -2866,7 +2866,7 @@
       "avatar": "img/matsik/avatar.webp",
       "works": [
         {
-          "title": "TQuSceLrMAp05rmeBgchskN8iU1zIkN7TyK WlMjHrohWzShG518bVN9KkpZnbjocoMIEg92NCLOu g3soEiox2t",
+          "title": "",
           "thumb": "img/matsik/work1-400.webp",
           "medium": "img/matsik/work1-800.webp",
           "full": "img/matsik/work1-1600.webp",
@@ -2874,7 +2874,7 @@
           "h": 1696
         },
         {
-          "title": "Q dUCcURE0Q9f79iKkUQtwQDRJdwscaqgrbd1RjESeST6ZChCy S Ix1QUR krXYofnf0flw84 1w3tppc7dlF1l",
+          "title": "",
           "thumb": "img/matsik/work2-400.webp",
           "medium": "img/matsik/work2-800.webp",
           "full": "img/matsik/work2-1600.webp",
@@ -2882,7 +2882,7 @@
           "h": 1602
         },
         {
-          "title": "FA6FVeB6W4lcCSgyIfqpzGdH nPkvAGccUUvOha8TSHSegwTkMBEEAKIsM20RIoEZLwg7S13Y7pg8Tvr lOkqo6j",
+          "title": "",
           "thumb": "img/matsik/work3-400.webp",
           "medium": "img/matsik/work3-800.webp",
           "full": "img/matsik/work3-1600.webp",
@@ -2890,7 +2890,7 @@
           "h": 1724
         },
         {
-          "title": "B6o0J6PsZVHiMVCOhv3UCt4lb4g1g Ly4IZksf8PZfib5CFTMxVA3wtPK02J6 41LMSKWa ieRS RiMT73wpqx14",
+          "title": "",
           "thumb": "img/matsik/work4-400.webp",
           "medium": "img/matsik/work4-800.webp",
           "full": "img/matsik/work4-1600.webp",
@@ -3002,7 +3002,7 @@
           "h": 2651
         },
         {
-          "title": "Фото1 Моторная",
+          "title": "",
           "thumb": "img/motornaya/work5-400.webp",
           "medium": "img/motornaya/work5-800.webp",
           "full": "img/motornaya/work5-1600.webp",
@@ -3022,7 +3022,7 @@
       "avatar": "img/murashkina/avatar.webp",
       "works": [
         {
-          "title": "The painting is an exclusive for collectors collection",
+          "title": "",
           "thumb": "img/murashkina/work1-400.webp",
           "medium": "img/murashkina/work1-800.webp",
           "full": "img/murashkina/work1-1600.webp",
@@ -3030,7 +3030,7 @@
           "h": 4618
         },
         {
-          "title": "DSC",
+          "title": "",
           "thumb": "img/murashkina/work2-400.webp",
           "medium": "img/murashkina/work2-800.webp",
           "full": "img/murashkina/work2-1600.webp",
@@ -3046,7 +3046,7 @@
           "h": 4080
         },
         {
-          "title": "WhatsApp 01 09 at 16.46.32 (1)",
+          "title": "",
           "thumb": "img/murashkina/work4-400.webp",
           "medium": "img/murashkina/work4-800.webp",
           "full": "img/murashkina/work4-1600.webp",
@@ -3082,7 +3082,7 @@
           "h": 1750
         },
         {
-          "title": "ZNWKypf2w6VgwSaiMgtt07E qDbSfRH9voc6JO2 zg0CEgHDWQ2CwkRPg0Dpvpih3pr5c2P5tq0xHeZOH3AZncmP",
+          "title": "",
           "thumb": "img/nalbandyan/work3-400.webp",
           "medium": "img/nalbandyan/work3-800.webp",
           "full": "img/nalbandyan/work3-1600.webp",
@@ -3131,7 +3131,7 @@
       "avatar": "img/netrebskaya/avatar.webp",
       "works": [
         {
-          "title": "Нетребская Ирина. Прованс. Холст масло. 40 см х 50 см. г.",
+          "title": "Прованс. Холст масло. 40 см х 50 см",
           "thumb": "img/netrebskaya/work1-400.webp",
           "medium": "img/netrebskaya/work1-800.webp",
           "full": "img/netrebskaya/work1-1600.webp",
@@ -3151,7 +3151,7 @@
       "avatar": "img/novikov/avatar.webp",
       "works": [
         {
-          "title": "Y",
+          "title": "",
           "thumb": "img/novikov/work1-400.webp",
           "medium": "img/novikov/work1-800.webp",
           "full": "img/novikov/work1-1600.webp",
@@ -3159,7 +3159,7 @@
           "h": 1068
         },
         {
-          "title": "Y",
+          "title": "",
           "thumb": "img/novikov/work2-400.webp",
           "medium": "img/novikov/work2-800.webp",
           "full": "img/novikov/work2-1600.webp",
@@ -3167,7 +3167,7 @@
           "h": 912
         },
         {
-          "title": "Y",
+          "title": "",
           "thumb": "img/novikov/work3-400.webp",
           "medium": "img/novikov/work3-800.webp",
           "full": "img/novikov/work3-1600.webp",
@@ -3291,7 +3291,7 @@
           "h": 1149
         },
         {
-          "title": "Y",
+          "title": "",
           "thumb": "img/oganesyan/work2-400.webp",
           "medium": "img/oganesyan/work2-800.webp",
           "full": "img/oganesyan/work2-1600.webp",
@@ -3299,7 +3299,7 @@
           "h": 455
         },
         {
-          "title": "Generated 02f41f13 dc9f 47f6 beff 556cb0ad (1)",
+          "title": "",
           "thumb": "img/oganesyan/work3-400.webp",
           "medium": "img/oganesyan/work3-800.webp",
           "full": "img/oganesyan/work3-1600.webp",
@@ -3307,7 +3307,7 @@
           "h": 1152
         },
         {
-          "title": "Generated 02f41f13 dc9f 47f6 beff 556cb0ad (1)",
+          "title": "",
           "thumb": "img/oganesyan/work4-400.webp",
           "medium": "img/oganesyan/work4-800.webp",
           "full": "img/oganesyan/work4-1600.webp",
@@ -3371,7 +3371,7 @@
           "h": 2731
         },
         {
-          "title": "01 19 09 23 05 (1)",
+          "title": "",
           "thumb": "img/pashkova/work2-400.webp",
           "medium": "img/pashkova/work2-800.webp",
           "full": "img/pashkova/work2-1600.webp",
@@ -3432,7 +3432,7 @@
           "h": 1552
         },
         {
-          "title": "1FE4bDpBQz2ywTzgZiePvGeBxvFg3Yd2TPgQni1rVypi033Odgc9HnBpBNVlw5yGjnp16Tf vcMu4cucsP4bx2 G",
+          "title": "",
           "thumb": "img/penzenko/work2-400.webp",
           "medium": "img/penzenko/work2-800.webp",
           "full": "img/penzenko/work2-1600.webp",
@@ -3440,7 +3440,7 @@
           "h": 1010
         },
         {
-          "title": "SH3RcqmmTwm4uqzkvkSMN3U87gs3tbKye DEnoFDuqeWnEC1UAhjUHdB5BJs LAJGu3YSUSK9sGgmxVnP2JgBENy",
+          "title": "",
           "thumb": "img/penzenko/work3-400.webp",
           "medium": "img/penzenko/work3-800.webp",
           "full": "img/penzenko/work3-1600.webp",
@@ -3448,7 +3448,7 @@
           "h": 1843
         },
         {
-          "title": "6SGSXD0efEs",
+          "title": "",
           "thumb": "img/penzenko/work4-400.webp",
           "medium": "img/penzenko/work4-800.webp",
           "full": "img/penzenko/work4-1600.webp",
@@ -3541,7 +3541,7 @@
           "h": 2560
         },
         {
-          "title": "КАРАВАЙ 80х80 холст акрил г",
+          "title": "КАРАВАЙ 80х80 холст акрил",
           "thumb": "img/petrova/work3-400.webp",
           "medium": "img/petrova/work3-800.webp",
           "full": "img/petrova/work3-1600.webp",
@@ -3565,7 +3565,7 @@
           "h": 2534
         },
         {
-          "title": "ЭМОЦИИ холст акрил 80х80 см г",
+          "title": "ЭМОЦИИ холст акрил 80х80 см",
           "thumb": "img/petrova/work6-400.webp",
           "medium": "img/petrova/work6-800.webp",
           "full": "img/petrova/work6-1600.webp",
@@ -3573,7 +3573,7 @@
           "h": 2560
         },
         {
-          "title": "(2)",
+          "title": "",
           "thumb": "img/petrova/work7-400.webp",
           "medium": "img/petrova/work7-800.webp",
           "full": "img/petrova/work7-1600.webp",
@@ -3593,7 +3593,7 @@
       "avatar": "img/poltorak/avatar.webp",
       "works": [
         {
-          "title": "A8ced3ee 43a9 a869 fa2b22cd",
+          "title": "",
           "thumb": "img/poltorak/work1-400.webp",
           "medium": "img/poltorak/work1-800.webp",
           "full": "img/poltorak/work1-1600.webp",
@@ -3601,7 +3601,7 @@
           "h": 1280
         },
         {
-          "title": "8decb407 a06a 42d0 a0f7 fba17fd737fc",
+          "title": "",
           "thumb": "img/poltorak/work2-400.webp",
           "medium": "img/poltorak/work2-800.webp",
           "full": "img/poltorak/work2-1600.webp",
@@ -3609,7 +3609,7 @@
           "h": 560
         },
         {
-          "title": "2d425cda 7e73 4f07 ad29 c64cf6ca",
+          "title": "",
           "thumb": "img/poltorak/work3-400.webp",
           "medium": "img/poltorak/work3-800.webp",
           "full": "img/poltorak/work3-1600.webp",
@@ -3674,7 +3674,7 @@
           "h": 2481
         },
         {
-          "title": "A8cd 4b28 aa3b c d1a",
+          "title": "",
           "thumb": "img/potapenko/work6-400.webp",
           "medium": "img/potapenko/work6-800.webp",
           "full": "img/potapenko/work6-1600.webp",
@@ -3738,7 +3738,7 @@
       "avatar": "img/potapova/avatar.webp",
       "works": [
         {
-          "title": "Краски осени 60х80 х.м 24г",
+          "title": "Краски осени 60х80 х.м",
           "thumb": "img/potapova/work1-400.webp",
           "medium": "img/potapova/work1-800.webp",
           "full": "img/potapova/work1-1600.webp",
@@ -3754,7 +3754,7 @@
           "h": 3264
         },
         {
-          "title": "Свет лета 70х90 х.м 25г (2)",
+          "title": "Свет лета 70х90 х.м",
           "thumb": "img/potapova/work3-400.webp",
           "medium": "img/potapova/work3-800.webp",
           "full": "img/potapova/work3-1600.webp",
@@ -3774,7 +3774,7 @@
       "avatar": "img/prokopev/avatar.webp",
       "works": [
         {
-          "title": "Y",
+          "title": "",
           "thumb": "img/prokopev/work1-400.webp",
           "medium": "img/prokopev/work1-800.webp",
           "full": "img/prokopev/work1-1600.webp",
@@ -3782,7 +3782,7 @@
           "h": 960
         },
         {
-          "title": "Y",
+          "title": "",
           "thumb": "img/prokopev/work2-400.webp",
           "medium": "img/prokopev/work2-800.webp",
           "full": "img/prokopev/work2-1600.webp",
@@ -3790,7 +3790,7 @@
           "h": 960
         },
         {
-          "title": "Y",
+          "title": "",
           "thumb": "img/prokopev/work3-400.webp",
           "medium": "img/prokopev/work3-800.webp",
           "full": "img/prokopev/work3-1600.webp",
@@ -3798,7 +3798,7 @@
           "h": 924
         },
         {
-          "title": "Y",
+          "title": "",
           "thumb": "img/prokopev/work4-400.webp",
           "medium": "img/prokopev/work4-800.webp",
           "full": "img/prokopev/work4-1600.webp",
@@ -3806,7 +3806,7 @@
           "h": 960
         },
         {
-          "title": "Y",
+          "title": "",
           "thumb": "img/prokopev/work5-400.webp",
           "medium": "img/prokopev/work5-800.webp",
           "full": "img/prokopev/work5-1600.webp",
@@ -3826,7 +3826,7 @@
       "avatar": "img/pryadev/avatar.webp",
       "works": [
         {
-          "title": "В.Прядьев КАМЕННЫЙ ОСТРОВ х,м ,54х66",
+          "title": "КАМЕННЫЙ ОСТРОВ х,м ,54х66",
           "thumb": "img/pryadev/work1-400.webp",
           "medium": "img/pryadev/work1-800.webp",
           "full": "img/pryadev/work1-1600.webp",
@@ -3834,7 +3834,7 @@
           "h": 1580
         },
         {
-          "title": "В.Прядьев Золотой пейзаж х м 81х113 см г (2)",
+          "title": "Золотой пейзаж х м 81х113 см",
           "thumb": "img/pryadev/work2-400.webp",
           "medium": "img/pryadev/work2-800.webp",
           "full": "img/pryadev/work2-1600.webp",
@@ -3842,7 +3842,7 @@
           "h": 1538
         },
         {
-          "title": "В.Прядьев Альпы. Италия двп, масло",
+          "title": "Альпы. Италия двп, масло",
           "thumb": "img/pryadev/work3-400.webp",
           "medium": "img/pryadev/work3-800.webp",
           "full": "img/pryadev/work3-1600.webp",
@@ -3858,7 +3858,7 @@
           "h": 1166
         },
         {
-          "title": "В.Прядьев Альпы х.м.60х80 (1)",
+          "title": "Альпы х.м.60х80",
           "thumb": "img/pryadev/work5-400.webp",
           "medium": "img/pryadev/work5-800.webp",
           "full": "img/pryadev/work5-1600.webp",
@@ -3878,7 +3878,7 @@
       "avatar": "img/roetskaya/avatar.webp",
       "works": [
         {
-          "title": "Edit",
+          "title": "",
           "thumb": "img/roetskaya/work1-400.webp",
           "medium": "img/roetskaya/work1-800.webp",
           "full": "img/roetskaya/work1-1600.webp",
@@ -3886,7 +3886,7 @@
           "h": 1648
         },
         {
-          "title": "Edit",
+          "title": "",
           "thumb": "img/roetskaya/work2-400.webp",
           "medium": "img/roetskaya/work2-800.webp",
           "full": "img/roetskaya/work2-1600.webp",
@@ -3894,7 +3894,7 @@
           "h": 1595
         },
         {
-          "title": "Edit",
+          "title": "",
           "thumb": "img/roetskaya/work3-400.webp",
           "medium": "img/roetskaya/work3-800.webp",
           "full": "img/roetskaya/work3-1600.webp",
@@ -3902,7 +3902,7 @@
           "h": 3401
         },
         {
-          "title": "Edit",
+          "title": "",
           "thumb": "img/roetskaya/work4-400.webp",
           "medium": "img/roetskaya/work4-800.webp",
           "full": "img/roetskaya/work4-1600.webp",
@@ -3947,7 +3947,7 @@
           "h": 1280
         },
         {
-          "title": "Прошлое. 50х70см, mixmedia art. г",
+          "title": "Прошлое. 50х70см, mixmedia art",
           "thumb": "img/rozhkova/work2-400.webp",
           "medium": "img/rozhkova/work2-800.webp",
           "full": "img/rozhkova/work2-1600.webp",
@@ -3975,7 +3975,7 @@
       "avatar": "img/ryzhikovna/avatar.webp",
       "works": [
         {
-          "title": "Edit",
+          "title": "",
           "thumb": "img/ryzhikovna/work1-400.webp",
           "medium": "img/ryzhikovna/work1-800.webp",
           "full": "img/ryzhikovna/work1-1600.webp",
@@ -3983,7 +3983,7 @@
           "h": 2877
         },
         {
-          "title": "Рыжиковна ИвановаИС",
+          "title": "",
           "thumb": "img/ryzhikovna/work2-400.webp",
           "medium": "img/ryzhikovna/work2-800.webp",
           "full": "img/ryzhikovna/work2-1600.webp",
@@ -3991,7 +3991,7 @@
           "h": 3854
         },
         {
-          "title": "Edit",
+          "title": "",
           "thumb": "img/ryzhikovna/work3-400.webp",
           "medium": "img/ryzhikovna/work3-800.webp",
           "full": "img/ryzhikovna/work3-1600.webp",
@@ -4117,7 +4117,7 @@
           "h": 3840
         },
         {
-          "title": "НС414",
+          "title": "",
           "thumb": "img/safronova/work4-400.webp",
           "medium": "img/safronova/work4-800.webp",
           "full": "img/safronova/work4-1600.webp",
@@ -4186,7 +4186,7 @@
           "h": 3741
         },
         {
-          "title": "WA",
+          "title": "",
           "thumb": "img/svoff/work5-400.webp",
           "medium": "img/svoff/work5-800.webp",
           "full": "img/svoff/work5-1600.webp",
@@ -4323,7 +4323,7 @@
           "h": 2680
         },
         {
-          "title": "(1)",
+          "title": "",
           "thumb": "img/petrishina/work3-400.webp",
           "medium": "img/petrishina/work3-800.webp",
           "full": "img/petrishina/work3-1600.webp",
@@ -4555,7 +4555,7 @@
           "h": 3876
         },
         {
-          "title": "Е.Тарасова Удачный улов 100 100 см холст аерил",
+          "title": "Удачный улов 100 100 см холст аерил",
           "thumb": "img/tarasova/work3-400.webp",
           "medium": "img/tarasova/work3-800.webp",
           "full": "img/tarasova/work3-1600.webp",
@@ -4773,7 +4773,7 @@
           "h": 1960
         },
         {
-          "title": "QAKT",
+          "title": "",
           "thumb": "img/timchenko/work7-400.webp",
           "medium": "img/timchenko/work7-800.webp",
           "full": "img/timchenko/work7-1600.webp",
@@ -4798,7 +4798,7 @@
       "avatar": "img/tretyakov/avatar.webp",
       "works": [
         {
-          "title": "85e9iDRdV uKazHKm 7TRYDx2CxrUBDTcKoazZlmizizu9Ftkx87zY6UkgvwH Wyojl6BI7RYzPomX72MMjuBVCK",
+          "title": "",
           "thumb": "img/tretyakov/work1-400.webp",
           "medium": "img/tretyakov/work1-800.webp",
           "full": "img/tretyakov/work1-1600.webp",
@@ -4806,7 +4806,7 @@
           "h": 2088
         },
         {
-          "title": "AxInn8BbwPoe8QOsI21SEtO4bldRvQIW69aCaYbjZlK10I1oSDnCnOLCGdihbca5fEQtio5EsVVFtuzirEUAL5gt",
+          "title": "",
           "thumb": "img/tretyakov/work2-400.webp",
           "medium": "img/tretyakov/work2-800.webp",
           "full": "img/tretyakov/work2-1600.webp",
@@ -4814,7 +4814,7 @@
           "h": 2178
         },
         {
-          "title": "I2BQcf93w3LXa3xtANACZXN AZG0KLonAITeaGBf6Agf j58Mrr7PGwBqzWbJ5iVY9F4UaxgPLYzuTWkWhB2mNe1",
+          "title": "",
           "thumb": "img/tretyakov/work3-400.webp",
           "medium": "img/tretyakov/work3-800.webp",
           "full": "img/tretyakov/work3-1600.webp",
@@ -4916,7 +4916,7 @@
       "avatar": "img/turanova/avatar.webp",
       "works": [
         {
-          "title": "Туранова Татьяна. Розовая мечта. Холст 100х80, масло. г.",
+          "title": "Розовая мечта. Холст 100х80, масло",
           "thumb": "img/turanova/work1-400.webp",
           "medium": "img/turanova/work1-800.webp",
           "full": "img/turanova/work1-1600.webp",
@@ -4941,7 +4941,7 @@
       "avatar": "img/tur/avatar.webp",
       "works": [
         {
-          "title": "FN3B",
+          "title": "",
           "thumb": "img/tur/work1-400.webp",
           "medium": "img/tur/work1-800.webp",
           "full": "img/tur/work1-1600.webp",
@@ -4982,7 +4982,7 @@
       "avatar": "img/filippova/avatar.webp",
       "works": [
         {
-          "title": "GXN0cK l oKTjtmIlVbjFmJkE3z4AZggsrsGuIfFPjBELSCE0ShbQyQLHlEfdQ5MURmUQeC7ITWLbO5EkvkxUKSb",
+          "title": "",
           "thumb": "img/filippova/work1-400.webp",
           "medium": "img/filippova/work1-800.webp",
           "full": "img/filippova/work1-1600.webp",
@@ -4990,7 +4990,7 @@
           "h": 1197
         },
         {
-          "title": "KUcSvvvaBR7KgVLqAHhjyyLQhsA1LcPZZIDII4oInccUwK3fkjpX1p iKTdAYPENpnhP bsGtZQzcTuWqC3ImLvT",
+          "title": "",
           "thumb": "img/filippova/work2-400.webp",
           "medium": "img/filippova/work2-800.webp",
           "full": "img/filippova/work2-1600.webp",
@@ -4998,7 +4998,7 @@
           "h": 2560
         },
         {
-          "title": "MCGI3anOR7LQK7ddx4QJTSwd9lApC45V7HQW3fKRjxUOSOJEr7O 30kWy cJpq7KZZCXYcaGbt3EVot 7RwLKtL",
+          "title": "",
           "thumb": "img/filippova/work3-400.webp",
           "medium": "img/filippova/work3-800.webp",
           "full": "img/filippova/work3-1600.webp",
@@ -5006,7 +5006,7 @@
           "h": 1657
         },
         {
-          "title": "8LLfgj31O4XCEXQ yGpNxe3oT7vkL0APDUsrkWD95WATg0 Esyh 7Lw4XGLPsFEgnQuOyIy0LQbH3LmmelpsNCrJ",
+          "title": "",
           "thumb": "img/filippova/work4-400.webp",
           "medium": "img/filippova/work4-800.webp",
           "full": "img/filippova/work4-1600.webp",
@@ -5100,7 +5100,7 @@
       "avatar": "img/frolov/avatar.webp",
       "works": [
         {
-          "title": "WhatsApp 03 12 at 12.17.23",
+          "title": "",
           "thumb": "img/frolov/work1-400.webp",
           "medium": "img/frolov/work1-800.webp",
           "full": "img/frolov/work1-1600.webp",
@@ -5108,7 +5108,7 @@
           "h": 1031
         },
         {
-          "title": "WhatsApp 03 12 at 12.36.45",
+          "title": "",
           "thumb": "img/frolov/work2-400.webp",
           "medium": "img/frolov/work2-800.webp",
           "full": "img/frolov/work2-1600.webp",
@@ -5116,7 +5116,7 @@
           "h": 1600
         },
         {
-          "title": "WhatsApp 03 12 at 12.17.22",
+          "title": "",
           "thumb": "img/frolov/work3-400.webp",
           "medium": "img/frolov/work3-800.webp",
           "full": "img/frolov/work3-1600.webp",
@@ -5124,7 +5124,7 @@
           "h": 1280
         },
         {
-          "title": "WhatsApp 03 12 at 12.17.23 (1)",
+          "title": "",
           "thumb": "img/frolov/work4-400.webp",
           "medium": "img/frolov/work4-800.webp",
           "full": "img/frolov/work4-1600.webp",
@@ -5132,7 +5132,7 @@
           "h": 1010
         },
         {
-          "title": "WhatsApp 03 12 at 12.16.32",
+          "title": "",
           "thumb": "img/frolov/work5-400.webp",
           "medium": "img/frolov/work5-800.webp",
           "full": "img/frolov/work5-1600.webp",
@@ -5152,7 +5152,7 @@
       "avatar": "img/khabovets/avatar.webp",
       "works": [
         {
-          "title": "BjhQYdiFHInCLQA5ZLtlyy328V2mgCoZ32OljBt1gGG 872JFVn56WN aIuKW6d5SVbUzgM dOQkJyO9FMI1abP",
+          "title": "",
           "thumb": "img/khabovets/work1-400.webp",
           "medium": "img/khabovets/work1-800.webp",
           "full": "img/khabovets/work1-1600.webp",
@@ -5201,7 +5201,7 @@
       "avatar": "img/khateeva/avatar.webp",
       "works": [
         {
-          "title": "Bfdc6fa4 8cc7 4f38 a255 6b50eba",
+          "title": "",
           "thumb": "img/khateeva/work1-400.webp",
           "medium": "img/khateeva/work1-800.webp",
           "full": "img/khateeva/work1-1600.webp",
@@ -5209,7 +5209,7 @@
           "h": 1920
         },
         {
-          "title": "Aafcffd2 454e b8da 1b703e41dac3",
+          "title": "",
           "thumb": "img/khateeva/work2-400.webp",
           "medium": "img/khateeva/work2-800.webp",
           "full": "img/khateeva/work2-1600.webp",
@@ -5217,7 +5217,7 @@
           "h": 1263
         },
         {
-          "title": "46cccc30 d4f9 4eee 89e3 eaa9c1b e",
+          "title": "",
           "thumb": "img/khateeva/work3-400.webp",
           "medium": "img/khateeva/work3-800.webp",
           "full": "img/khateeva/work3-1600.webp",
@@ -5225,7 +5225,7 @@
           "h": 1920
         },
         {
-          "title": "70c35d54 4f0e 468d 88ac f e6",
+          "title": "",
           "thumb": "img/khateeva/work4-400.webp",
           "medium": "img/khateeva/work4-800.webp",
           "full": "img/khateeva/work4-1600.webp",
@@ -5233,7 +5233,7 @@
           "h": 1110
         },
         {
-          "title": "Bebc9b4a be4c 45e3 a69b 3d3be904e567",
+          "title": "",
           "thumb": "img/khateeva/work5-400.webp",
           "medium": "img/khateeva/work5-800.webp",
           "full": "img/khateeva/work5-1600.webp",
@@ -5321,7 +5321,7 @@
           "h": 2231
         },
         {
-          "title": ".JPG",
+          "title": "",
           "thumb": "img/prikolotina/work4-400.webp",
           "medium": "img/prikolotina/work4-800.webp",
           "full": "img/prikolotina/work4-1600.webp",
@@ -5341,7 +5341,7 @@
       "avatar": "img/tsygankov/avatar.webp",
       "works": [
         {
-          "title": "WhatsApp 03 28 at 08.58.11",
+          "title": "",
           "thumb": "img/tsygankov/work1-400.webp",
           "medium": "img/tsygankov/work1-800.webp",
           "full": "img/tsygankov/work1-1600.webp",
@@ -5349,7 +5349,7 @@
           "h": 1280
         },
         {
-          "title": "WhatsApp 03 28 at 08.58.10 (2)",
+          "title": "",
           "thumb": "img/tsygankov/work2-400.webp",
           "medium": "img/tsygankov/work2-800.webp",
           "full": "img/tsygankov/work2-1600.webp",
@@ -5357,7 +5357,7 @@
           "h": 932
         },
         {
-          "title": "WhatsApp 03 28 at 08.58.10 (1)",
+          "title": "",
           "thumb": "img/tsygankov/work3-400.webp",
           "medium": "img/tsygankov/work3-800.webp",
           "full": "img/tsygankov/work3-1600.webp",
@@ -5446,7 +5446,7 @@
           "h": 2250
         },
         {
-          "title": "Klever chernoivan art",
+          "title": "",
           "thumb": "img/chernoivan/work3-400.webp",
           "medium": "img/chernoivan/work3-800.webp",
           "full": "img/chernoivan/work3-1600.webp",
@@ -5454,7 +5454,7 @@
           "h": 2860
         },
         {
-          "title": "Maki chernoivan art 000",
+          "title": "",
           "thumb": "img/chernoivan/work4-400.webp",
           "medium": "img/chernoivan/work4-800.webp",
           "full": "img/chernoivan/work4-1600.webp",
@@ -5479,7 +5479,7 @@
       "avatar": "img/shagina/avatar.webp",
       "works": [
         {
-          "title": "Шагина Ирина лодки на озере Гарда 21х30",
+          "title": "Лодки на озере Гарда 21х30",
           "thumb": "img/shagina/work1-400.webp",
           "medium": "img/shagina/work1-800.webp",
           "full": "img/shagina/work1-1600.webp",
@@ -5487,7 +5487,7 @@
           "h": 2703
         },
         {
-          "title": "Шагина Ирина Торговля 27х37",
+          "title": "Торговля 27х37",
           "thumb": "img/shagina/work2-400.webp",
           "medium": "img/shagina/work2-800.webp",
           "full": "img/shagina/work2-1600.webp",
@@ -5495,7 +5495,7 @@
           "h": 2167
         },
         {
-          "title": "Шагина Ирина Вершина 21х30",
+          "title": "Вершина 21х30",
           "thumb": "img/shagina/work3-400.webp",
           "medium": "img/shagina/work3-800.webp",
           "full": "img/shagina/work3-1600.webp",
@@ -5503,7 +5503,7 @@
           "h": 2808
         },
         {
-          "title": "Шагина Ирина Обед в Дагестане 28х38",
+          "title": "Обед в Дагестане 28х38",
           "thumb": "img/shagina/work4-400.webp",
           "medium": "img/shagina/work4-800.webp",
           "full": "img/shagina/work4-1600.webp",
@@ -5622,7 +5622,7 @@
       "avatar": "img/shlyapina/avatar.webp",
       "works": [
         {
-          "title": "Шляпина Втроем",
+          "title": "Втроем",
           "thumb": "img/shlyapina/work1-400.webp",
           "medium": "img/shlyapina/work1-800.webp",
           "full": "img/shlyapina/work1-1600.webp",
@@ -5630,7 +5630,7 @@
           "h": 2655
         },
         {
-          "title": "Шляпина Взросление",
+          "title": "Взросление",
           "thumb": "img/shlyapina/work2-400.webp",
           "medium": "img/shlyapina/work2-800.webp",
           "full": "img/shlyapina/work2-1600.webp",
@@ -5638,7 +5638,7 @@
           "h": 2500
         },
         {
-          "title": "Шляпина Принятие",
+          "title": "Принятие",
           "thumb": "img/shlyapina/work3-400.webp",
           "medium": "img/shlyapina/work3-800.webp",
           "full": "img/shlyapina/work3-1600.webp",
@@ -5711,7 +5711,7 @@
       "avatar": "img/shustova/avatar.webp",
       "works": [
         {
-          "title": "DSC",
+          "title": "",
           "thumb": "img/shustova/work1-400.webp",
           "medium": "img/shustova/work1-800.webp",
           "full": "img/shustova/work1-1600.webp",
@@ -5755,7 +5755,7 @@
       "avatar": "img/yakovleva/avatar.webp",
       "works": [
         {
-          "title": "03 15 12 37 27 (1)",
+          "title": "",
           "thumb": "img/yakovleva/work1-400.webp",
           "medium": "img/yakovleva/work1-800.webp",
           "full": "img/yakovleva/work1-1600.webp",
@@ -5763,7 +5763,7 @@
           "h": 1600
         },
         {
-          "title": "03 15 12 37 28 (1)",
+          "title": "",
           "thumb": "img/yakovleva/work2-400.webp",
           "medium": "img/yakovleva/work2-800.webp",
           "full": "img/yakovleva/work2-1600.webp",
@@ -5779,7 +5779,7 @@
           "h": 1600
         },
         {
-          "title": "03 15 12 37 27 (2)",
+          "title": "",
           "thumb": "img/yakovleva/work4-400.webp",
           "medium": "img/yakovleva/work4-800.webp",
           "full": "img/yakovleva/work4-1600.webp",
@@ -5836,7 +5836,7 @@
           "h": 3252
         },
         {
-          "title": "FullSizeRender (2)",
+          "title": "",
           "thumb": "img/yakovleva2/work2-400.webp",
           "medium": "img/yakovleva2/work2-800.webp",
           "full": "img/yakovleva2/work2-1600.webp",
@@ -5852,7 +5852,7 @@
           "h": 4407
         },
         {
-          "title": "FullSizeRender (1)",
+          "title": "",
           "thumb": "img/yakovleva2/work4-400.webp",
           "medium": "img/yakovleva2/work4-800.webp",
           "full": "img/yakovleva2/work4-1600.webp",
@@ -5885,7 +5885,7 @@
           "h": 1280
         },
         {
-          "title": "X6sM29 Ryv4Y3thY1XYMvxTLxxiWP1q2M8jsQxVrPQEOF7dRzymtI7 4o i8MoZ0Y5vjLYwT4S4dOmEj2vAhzoJ",
+          "title": "",
           "thumb": "img/11/work2-400.webp",
           "medium": "img/11/work2-800.webp",
           "full": "img/11/work2-1600.webp",
@@ -5893,7 +5893,7 @@
           "h": 2560
         },
         {
-          "title": "NKAcv3bfda7wMMZ16MnbZm6zDnXcc vqjBmDE2p4iAg5GFG 3 hkz7uedF6kS2JExyOVZSlmr eg2p2p41KBtkN",
+          "title": "",
           "thumb": "img/11/work3-400.webp",
           "medium": "img/11/work3-800.webp",
           "full": "img/11/work3-1600.webp",
@@ -5901,7 +5901,7 @@
           "h": 1622
         },
         {
-          "title": "5GPhuDdWyc8gi6GhPviT2 8VH3p8 91pYmgaC4rUR8so eVrP2fDRhcHxHaAV5yvQCwoMuLURe9QqCe9zPwzRNH",
+          "title": "",
           "thumb": "img/11/work4-400.webp",
           "medium": "img/11/work4-800.webp",
           "full": "img/11/work4-1600.webp",
@@ -5909,7 +5909,7 @@
           "h": 2560
         },
         {
-          "title": "SMpdk0CeN8 16ANmZx6egeCOI7t2iVjsVauqdjjmIXbXh9B9 5gUbGjXeBSD9bCUZnIJIGoJcO86xro2 9IsV1Ya",
+          "title": "",
           "thumb": "img/11/work5-400.webp",
           "medium": "img/11/work5-800.webp",
           "full": "img/11/work5-1600.webp",
@@ -5986,7 +5986,7 @@
       "avatar": "img/kult/avatar.webp",
       "works": [
         {
-          "title": "YyiJkPSg7RYnVuk WSYF6bg hNDB4bNFNzG6EQEaMlwzaCkA5frACvBUmaCgai12FBbWu2ZWHW2aBhXtbNiBHVp9",
+          "title": "",
           "thumb": "img/kult/work1-400.webp",
           "medium": "img/kult/work1-800.webp",
           "full": "img/kult/work1-1600.webp",
@@ -5994,7 +5994,7 @@
           "h": 1600
         },
         {
-          "title": "GJG9I43kWtOS Vf17WB88EcgqwbK5pvbC2qiQjQbS2zed1YCa1z9WT7NoCflKVlEZ6pwXHVMilgYX W9p4ZRqNls",
+          "title": "",
           "thumb": "img/kult/work2-400.webp",
           "medium": "img/kult/work2-800.webp",
           "full": "img/kult/work2-1600.webp",
@@ -6002,7 +6002,7 @@
           "h": 2560
         },
         {
-          "title": "BSUHuOmn0CKkdc66eQNM5jah67t JnLcFE06zZXU14zy7nWe xoRQxxmIeUwyPHt5ZrhsV59JiBMoHwPdzBc DRe",
+          "title": "",
           "thumb": "img/kult/work3-400.webp",
           "medium": "img/kult/work3-800.webp",
           "full": "img/kult/work3-1600.webp",
@@ -6010,7 +6010,7 @@
           "h": 2560
         },
         {
-          "title": "IAmx3HYNNTDlx7DsCf1it4BUZvJ6Wql8WNvyU SpR0C256dsoJF gLV fyKtS96t2WrZjARoHRNz FWZw3PP6nJ",
+          "title": "",
           "thumb": "img/kult/work4-400.webp",
           "medium": "img/kult/work4-800.webp",
           "full": "img/kult/work4-1600.webp",
@@ -6043,7 +6043,7 @@
           "h": 2008
         },
         {
-          "title": "А",
+          "title": "",
           "thumb": "img/stroganova/work2-400.webp",
           "medium": "img/stroganova/work2-800.webp",
           "full": "img/stroganova/work2-1600.webp",
@@ -6147,7 +6147,7 @@
       "avatar": "img/gupal/avatar.webp",
       "works": [
         {
-          "title": "03 13 15.07.25",
+          "title": "",
           "thumb": "img/gupal/work1-400.webp",
           "medium": "img/gupal/work1-800.webp",
           "full": "img/gupal/work1-1600.webp",
@@ -6155,7 +6155,7 @@
           "h": 1920
         },
         {
-          "title": "03 13 15.05.05",
+          "title": "",
           "thumb": "img/gupal/work2-400.webp",
           "medium": "img/gupal/work2-800.webp",
           "full": "img/gupal/work2-1600.webp",
@@ -6171,7 +6171,7 @@
           "h": 1200
         },
         {
-          "title": "03 13 15.04.53",
+          "title": "",
           "thumb": "img/gupal/work4-400.webp",
           "medium": "img/gupal/work4-800.webp",
           "full": "img/gupal/work4-1600.webp",
@@ -6179,7 +6179,7 @@
           "h": 1280
         },
         {
-          "title": "03 13 15.07.22",
+          "title": "",
           "thumb": "img/gupal/work5-400.webp",
           "medium": "img/gupal/work5-800.webp",
           "full": "img/gupal/work5-1600.webp",
@@ -6223,7 +6223,7 @@
           "h": 1812
         },
         {
-          "title": "(1)",
+          "title": "",
           "thumb": "img/kovaleva2/work4-400.webp",
           "medium": "img/kovaleva2/work4-800.webp",
           "full": "img/kovaleva2/work4-1600.webp",
@@ -6231,7 +6231,7 @@
           "h": 1957
         },
         {
-          "title": "Screenshot WhatsApp",
+          "title": "",
           "thumb": "img/kovaleva2/work5-400.webp",
           "medium": "img/kovaleva2/work5-800.webp",
           "full": "img/kovaleva2/work5-1600.webp",
@@ -6311,7 +6311,7 @@
           "h": 2598
         },
         {
-          "title": "(1)",
+          "title": "",
           "thumb": "img/maer/work3-400.webp",
           "medium": "img/maer/work3-800.webp",
           "full": "img/maer/work3-1600.webp",
@@ -6550,7 +6550,7 @@
       "avatar": "img/gorod/avatar.webp",
       "works": [
         {
-          "title": "Город сад",
+          "title": "",
           "thumb": "img/gorod/work1-400.webp",
           "medium": "img/gorod/work1-800.webp",
           "full": "img/gorod/work1-1600.webp",
@@ -6558,7 +6558,7 @@
           "h": 854
         },
         {
-          "title": "Город сад",
+          "title": "",
           "thumb": "img/gorod/work2-400.webp",
           "medium": "img/gorod/work2-800.webp",
           "full": "img/gorod/work2-1600.webp",
@@ -6566,7 +6566,7 @@
           "h": 1280
         },
         {
-          "title": "Город сад",
+          "title": "",
           "thumb": "img/gorod/work3-400.webp",
           "medium": "img/gorod/work3-800.webp",
           "full": "img/gorod/work3-1600.webp",
@@ -6574,7 +6574,7 @@
           "h": 1280
         },
         {
-          "title": "Город сад",
+          "title": "",
           "thumb": "img/gorod/work4-400.webp",
           "medium": "img/gorod/work4-800.webp",
           "full": "img/gorod/work4-1600.webp",
@@ -6582,7 +6582,7 @@
           "h": 1280
         },
         {
-          "title": "Город сад",
+          "title": "",
           "thumb": "img/gorod/work5-400.webp",
           "medium": "img/gorod/work5-800.webp",
           "full": "img/gorod/work5-1600.webp",
@@ -6590,7 +6590,7 @@
           "h": 1280
         },
         {
-          "title": "Город сад",
+          "title": "",
           "thumb": "img/gorod/work6-400.webp",
           "medium": "img/gorod/work6-800.webp",
           "full": "img/gorod/work6-1600.webp",
@@ -6639,7 +6639,7 @@
           "h": 1076
         },
         {
-          "title": "FullSizeRender",
+          "title": "",
           "thumb": "img/m/work4-400.webp",
           "medium": "img/m/work4-800.webp",
           "full": "img/m/work4-1600.webp",

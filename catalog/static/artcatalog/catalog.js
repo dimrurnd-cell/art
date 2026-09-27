@@ -148,6 +148,12 @@
 
   /* ---------------- фокус-ловушка для модальных окон ---------------- */
 
+  // пользуются ли клавиатурой: только тогда при открытии окна фокус (с
+  // рамкой) ставится на крестик — после касания или мыши рамка выглядит сбоем
+  var KBD = false;
+  document.addEventListener('keydown', function (e) { if (e.key === 'Tab') KBD = true; }, true);
+  document.addEventListener('pointerdown', function () { KBD = false; }, true);
+
   function trapFocus(modal) {
     function handler(e) {
       if (e.key !== 'Tab') return;
@@ -2450,6 +2456,7 @@
       m.style.padding = '';
       m.style.borderRadius = '0';
       m.style.overflow = 'auto';
+      m.tabIndex = -1;
       document.body.appendChild(m);
       trapFocus(m);
       // «призрачный» клик: на сенсорном экране окно открывается по касанию,
@@ -2492,7 +2499,8 @@
       document.body.style.overflow = 'hidden';
     }
     var c = m.querySelector('.artc-modal__close');
-    if (c) c.focus();
+    if (c && KBD) c.focus();
+    else { try { m.focus({ preventScroll: true }); } catch (e) { m.focus(); } }
   };
 
   Widget.prototype.closeModal = function (m) {

@@ -220,6 +220,7 @@
 .artc-dot:focus-visible { outline: 2px solid var(--artc-teal); outline-offset: 2px; }
 
 /* --------------------- модальные окна --------------------- */
+.artc-modal:focus { outline: none; }
 .artc-modal {
   position: fixed; inset: 0;
   z-index: 99990;
@@ -364,7 +365,8 @@
   padding: 54px 60px 30px;
 }
 .artc-lightbox__img {
-  max-width: 100%; max-height: calc(100vh - 170px);
+  max-width: 100%; max-height: calc(100vh - 190px);
+  max-height: calc(100dvh - 190px);
   width: auto; height: auto;
   border-radius: 8px;
   box-shadow: 0 20px 60px rgba(0,0,0,.6);
@@ -483,7 +485,20 @@
   /* на узком экране угол работы у края — крестик заходит на неё */
   .artc-lightbox .artc-modal__close { top: 8px; right: 8px; }
   .artc-lightbox .artc-arrow--next { right: 4px; }
-  .artc-lightbox__img { max-height: calc(100vh - 210px); }
+  /* под работой подпись в 2 строки и кнопки в 2 ряда — всё должно влезть в экран */
+  .artc-lightbox__img { max-height: calc(100vh - 235px); max-height: calc(100dvh - 235px); }
+  .artc-lightbox__caption {
+    margin: 10px 0 10px; font-size: 14px;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  }
+  .artc-lightbox .artc-buy, .artc-back { padding-top: 10px; padding-bottom: 10px; }
+  /* «Хочу купить» — во всю ширину, «Об авторе» и «Вернуться в зал» — рядом под ней */
+  .artc-lightbox__actions {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    width: 100%; max-width: 420px;
+  }
+  .artc-lightbox__actions .artc-buy { grid-column: 1 / -1; }
+  .artc-lightbox__actions .artc-back { justify-content: center; padding-left: 10px; padding-right: 12px; font-size: 14px; white-space: nowrap; }
   /* На телефоне карточка длинная, и главная кнопка уезжала под нижний край
      экрана — приклеиваем низ карточки, чтобы «Хочу купить картину» была
      видна сразу, без прокрутки до конца. overflow у диалога при этом снимаем:
