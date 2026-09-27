@@ -24,9 +24,6 @@ import { Quality, NAMES } from './quality.js';
 import { Tour } from './tour.js';
 import { Spots } from './lights.js';
 import { Probe } from './probe.js';
-import { FloorMirror } from './mirror.js';
-
-const _size = new THREE.Vector2();
 import { FloorMarks } from './markers.js';
 import { PBR_OPTS } from './pbr.js';
 import { Atmosphere } from './atmosphere.js';
@@ -195,11 +192,6 @@ class Gallery {
     this.probe.off = !this.floatRT;
     this.world.reflectMats().forEach((m) => this.probe.patch(m));
     this.probeKey = '';
-    // зеркальные отражения в полу (включает уровень HD на компьютере)
-    this.mirror = new FloorMirror(renderer, this.scene);
-    this.mirror.patch(this.world.floorMat);
-    this.world.pickables.forEach((m) => { if (m.userData.floor) this.mirror.addMesh(m); });
-    this.world.onFloor = (m) => this.mirror.addMesh(m);
     this.camera = new THREE.PerspectiveCamera(62, 1, 0.05, 140);
     this.camera.rotation.order = 'YXZ';
     this.nav = new Nav(this.plan);
@@ -1123,7 +1115,6 @@ class Gallery {
     if (this.anyPanel && this.stage.querySelector('.artg-top')) this.placePanels();
     this.renderer.setSize(w, h, false);
     if (this.quality) this.quality.resize(w, h);
-    if (this.mirror) { const s = this.renderer.getDrawingBufferSize(_size); this.mirror.setSize(s.x, s.y); }
     this.camera.aspect = w / h;
     // на узком экране шире угол, иначе в кадр не помещается даже одна картина
     this.camera.fov = w / h < 0.9 ? 74 : w / h < 1.3 ? 66 : 60;
@@ -1222,7 +1213,7 @@ class Gallery {
     t1 = performance.now();
     this.updateVisibility();
     const t2 = performance.now();
-    this.mirror.suspend(() => this.updateProbe());   // куб отражений — без зеркала пола
+    this.updateProbe();
     const t3 = performance.now();
     const progs = (this.renderer.info.programs || []).length;
     this.quality.render();
@@ -1405,7 +1396,6 @@ class Gallery {
     if (this.fsFake) this.fakeFs(false);
     if (this.quality) this.quality.dropComposer();
     if (this.probe) this.probe.dispose();
-    if (this.mirror) this.mirror.dispose();
     if (this.curator) this.curator.dispose();
     if (this.sound) this.sound.dispose();
     if (this.onVis) document.removeEventListener('visibilitychange', this.onVis);

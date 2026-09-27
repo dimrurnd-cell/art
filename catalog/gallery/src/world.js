@@ -356,7 +356,7 @@ export class World {
       if (mat === this._wall || mat === this._floor || mat === this._ceil) m.receiveShadow = true;
       if (mat === this._wall) m.castShadow = true;
       if (mat.userData.blocker) this.blocker(m);
-      if (mat.userData.floor) { m.userData.floor = true; this.pickables.push(m); if (this.onFloor) this.onFloor(m); }
+      if (mat.userData.floor) { m.userData.floor = true; this.pickables.push(m); }
     }
   }
 
