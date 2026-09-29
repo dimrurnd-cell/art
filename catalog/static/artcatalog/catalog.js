@@ -2469,6 +2469,7 @@
     });
 
     document.addEventListener('keydown', function (e) {
+      if (self.tpEsc) return;
       if (e.key === 'Escape' && !document.querySelector('.artc-modal.is-open') && self.fsFake) {
         self.fsFallback(false);
         return;
@@ -2794,7 +2795,9 @@
     var waited = 0;
     var poll = setInterval(function () {
       waited += 150;
-      if (document.querySelector('.t-popup_show') || waited > 4000) { clearInterval(poll); restore(); }
+      var shown = document.querySelector('.t-popup_show');
+      if (shown) self.tildaClose(shown);
+      if (shown || waited > 4000) { clearInterval(poll); restore(); }
     }, 150);
 
     var fill = function (name, value) {
@@ -2821,6 +2824,61 @@
     if (window.location.hash !== '#' + this.tildaPopup) {
       window.location.hash = this.tildaPopup;
     }
+  };
+
+  /* Свой крестик на попапе Tilda. Крестик Tilda белый и стоит в углу
+     экрана поверх затемнения; на телефоне форма занимает весь экран, фон у
+     неё белый — и белый крестик на белом не виден: окно «не закрыть».
+     Наш — тёмный круг, всегда поверх; закрывает попап штатно (щелчок по
+     крестику Tilda), а если Tilda не отозвалась — Esc, затем вручную. */
+  Widget.prototype.tildaClose = function (pop) {
+    var self = this;
+    if (!document.getElementById('artc-tpclose-css')) {
+      var st = document.createElement('style');
+      st.id = 'artc-tpclose-css';
+      st.textContent =
+        '.artc-tpclose{position:fixed;top:12px;top:max(12px,env(safe-area-inset-top));right:12px;z-index:2147483000;' +
+        'width:44px;height:44px;border-radius:50%;border:2px solid rgba(255,247,228,.6);background:rgba(33,29,23,.9);' +
+        'color:#fff;font:22px/1 Arial,sans-serif;display:flex;align-items:center;justify-content:center;cursor:pointer;' +
+        'box-shadow:0 4px 14px rgba(0,0,0,.35);padding:0;-webkit-tap-highlight-color:transparent}' +
+        '.artc-tpclose:hover{background:#E0736A}' +
+        '.t-popup.artc-tp .t-popup__close{visibility:hidden}';
+      document.head.appendChild(st);
+    }
+    if (pop.querySelector('.artc-tpclose')) return;
+    pop.classList.add('artc-tp');
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'artc-tpclose';
+    b.setAttribute('aria-label', 'Закрыть');
+    b.innerHTML = '&#10005;';
+    pop.appendChild(b);
+    var open = function () { return pop.classList.contains('t-popup_show'); };
+    b.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var own = pop.querySelector('.t-popup__close');
+      if (own) own.click();
+      setTimeout(function () {
+        if (!open()) return;
+        // Esc — для Tilda; наши окна (работа под попапом) его пропускают
+        self.tpEsc = true;
+        try { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, which: 27, bubbles: true })); }
+        finally { self.tpEsc = false; }
+        setTimeout(function () {
+          if (!open()) return;
+          pop.classList.remove('t-popup_show');
+          pop.style.display = 'none';
+          var rec = pop.parentNode;
+          if (rec && rec.style) rec.style.display = '';
+          document.body.classList.remove('t-body_popupshowed');
+          document.documentElement.classList.remove('t-body_popupshowed');
+          if (location.hash.indexOf('#popup:') === 0 && history.replaceState) {
+            history.replaceState(null, '', location.pathname + location.search);
+          }
+        }, 300);
+      }, 300);
+    });
   };
 
   Widget.prototype.maskPhone = function (v) {
