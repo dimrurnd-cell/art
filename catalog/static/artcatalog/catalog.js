@@ -1054,7 +1054,8 @@
             (this.canGL(this.hallMode) ? '<button type="button" class="artc-mode">' + ICON_3D + '<span>3D-галерея</span></button>' : '') +
             '<button type="button" class="artc-hw__btn artc-hw__music" aria-label="Тихая музыка" aria-pressed="false">' + ICON_MUSIC + '</button>' +
             '<button type="button" class="artc-hw__btn artc-hw__find" aria-label="Найти художника">' + ICON_FIND + '</button>' +
-            '<button type="button" class="artc-hw__btn artc-fs" aria-label="Открыть на весь экран">' + ICON_FS + '</button>' +
+            '<button type="button" class="artc-hw__btn artc-fs">' + ICON_FS +
+              '<span class="artc-fs__t artc-fs__t--in">Полный экран</span><span class="artc-fs__t artc-fs__t--out">Свернуть</span></button>' +
           '</div>' +
         '</div>' +
         '<div class="artc-hw__nav">' +
@@ -1873,7 +1874,8 @@
 
   Widget.prototype.fsBtnLabel = function (on) {
     var b = this.hall && this.hall.fsBtn;
-    if (b) b.setAttribute('aria-label', on ? 'Выйти из полноэкранного режима' : 'Открыть на весь экран');
+    // у кнопки простого зала видимая подпись («Полный экран» / «Свернуть») — она и есть имя кнопки
+    if (b && !b.querySelector('.artc-fs__t')) b.setAttribute('aria-label', on ? 'Выйти из полноэкранного режима' : 'Открыть на весь экран');
   };
 
   /* ---------------- куратор ----------------

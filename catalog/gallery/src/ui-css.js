@@ -34,6 +34,18 @@ export const CSS = `
 .artg-stage.is-menu .artg-menu-btn{background:#2a2a2a;color:#fff}
 .artg-stage.is-menu .artg-menu-btn .artg-ico-menu{display:none}
 .artg-stage.is-menu .artg-menu-btn .artg-ico-close{display:block}
+/* кнопки с подписью: «Полный экран» / «Свернуть», «Меню» / «Закрыть» */
+.artg-tbtn{height:42px;padding:0 16px 0 13px;white-space:nowrap}
+.artg-t--out{display:none}
+.artg-stage.is-fs .artg-fs-btn .artg-t--in,.artg-stage.is-menu .artg-menu-btn .artg-t--in{display:none}
+.artg-stage.is-fs .artg-fs-btn .artg-t--out,.artg-stage.is-menu .artg-menu-btn .artg-t--out{display:inline}
+.artg-stage.is-narrow .artg-tbtn{height:38px;padding:0 12px 0 10px;font-size:13px;gap:6px}
+.artg-stage.is-narrow .artg-tbtn svg{width:18px;height:18px}
+/* телефон: кнопки — верхним рядом справа, название зала — строкой под ними */
+.artg-stage.is-narrow .artg-top{flex-wrap:wrap;row-gap:6px}
+.artg-stage.is-narrow .artg-where{order:2;flex:1 1 100%}
+.artg-stage.is-narrow .artg-actions{margin-left:auto}
+.artg-stage.is-narrow .artg-where span{max-width:100%}
 .artg-menu{position:absolute;right:14px;top:62px;z-index:3;display:flex;flex-direction:column;align-items:flex-end;gap:8px;
   max-height:calc(100% - 76px);overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;padding:2px 2px 4px;margin:-2px -2px 0;
   scrollbar-width:none;pointer-events:auto}

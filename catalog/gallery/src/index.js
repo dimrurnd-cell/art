@@ -68,11 +68,14 @@ class Gallery {
         '<div class="artg-top">' +
           '<div class="artg-where"><b></b><span></span></div>' +
           '<div class="artg-actions">' +
-            '<button type="button" class="artg-btn artg-btn--icon" data-a="fs" aria-label="Во весь экран">' +
-              '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>' +
-            '<button type="button" class="artg-btn artg-btn--icon artg-menu-btn" data-a="menu" aria-label="Меню" aria-expanded="false">' +
+            // подписи, а не только значки: по одному значку люди не понимали, что это
+            '<button type="button" class="artg-btn artg-tbtn artg-fs-btn" data-a="fs">' +
+              '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>' +
+              '<span class="artg-t artg-t--in">Полный экран</span><span class="artg-t artg-t--out">Свернуть</span></button>' +
+            '<button type="button" class="artg-btn artg-tbtn artg-menu-btn" data-a="menu" aria-expanded="false">' +
               '<svg class="artg-ico-menu" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>' +
-              '<svg class="artg-ico-close" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
+              '<svg class="artg-ico-close" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>' +
+              '<span class="artg-t artg-t--in">Меню</span><span class="artg-t artg-t--out">Закрыть</span></button>' +
           '</div>' +
         '</div>' +
         '<div class="artg-menu" hidden role="menu" aria-label="Меню галереи">' +

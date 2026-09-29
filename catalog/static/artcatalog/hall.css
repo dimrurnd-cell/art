@@ -683,13 +683,33 @@
 .artc-hw__count { font: 500 13px/1 "Inter", Arial, sans-serif; color: #2A2A2A; background: rgba(255, 255, 255, .88); padding: 10px 14px; border-radius: 99px; min-width: 7.5em; text-align: center; }
 .artc-hw .artc-hint { top: auto; bottom: 78px; background: rgba(42, 42, 42, .72); color: #fff; }
 .artc-stage.artc-hw.is-fs .artc-hw__top { top: max(14px, env(safe-area-inset-top)); left: max(16px, env(safe-area-inset-left)); right: max(14px, env(safe-area-inset-right)); }
+/* «Полный экран» / «Свернуть» — подписью, по одному значку люди не понимали */
+.artc-hw .artc-fs { width: auto; border-radius: 999px; padding: 0 16px 0 13px; gap: 7px; white-space: nowrap;
+  font: 500 14px/1 "Inter", "Helvetica Neue", Arial, sans-serif; }
+.artc-fs__t--out { display: none; }
+.artc-stage.is-fs .artc-fs .artc-fs__t--in { display: none; }
+.artc-stage.is-fs .artc-fs .artc-fs__t--out { display: inline; }
 @media (max-width: 600px) {
   .artc-hw__btn, .artc-hw .artc-fs { width: 38px; height: 38px; }
+  .artc-hw .artc-fs { width: auto; padding: 0 12px 0 10px; font-size: 13px; gap: 6px; }
+  .artc-hw .artc-fs svg { width: 18px; height: 18px; }
+  /* кнопки — верхним рядом справа, название раздела — строкой под ними */
+  .artc-hw__top { flex-wrap: wrap; row-gap: 6px; }
+  .artc-hw__where { order: 2; flex: 1 1 100%; }
+  .artc-hw__btns { margin-left: auto; }
   .artc-hw .artc-mode span { display: none; }
   .artc-hw .artc-mode { padding: 0; width: 38px; height: 38px; justify-content: center; }
   .artc-hw__count { min-width: 0; padding: 9px 12px; }
   .artc-hw__who { display: none; }
   .artc-hw__where b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+/* самые узкие телефоны (iPhone SE): четыре кнопки и «Полный экран» — в один ряд */
+@media (max-width: 380px) {
+  .artc-hw__btns { gap: 6px; }
+  .artc-hw__btn, .artc-hw .artc-mode { width: 34px; height: 34px; }
+  .artc-hw .artc-fs { height: 34px; padding: 0 10px 0 9px; gap: 5px; font-size: 12px; }
+  .artc-hw__top { right: 10px; left: 12px; }
+  .artc-hw__btn svg, .artc-hw .artc-fs svg, .artc-hw .artc-mode svg { width: 16px; height: 16px; }
 }
 @media (prefers-reduced-motion: reduce) { .artc-hw__art { transition: none; } }
 
