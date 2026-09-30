@@ -120,6 +120,9 @@ PORT = int(E("LIVE_PORT", "8767"))
 PER_IP = int(E("LIVE_PER_IP", "8"))
 MSG_RATE = int(E("LIVE_MSG_RATE", "10"))
 INVITE_RATE = int(E("LIVE_INVITE_RATE", "5"))
+# сроки хранения (152-ФЗ: не дольше, чем нужно; указаны в политике сайта)
+KEEP_MSG_DAYS = int(E("LIVE_KEEP_MSG_DAYS", "180"))          # переписка — 6 месяцев
+KEEP_VISITOR_DAYS = int(E("LIVE_KEEP_VISITOR_DAYS", "365"))  # имя, адрес, даты визитов — 1 год
 
 MSG_MAX = 500            # символов в сообщении
 NAME_MIN, NAME_MAX = 2, 24
@@ -193,7 +196,8 @@ CREATE TABLE IF NOT EXISTS visitors (
   outfit INTEGER NOT NULL DEFAULT 0,
   first_seen REAL NOT NULL,
   last_seen REAL NOT NULL,
-  ip TEXT, ua TEXT
+  ip TEXT, ua TEXT,
+  consent REAL                  -- когда дал согласие на обработку персональных данных
 );
 CREATE TABLE IF NOT EXISTS conversations (
   id INTEGER PRIMARY KEY,
@@ -245,6 +249,9 @@ class DB:
         self.c.execute("PRAGMA journal_mode=WAL")
         self.c.execute("PRAGMA synchronous=NORMAL")
         self.c.executescript(SCHEMA)
+        # база прежней версии: колонки согласия ещё нет
+        if "consent" not in [r[1] for r in self.c.execute("PRAGMA table_info(visitors)")]:
+            self.c.execute("ALTER TABLE visitors ADD COLUMN consent REAL")
 
     def q(self, sql, *args):
         return self.c.execute(sql, args).fetchall()
@@ -276,6 +283,36 @@ class DB:
         vid = self.run("INSERT INTO visitors(pid, token, name, sex, outfit, first_seen, last_seen, ip, ua) "
                        "VALUES(?,?,?,?,?,?,?,?,?)", pid, token_hash, name, sex, outfit, t, t, ip, ua)
         return self.visitor(vid)
+
+    def set_consent(self, vid):
+        self.run("UPDATE visitors SET consent=? WHERE id=? AND consent IS NULL", now(), vid)
+
+    def purge(self):
+        """Удаляет то, чей срок хранения вышел. Действующие блокировки остаются."""
+        t = now()
+        mt, vt = t - KEEP_MSG_DAYS * 86400, t - KEEP_VISITOR_DAYS * 86400
+        n_msg = self.c.execute("DELETE FROM messages WHERE ts<?", (mt,)).rowcount
+        # разговоры, в которых ничего не осталось и которые давно не менялись
+        n_conv = self.c.execute("DELETE FROM conversations WHERE updated<? AND state<>'pending' "
+                                "AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.conv=conversations.id)", (mt,)).rowcount
+        self.c.execute("DELETE FROM reads WHERE conv NOT IN (SELECT id FROM conversations)")
+        self.c.execute("DELETE FROM reports WHERE ts<?", (vt,))
+        self.c.execute("DELETE FROM bans WHERE (lifted=1 OR (until IS NOT NULL AND until<?)) AND created<?", (t, vt))
+        # посетитель, не заходивший год: удаляем, если на нём нет действующей блокировки
+        old = [r[0] for r in self.c.execute(
+            "SELECT id FROM visitors WHERE last_seen<? AND id NOT IN "
+            "(SELECT visitor FROM bans WHERE visitor IS NOT NULL AND lifted=0 AND (until IS NULL OR until>?))", (vt, t))]
+        for vid in old:
+            self.c.execute("DELETE FROM messages WHERE author=?", (vid,))
+            self.c.execute("DELETE FROM conversations WHERE a=? OR b=?", (vid, vid))
+            self.c.execute("DELETE FROM blocks WHERE who=? OR whom=?", (vid, vid))
+            self.c.execute("DELETE FROM reads WHERE visitor=?", (vid,))
+            self.c.execute("DELETE FROM reports WHERE reporter=? OR target=?", (vid, vid))
+            self.c.execute("UPDATE bans SET visitor=NULL WHERE visitor=?", (vid,))
+            self.c.execute("DELETE FROM visitors WHERE id=?", (vid,))
+        if n_msg or n_conv or old:
+            log("очистка по сроку хранения: сообщений %d, разговоров %d, посетителей %d" % (n_msg, n_conv, len(old)))
+        return n_msg, n_conv, len(old)
 
     def seen(self, vid):
         self.run("UPDATE visitors SET last_seen=? WHERE id=?", now(), vid)
@@ -590,12 +627,17 @@ class Hub:
             was, c.full = c.full, bool(d.get("full"))
             if c.full and not was:
                 self.snapshot(c)
-        elif t == "invite":
-            self.invite(c, d)
-        elif t == "answer":
-            self.answer(c, d)
-        elif t == "msg":
-            self.message(c, d)
+        elif t in ("invite", "answer", "msg"):
+            # общаться — только с согласием на обработку персональных данных
+            if not c.v["consent"] and (t != "answer" or d.get("accept")):
+                c.send({"t": "error", "code": "consent", "text": "Чтобы общаться, отметьте согласие на обработку персональных данных"})
+                return
+            if t == "invite":
+                self.invite(c, d)
+            elif t == "answer":
+                self.answer(c, d)
+            else:
+                self.message(c, d)
         elif t == "typing":
             cv = self.db.conv(int(d.get("conv") or 0))
             if cv and cv["state"] == "accepted" and vid in (cv["a"], cv["b"]) and c.typing_rate.ok():
@@ -652,6 +694,13 @@ class Hub:
             return
         was = c.v
         v = self.db.upsert_visitor(th, name, sex, outfit, c.ip, c.ua)
+        if "consent" in d:                          # старый catalog.js поля не присылает — не трогаем
+            if d.get("consent") and not v["consent"]:
+                self.db.set_consent(v["id"])         # время согласия — по часам службы
+            elif not d.get("consent") and v["consent"]:
+                self.db.run("UPDATE visitors SET consent=NULL WHERE id=?", v["id"])   # отозвал
+                log("согласие отозвано", v["pid"])
+            v = self.db.visitor(v["id"])
         c.full = bool(d.get("full"))
         if was and was["id"] == v["id"]:            # сменил имя или образ, не переподключаясь
             v = self.refresh_visitor(v["id"])
@@ -965,6 +1014,7 @@ class Server:
             ban = db.banned(v["id"], None)
             return {"id": v["id"], "pid": v["pid"], "name": v["name"], "sex": v["sex"], "outfit": v["outfit"],
                     "first": int(v["first_seen"]), "last": int(v["last_seen"]), "ip": v["ip"],
+                    "consent": int(v["consent"]) if v["consent"] else None,
                     "online": v["id"] in hub.by_vid, "banned": ban["id"] if ban else None}
 
         out = None
@@ -980,7 +1030,8 @@ class Server:
                             for b in db.q("SELECT * FROM bans WHERE lifted=0 ORDER BY id DESC LIMIT 200")],
                    "stats": {"visitors": db.one("SELECT COUNT(*) n FROM visitors")["n"],
                              "convs": db.one("SELECT COUNT(*) n FROM conversations WHERE state IN ('accepted','closed')")["n"],
-                             "msgs": db.one("SELECT COUNT(*) n FROM messages")["n"]}}
+                             "msgs": db.one("SELECT COUNT(*) n FROM messages")["n"],
+                             "keep": [KEEP_MSG_DAYS, KEEP_VISITOR_DAYS]}}
         elif api == "convs":
             q, d0, d1 = arg("q").strip(), arg("from"), arg("to")
             sql = ("SELECT c.*, a.name an, a.pid ap, b.name bn, b.pid bp, "
@@ -1132,7 +1183,7 @@ document.querySelectorAll('section[data-p]').forEach(function(s){s.classList.tog
 if(v==='now')loadNow();if(v==='convs')loadConvs();if(v==='people')loadPeople();if(v==='bans')loadNow()}
 function banBtns(v){return v.banned?'<button data-unban="'+v.banned+'">Разблокировать</button>':'<button class="danger" data-ban="'+v.id+'">Заблокировать</button>'}
 function loadNow(){api('state').then(function(d){var s=d.stats;
-$('#stats').innerHTML='<div><b>'+d.online.length+'</b><span class="mute">сейчас онлайн</span></div><div><b>'+s.visitors+'</b><span class="mute">посетителей всего</span></div><div><b>'+s.convs+'</b><span class="mute">разговоров</span></div><div><b>'+s.msgs+'</b><span class="mute">сообщений</span></div>';
+$('#stats').innerHTML='<div><b>'+d.online.length+'</b><span class="mute">сейчас онлайн</span></div><div><b>'+s.visitors+'</b><span class="mute">посетителей всего</span></div><div><b>'+s.convs+'</b><span class="mute">разговоров</span></div><div><b>'+s.msgs+'</b><span class="mute">сообщений</span></div><div class="mute" style="flex-basis:100%">Хранение: переписка '+s.keep[0]+' дн., сведения о посетителях '+s.keep[1]+' дн. — старее удаляется автоматически.</div>';
 $('#online').innerHTML=d.online.length?'<table><tr><th>Имя</th><th>Где</th><th>Адрес</th><th></th></tr>'+d.online.map(function(v){return'<tr><td>'+who(v.name,v)+' <span class="mute">'+esc(v.pid)+'</span></td><td>'+esc(place(v))+'</td><td class="mute">'+esc(v.ip)+'</td><td><button data-find="'+esc(v.pid)+'">Переписка</button> '+banBtns(v)+'</td></tr>'}).join('')+'</table>':'<p class="mute">Никого нет.</p>';
 $('#reports').innerHTML=d.reports.length?'<table><tr><th>Когда</th><th>Кто</th><th>На кого</th><th>Текст</th><th></th></tr>'+d.reports.map(function(r){return'<tr><td class="mute">'+dt(r.ts)+'</td><td>'+esc(r.reporter_name)+'</td><td>'+esc(r.target_name)+'</td><td>'+esc(r.text)+'</td><td>'+(r.conv?'<button data-conv="'+r.conv+'">Открыть разговор</button> ':'')+'<button data-done="'+r.id+'">Разобрано</button></td></tr>'}).join('')+'</table>':'<p class="mute">Жалоб нет.</p>';
 $('#bans').innerHTML=d.bans.length?'<table><tr><th>Кто</th><th>Причина</th><th>С</th><th>До</th><th></th></tr>'+d.bans.map(function(b){return'<tr><td>'+esc(b.name||'')+(b.ip?' <span class="mute">и адрес '+esc(b.ip)+'</span>':'')+'</td><td>'+esc(b.reason)+'</td><td class="mute">'+dt(b.created)+'</td><td class="mute">'+(b.until?dt(b.until):'навсегда')+'</td><td><button data-unban="'+b.id+'">Снять</button></td></tr>'}).join('')+'</table>':'<p class="mute">Блокировок нет.</p>'})}
@@ -1142,7 +1193,7 @@ function openConv(id){view('convs');api('conv?id='+id).then(function(d){var box=
 box.innerHTML='<div class="row"><h2 style="margin:0;flex:1">'+who(d.a.name,d.a)+' ↔ '+who(d.b.name,d.b)+'</h2><a class="btn" href="admin/api/export.csv?conv='+d.conv.id+'">CSV</a> '+banBtns(d.a).replace('Заблокировать','Заблокировать '+esc(d.a.name))+' '+banBtns(d.b).replace('Заблокировать','Заблокировать '+esc(d.b.name))+'</div>'+
 (d.msgs.length?d.msgs.map(function(m){return'<div class="msg'+(m.author===d.conv.b?' b':'')+(m.deleted?' del':'')+'"><div class="meta"><b>'+esc(m.name)+'</b><span>'+dt(m.ts)+'</span>'+(m.deleted?'<button data-restore="'+m.id+'">Вернуть</button>':'<button class="danger" data-del="'+m.id+'">Удалить</button>')+'</div>'+esc(m.raw)+'</div>'}).join(''):'<p class="mute">Сообщений нет.</p>');
 box.setAttribute('data-id',id);box.scrollIntoView({behavior:'smooth'})})}
-function loadPeople(){api('visitors?q='+encodeURIComponent($('#pq').value)).then(function(d){$('#people').innerHTML='<table><tr><th>Имя</th><th>Впервые</th><th>Последний раз</th><th>Адрес</th><th></th></tr>'+d.visitors.map(function(v){return'<tr><td>'+who(v.name,v)+' '+(v.online?'<span class="tag on">онлайн</span>':'')+' <span class="mute">'+esc(v.pid)+'</span></td><td class="mute">'+dt(v.first)+'</td><td class="mute">'+dt(v.last)+'</td><td class="mute">'+esc(v.ip)+'</td><td><button data-find="'+esc(v.pid)+'">Переписка</button> '+banBtns(v)+'</td></tr>'}).join('')+'</table>'})}
+function loadPeople(){api('visitors?q='+encodeURIComponent($('#pq').value)).then(function(d){$('#people').innerHTML='<table><tr><th>Имя</th><th>Впервые</th><th>Последний раз</th><th>Согласие</th><th>Адрес</th><th></th></tr>'+d.visitors.map(function(v){return'<tr><td>'+who(v.name,v)+' '+(v.online?'<span class="tag on">онлайн</span>':'')+' <span class="mute">'+esc(v.pid)+'</span></td><td class="mute">'+dt(v.first)+'</td><td class="mute">'+dt(v.last)+'</td><td class="mute">'+(v.consent?dt(v.consent):'нет')+'</td><td class="mute">'+esc(v.ip)+'</td><td><button data-find="'+esc(v.pid)+'">Переписка</button> '+banBtns(v)+'</td></tr>'}).join('')+'</table>'})}
 function refresh(){if(cur==='now'||cur==='bans')loadNow();if(cur==='people')loadPeople();var b=$('#convbox');if(cur==='convs'&&!b.classList.contains('hide'))openConv(b.getAttribute('data-id'))}
 $('#cgo').onclick=loadConvs;$('#cq').onkeydown=function(e){if(e.key==='Enter')loadConvs()};$('#pgo').onclick=loadPeople;$('#pq').onkeydown=function(e){if(e.key==='Enter')loadPeople()};
 document.addEventListener('click',function(e){var b=e.target.closest('[data-conv],[data-del],[data-restore],[data-ban],[data-unban],[data-done],[data-find]');if(!b)return;
@@ -1203,10 +1254,21 @@ def check():
               ("" if len(ADMIN_PASSWORD) >= 10 else " — лучше не короче 10"))
     else:
         print("  ! пароль модератора не задан (LIVE_ADMIN_PASSWORD) — страница модератора будет закрыта")
+    print("хранение: переписка %d дн., сведения о посетителях %d дн." % (KEEP_MSG_DAYS, KEEP_VISITOR_DAYS))
     print("сайты:", ", ".join(ORIGINS))
     print("слушаю:", "%s:%d" % (HOST, PORT))
     print("готово" if ok else "есть ошибки")
     return ok
+
+
+async def purger(db):
+    """Раз в час — удаление данных с истёкшим сроком хранения"""
+    while True:
+        try:
+            db.purge()
+        except Exception as e:
+            log("очистка: ошибка", repr(e))
+        await asyncio.sleep(3600)
 
 
 def main():
@@ -1217,6 +1279,7 @@ def main():
     loop = asyncio.get_event_loop()
     server = loop.run_until_complete(asyncio.start_server(srv.handle, HOST, PORT, limit=32768))
     asyncio.ensure_future(srv.hub.ticker())
+    asyncio.ensure_future(purger(db))
     log("онлайн-режим: %s:%d, база %s, модератор %s" % (HOST, PORT, DB_PATH, "да" if ADMIN_PASSWORD else "нет (пароль не задан)"))
     try:
         loop.run_forever()

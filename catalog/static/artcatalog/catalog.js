@@ -183,6 +183,9 @@
     this.curatorName = root.getAttribute('data-curator-name') || '';
     // data-live: адрес службы онлайн-режима (…/api/artcatalog/live/); без него режима нет
     this.liveUrl = (root.getAttribute('data-live') || '').replace(/\/?$/, '/').replace(/^\/$/, '');
+    // data-privacy: страница «Политика обработки персональных данных» — ссылка у согласия в онлайн-режиме
+    var priv = root.getAttribute('data-privacy') || '';
+    this.privacyUrl = /^https?:\/\//i.test(priv) ? priv : '';
     // data-hall: "webgl" | "css" | "" (сам решит по устройству)
     this.hallMode = root.getAttribute('data-hall') || '';
     var base = this.base;
@@ -2483,18 +2486,26 @@
   };
 
   Widget.prototype.liveSave = function () {
-    var L = this.live, d = { token: L.token, name: L.name, sex: L.sex, outfit: L.outfit, on: L.want };
+    var L = this.live, d = { token: L.token, name: L.name, sex: L.sex, outfit: L.outfit, off: !!L.off, consent: L.consent || 0 };
     try { localStorage.setItem(LIVE_KEY, JSON.stringify(d)); } catch (e) { /* приватный режим */ }
   };
 
-  /* Запуск: состояние из браузера; был в онлайн-режиме — сразу подключаемся */
+  /* Запуск: онлайн-режим включён сразу. Первый визит — «Гость NN» в случайном
+     образе (имя и образ можно сменить); сам выключил («Офлайн») — так и
+     остаётся до «Включить». Общаться — после согласия на обработку данных. */
   Widget.prototype.liveInit = function () {
     if (this.live || !this.liveUrl || !window.WebSocket) return;
     liveBase = this.url('');
     var d = this.liveLoad();
+    if (!d.name) {
+      d.name = 'Гость ' + (10 + Math.floor(Math.random() * 90));
+      d.sex = Math.random() < 0.5 ? 'f' : 'm';
+      d.outfit = Math.floor(Math.random() * 8);
+    }
     this.live = {
-      token: d.token, name: d.name || '', sex: d.sex === 'm' ? 'm' : 'f', outfit: Math.min(7, Math.max(0, +d.outfit || 0)),
-      want: !!(d.on && d.name), ws: null, up: false, me: null, roster: {}, convs: {}, invites: {},
+      token: d.token, name: d.name, sex: d.sex === 'm' ? 'm' : 'f', outfit: Math.min(7, Math.max(0, +d.outfit || 0)),
+      off: !!d.off, want: !d.off, consent: +d.consent || 0,
+      ws: null, up: false, me: null, roster: {}, convs: {}, invites: {},
       view: 'people', cur: null, retry: 0, err: '', pos: null, typingAt: 0
     };
     this.liveSave();
@@ -2524,7 +2535,7 @@
     L.ws = ws;
     ws.onopen = function () {
       L.retry = 0;
-      ws.send(JSON.stringify({ t: 'hello', token: L.token, name: L.name, avatar: { sex: L.sex, outfit: L.outfit }, full: false }));
+      ws.send(JSON.stringify({ t: 'hello', token: L.token, name: L.name, avatar: { sex: L.sex, outfit: L.outfit }, consent: !!L.consent, full: false }));
     };
     ws.onmessage = function (e) {
       var d;
@@ -2555,6 +2566,7 @@
     L.ws = null;
     L.up = false;
     if (ws) { try { ws.close(); } catch (e) { /* уже закрыто */ } }
+    this.livePeersSync();                 // фигуры других в 3D-зале пропадают
     this.liveShow();
   };
 
@@ -2640,6 +2652,7 @@
         this.liveNote('Жалоба отправлена модератору. Спасибо!');
         break;
       case 'error':
+        if (d.code === 'consent') { L.consent = 0; this.liveSave(); this.liveAskConsent(); break; }
         if (d.code === 'banned') { L.banned = true; L.want = false; this.liveSave(); }
         if (d.code === 'name' || d.code === 'token' || d.code === 'banned') {
           L.err = d.text;
@@ -2807,7 +2820,7 @@
   Widget.prototype.liveShow = function () {
     var L = this.live;
     if (!L) return;
-    var label = L.up ? 'На выставке: ' + (this.liveCount() + 1) : (L.want ? 'Подключаемся…' : 'Онлайн-режим');
+    var label = L.up ? 'На выставке: ' + (this.liveCount() + 1) : (L.want ? 'Подключаемся…' : 'Офлайн');
     var unread = L.up ? this.liveUnread() : 0;
     var pills = document.querySelectorAll('.artc-live-pill');
     for (var i = 0; i < pills.length; i++) {
@@ -2871,6 +2884,9 @@
       if (!p.hidden) {
         p.hidden = true;
         this.liveFit();
+        L.needConsent = false;
+        var tb = document.querySelectorAll('.artc-live-toasts');
+        for (var i = 0; i < tb.length; i++) tb[i].hidden = false;
         if (p.parentNode && p.parentNode.classList) p.parentNode.classList.remove('has-live-open');
       }
       return;
@@ -2879,8 +2895,7 @@
     if (p.parentNode !== target) target.appendChild(p);
     p.classList.toggle('artc-live--page', target === document.body);
     if (target.classList) target.classList.add('has-live-open');
-    if (!L.up && !L.want) L.view = 'join';
-    else if (L.view === 'join' && L.up) L.view = 'people';
+    if (L.view === 'join' && !L.needConsent) L.view = 'people';
     p.hidden = false;
     this.liveRender(true);
     this.liveFit();
@@ -2935,7 +2950,8 @@
     var p = this.livePanelEl, L = this.live;
     if (!p || p.hidden) return;
     var html;
-    if (L.view === 'join' || (!L.up && !L.want)) html = this.liveJoinHTML();
+    if (L.view === 'join') html = this.liveJoinHTML();
+    else if (!L.want) html = this.liveOffHTML();
     else if (!L.up) html = this.liveHeadHTML('Онлайн-режим', '') + '<div class="artc-live__body"><p class="artc-live__wait">Подключаемся к выставке…</p></div>';
     else if (L.view === 'conv' && L.convs[L.cur]) html = this.liveConvHTML(L.convs[L.cur]);
     else html = this.livePeopleHTML();
@@ -2954,6 +2970,10 @@
     }
     var nl = p.querySelector('.artc-live__log');
     if (nl && (atBottom || focus)) nl.scrollTop = nl.scrollHeight;
+    // пока просим согласие — всплывающие приглашения не закрывают галочку
+    // (приглашение остаётся в списке с кнопкой «Принять»)
+    var tb = document.querySelectorAll('.artc-live-toasts');
+    for (var i = 0; i < tb.length; i++) tb[i].hidden = !!(L.needConsent && L.view === 'join');
   };
 
   Widget.prototype.liveHeadHTML = function (title, sub, back) {
@@ -2970,9 +2990,20 @@
       return '<button type="button" class="artc-live__look' + (i === L.outfit ? ' is-on' : '') + '" data-outfit="' + i + '" aria-pressed="' + (i === L.outfit) + '" title="' + o.t + '">' +
         liveAvatar(L.sex, i, 64, true) + '<span>' + o.t + '</span></button>';
     }).join('');
-    return this.liveHeadHTML('Онлайн-режим', 'посетители выставки — вместе') +
+    var ck = L.ck != null ? L.ck : !!L.consent;
+    var priv = this.privacyUrl
+      ? ' в соответствии с <a href="' + esc(this.privacyUrl) + '" target="_blank" rel="noopener">Политикой обработки персональных данных</a>'
+      : '';
+    // согласие — отдельной галочкой, не отмеченной заранее (152-ФЗ, ст. 9); если
+    // его просят ради действия — наверху формы, чтобы не искать под прокруткой
+    var consent = '<label class="artc-live__consent' + (L.needConsent ? ' is-need' : '') + '">' +
+        '<input type="checkbox" name="consent"' + (ck ? ' checked' : '') + '>' +
+        '<span>Я даю согласие на обработку моих персональных данных' + priv + '</span></label>' +
+      (L.needConsent ? '<p class="artc-live__err" role="alert">Чтобы приглашать к разговору и переписываться, отметьте согласие и нажмите «Сохранить»</p>' : '');
+    return this.liveHeadHTML('Имя и образ', 'как вас видят другие посетители', true) +
       '<form class="artc-live__body artc-live__join" data-form="join">' +
-        '<p class="artc-live__lead">Выберите образ и имя — другие посетители увидят, что вы на выставке, и смогут пригласить вас к разговору.</p>' +
+        (L.needConsent ? consent + '<button type="submit" class="artc-live__go artc-live__go--top">Сохранить</button>' : '') +
+        '<p class="artc-live__lead">Выберите образ и имя — так вас увидят другие посетители выставки и смогут пригласить к разговору.</p>' +
         '<div class="artc-live__sex" role="radiogroup" aria-label="Образ">' +
           '<button type="button" data-sex="f" role="radio" aria-checked="' + (L.sex === 'f') + '"' + (L.sex === 'f' ? ' class="is-on"' : '') + '>Женщина</button>' +
           '<button type="button" data-sex="m" role="radio" aria-checked="' + (L.sex === 'm') + '"' + (L.sex === 'm' ? ' class="is-on"' : '') + '>Мужчина</button>' +
@@ -2981,9 +3012,22 @@
         '<label class="artc-live__label" for="artc-live-name">Ваше имя</label>' +
         '<input id="artc-live-name" class="artc-live__name" name="name" maxlength="24" autocomplete="given-name" placeholder="Например, Анна" value="' + esc(L.name) + '" required>' +
         (L.err ? '<p class="artc-live__err" role="alert">' + esc(L.err) + '</p>' : '') +
-        '<button type="submit" class="artc-live__go"' + (L.banned ? ' disabled' : '') + '>' + (L.up ? 'Сохранить' : 'Войти на выставку') + '</button>' +
-        (L.up ? '<button type="button" class="artc-live__quit" data-live="quit">Выйти из онлайн-режима</button>' : '') +
+        (L.needConsent ? '' : consent) +
+        '<button type="submit" class="artc-live__go"' + (L.banned ? ' disabled' : '') + '>Сохранить</button>' +
       '</form>';
+  };
+
+  /* Офлайн: посетитель сам выключил онлайн-режим */
+  Widget.prototype.liveOffHTML = function () {
+    var L = this.live;
+    return this.liveHeadHTML('Онлайн-режим выключен', '') +
+      '<div class="artc-live__body">' +
+        '<p class="artc-live__lead">Сейчас вы в офлайн-режиме: другие посетители вас не видят, и вы не видите их.</p>' +
+        '<div class="artc-live__me">' + liveAvatar(L.sex, L.outfit, 32) + '<span>Вы — <b>' + esc(L.name) + '</b></span>' +
+          '<button type="button" class="artc-live__link" data-live="edit">Изменить</button></div>' +
+        (L.banned ? '<p class="artc-live__err">Доступ к онлайн-режиму закрыт модератором</p>'
+                  : '<button type="button" class="artc-live__go" data-live="on">Включить онлайн-режим</button>') +
+      '</div>';
   };
 
   Widget.prototype.livePeopleHTML = function () {
@@ -3025,7 +3069,8 @@
     return this.liveHeadHTML('Сейчас на выставке', people.length + 1 + ' ' + plural(people.length + 1, 'человек', 'человека', 'человек')) +
       '<div class="artc-live__body">' +
         '<div class="artc-live__me">' + liveAvatar(me.sex, me.outfit, 32) + '<span>Вы — <b>' + esc(me.name) + '</b></span>' +
-          '<button type="button" class="artc-live__link" data-live="edit">Изменить</button></div>' +
+          '<button type="button" class="artc-live__link" data-live="edit">Изменить</button>' +
+          '<button type="button" class="artc-live__link" data-live="off">Офлайн</button></div>' +
         (convRows ? '<p class="artc-live__sec">Разговоры</p><ul class="artc-live__list">' + convRows + '</ul>' : '') +
         '<p class="artc-live__sec">Посетители</p>' +
         (rows ? '<ul class="artc-live__list">' + rows + '</ul>'
@@ -3083,13 +3128,24 @@
     this.liveAudio();
     var a = t.getAttribute('data-live');
     if (a === 'close') { this.livePanel(false); return; }
-    if (a === 'back') { L.view = 'people'; L.cur = null; this.liveRender(); return; }
+    if (a === 'back') { L.view = 'people'; L.cur = null; L.needConsent = false; L.ck = null; L.err = ''; this.liveRender(); return; }
     if (a === 'edit') { L.view = 'join'; L.err = ''; this.liveRender(true); return; }
-    if (a === 'quit') {
+    if (a === 'off') {                     // «Офлайн»: другие вас не видят, вы — их
+      L.off = true;
       this.liveDisconnect();
-      L.view = 'join';
+      L.view = 'people';
       this.liveSave();
-      this.livePanel(false);
+      this.liveRender();
+      return;
+    }
+    if (a === 'on') {
+      L.off = false;
+      L.want = true;
+      L.banned = false;
+      L.view = 'people';
+      this.liveSave();
+      this.liveConnect();
+      this.liveShow();
       return;
     }
     if (t.hasAttribute('data-sex')) {
@@ -3105,6 +3161,7 @@
       return;
     }
     if (t.hasAttribute('data-invite')) {
+      if (this.liveAskConsent()) return;
       if (this.liveSend({ t: 'invite', to: t.getAttribute('data-invite') })) {
         t.disabled = true;
         t.textContent = 'Приглашаем…';
@@ -3131,26 +3188,47 @@
   Widget.prototype.liveKeepName = function () {
     var inp = this.livePanelEl && this.livePanelEl.querySelector('.artc-live__name');
     if (inp) this.live.name = inp.value;
+    var ck = this.livePanelEl && this.livePanelEl.querySelector('.artc-live__consent input');
+    if (ck) this.live.ck = ck.checked;
+  };
+
+  /* Общаться (пригласить, принять, написать) — только с согласием на
+     обработку персональных данных: нет его — окно «Имя и образ» с галочкой */
+  Widget.prototype.liveAskConsent = function () {
+    var L = this.live;
+    if (L.consent) return false;
+    L.needConsent = true;
+    L.view = 'join';
+    L.err = '';
+    this.livePanel(true);
+    return true;
   };
 
   Widget.prototype.liveSubmit = function (form) {
     var L = this.live;
     if (form.getAttribute('data-form') === 'join') {
       var name = form.querySelector('.artc-live__name').value.replace(/\s+/g, ' ').trim();
-      if (name.length < 2) { L.err = 'Имя — хотя бы две буквы'; this.liveRender(); return; }
+      var ck = form.querySelector('.artc-live__consent input');
+      L.ck = ck ? ck.checked : false;
+      if (name.length < 2) { L.name = name; L.err = 'Имя — хотя бы две буквы'; this.liveRender(); return; }
+      if (L.needConsent && !L.ck) { L.name = name; this.liveRender(); return; }
+      L.consent = L.ck ? (L.consent || Date.now()) : 0;    // сняли галочку — согласие отозвано
+      L.needConsent = false;
+      L.ck = null;
       L.name = name;
       L.err = '';
-      L.want = true;
       L.banned = false;
+      L.want = !L.off;                      // в офлайне правка имени не включает онлайн
       this.liveSave();
       this.liveAudio();
-      if (L.ws && L.up) this.liveSend({ t: 'hello', token: L.token, name: L.name, avatar: { sex: L.sex, outfit: L.outfit }, full: false });
-      else this.liveConnect();
+      if (L.ws && L.up) this.liveSend({ t: 'hello', token: L.token, name: L.name, avatar: { sex: L.sex, outfit: L.outfit }, consent: !!L.consent, full: false });
+      else if (L.want) this.liveConnect();
       L.view = 'people';
       this.liveShow();
       return;
     }
     if (form.getAttribute('data-form') === 'msg') {
+      if (this.liveAskConsent()) return;
       var inp = form.querySelector('.artc-live__input');
       var text = inp.value.trim();
       var c = L.convs[L.cur];
@@ -3168,6 +3246,7 @@
 
   Widget.prototype.liveAnswer = function (cid, accept) {
     var L = this.live;
+    if (accept && this.liveAskConsent()) return;
     this.liveSend({ t: 'answer', conv: cid, accept: !!accept });
     delete L.invites[cid];
     this.liveToastDrop(cid);
