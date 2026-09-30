@@ -1145,12 +1145,30 @@ timer=setInterval(function(){if(!$('#app').classList.contains('hide')&&document.
 def check():
     ok = True
     print("база:", DB_PATH)
+    d = os.path.dirname(DB_PATH)
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        # от root базу не создаём и не открываем: она стала бы чужой для службы
+        import pwd
+        if os.path.isdir(d):
+            owner = pwd.getpwuid(os.stat(d).st_uid).pw_name
+            print("  ✓ папка есть, владелец:", owner, "(должен совпадать с User= в службе)")
+        else:
+            ok = False
+            print("  ✗ папки нет — создайте её от имени пользователя службы:")
+            print("    sudo -u develop mkdir -p", d)
+        db = None
+    else:
+        db = True
     try:
+        if db is None:
+            raise StopIteration
         db = DB(DB_PATH)
         db.run("CREATE TABLE IF NOT EXISTS _check(x)")
         db.run("DROP TABLE _check")
         n = db.one("SELECT COUNT(*) n FROM visitors")["n"]
         print("  ✓ открывается и пишется; посетителей в базе:", n)
+    except StopIteration:
+        pass
     except Exception as e:
         ok = False
         print("  ✗ не открывается:", e)

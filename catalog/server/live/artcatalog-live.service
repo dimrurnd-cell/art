@@ -1,0 +1,21 @@
+# Служба онлайн-режима. Скопировать в /etc/systemd/system/artcatalog-live.service,
+# в строке User= — владелец папки статики (как у куратора), затем:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now artcatalog-live
+[Unit]
+Description=Онлайн-режим выставки Арт-Ростов (посетители и разговоры)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=develop
+EnvironmentFile=/etc/artcatalog-live.env
+ExecStart=/usr/bin/python3.6 /opt/artcatalog-live/live_server.py
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
