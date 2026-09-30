@@ -120,9 +120,11 @@ PORT = int(E("LIVE_PORT", "8767"))
 PER_IP = int(E("LIVE_PER_IP", "8"))
 MSG_RATE = int(E("LIVE_MSG_RATE", "10"))
 INVITE_RATE = int(E("LIVE_INVITE_RATE", "5"))
-# сроки хранения (152-ФЗ: не дольше, чем нужно; указаны в политике сайта)
-KEEP_MSG_DAYS = int(E("LIVE_KEEP_MSG_DAYS", "180"))          # переписка — 6 месяцев
-KEEP_VISITOR_DAYS = int(E("LIVE_KEEP_VISITOR_DAYS", "365"))  # имя, адрес, даты визитов — 1 год
+# Сроки хранения — как у организатора распространения информации (149-ФЗ, ст. 10.1,
+# в ред. с 01.01.2026): текст сообщений — 6 месяцев, сведения о пользователях и о
+# фактах переписки (кто, с кем, когда) — 3 года. Дольше не храним (152-ФЗ).
+KEEP_MSG_DAYS = int(E("LIVE_KEEP_MSG_DAYS", "180"))           # текст сообщений
+KEEP_VISITOR_DAYS = int(E("LIVE_KEEP_VISITOR_DAYS", "1095"))  # посетители и факты переписки
 
 MSG_MAX = 500            # символов в сообщении
 NAME_MIN, NAME_MAX = 2, 24
@@ -215,7 +217,7 @@ CREATE TABLE IF NOT EXISTS messages (
   text TEXT NOT NULL,
   raw TEXT NOT NULL,            -- как написал посетитель, до фильтра (для модератора)
   ts REAL NOT NULL,
-  deleted INTEGER NOT NULL DEFAULT 0
+  deleted INTEGER NOT NULL DEFAULT 0   -- 1 — удалил модератор, 2 — текст стёрт по сроку хранения
 );
 CREATE INDEX IF NOT EXISTS msg_conv ON messages(conv, id);
 CREATE TABLE IF NOT EXISTS reads (
@@ -288,17 +290,19 @@ class DB:
         self.run("UPDATE visitors SET consent=? WHERE id=? AND consent IS NULL", now(), vid)
 
     def purge(self):
-        """Удаляет то, чей срок хранения вышел. Действующие блокировки остаются."""
+        """Срок хранения вышел: текст сообщений старше KEEP_MSG_DAYS стираем (сам факт —
+        кто, кому, когда — остаётся), всё старше KEEP_VISITOR_DAYS удаляем целиком.
+        Действующие блокировки остаются."""
         t = now()
         mt, vt = t - KEEP_MSG_DAYS * 86400, t - KEEP_VISITOR_DAYS * 86400
-        n_msg = self.c.execute("DELETE FROM messages WHERE ts<?", (mt,)).rowcount
-        # разговоры, в которых ничего не осталось и которые давно не менялись
+        n_txt = self.c.execute("UPDATE messages SET text='', raw='', deleted=2 WHERE ts<? AND deleted<>2", (mt,)).rowcount
+        n_msg = self.c.execute("DELETE FROM messages WHERE ts<?", (vt,)).rowcount
         n_conv = self.c.execute("DELETE FROM conversations WHERE updated<? AND state<>'pending' "
-                                "AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.conv=conversations.id)", (mt,)).rowcount
+                                "AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.conv=conversations.id)", (vt,)).rowcount
         self.c.execute("DELETE FROM reads WHERE conv NOT IN (SELECT id FROM conversations)")
         self.c.execute("DELETE FROM reports WHERE ts<?", (vt,))
         self.c.execute("DELETE FROM bans WHERE (lifted=1 OR (until IS NOT NULL AND until<?)) AND created<?", (t, vt))
-        # посетитель, не заходивший год: удаляем, если на нём нет действующей блокировки
+        # посетитель, не заходивший дольше срока: удаляем, если на нём нет действующей блокировки
         old = [r[0] for r in self.c.execute(
             "SELECT id FROM visitors WHERE last_seen<? AND id NOT IN "
             "(SELECT visitor FROM bans WHERE visitor IS NOT NULL AND lifted=0 AND (until IS NULL OR until>?))", (vt, t))]
@@ -310,9 +314,10 @@ class DB:
             self.c.execute("DELETE FROM reports WHERE reporter=? OR target=?", (vid, vid))
             self.c.execute("UPDATE bans SET visitor=NULL WHERE visitor=?", (vid,))
             self.c.execute("DELETE FROM visitors WHERE id=?", (vid,))
-        if n_msg or n_conv or old:
-            log("очистка по сроку хранения: сообщений %d, разговоров %d, посетителей %d" % (n_msg, n_conv, len(old)))
-        return n_msg, n_conv, len(old)
+        if n_txt or n_msg or n_conv or old:
+            log("очистка по сроку хранения: текст стёрт у %d сообщ., удалено сообщ. %d, разговоров %d, посетителей %d"
+                % (n_txt, n_msg, n_conv, len(old)))
+        return n_txt, n_msg, n_conv, len(old)
 
     def seen(self, vid):
         self.run("UPDATE visitors SET last_seen=? WHERE id=?", now(), vid)
@@ -1070,7 +1075,7 @@ class Server:
         elif api == "delete" and method == "POST":
             m = db.one("SELECT * FROM messages WHERE id=?", int(data.get("id") or 0))
             if m:
-                db.run("UPDATE messages SET deleted=? WHERE id=?", 0 if data.get("restore") else 1, m["id"])
+                db.run("UPDATE messages SET deleted=? WHERE id=? AND deleted<>2", 0 if data.get("restore") else 1, m["id"])
                 cv = db.conv(m["conv"])
                 if not data.get("restore"):
                     for vid in (cv["a"], cv["b"]):
@@ -1103,12 +1108,12 @@ class Server:
             cid = arg("conv")
             buf = io.StringIO()
             wr = csv.writer(buf, delimiter=";")
-            wr.writerow(["разговор", "время", "автор", "id автора", "сообщение (как написано)", "удалено модератором"])
+            wr.writerow(["разговор", "время", "автор", "id автора", "сообщение (как написано)", "удалено"])
             rows = db.q("SELECT m.*, v.name, v.pid FROM messages m JOIN visitors v ON v.id=m.author " +
                         ("WHERE conv=? " if cid else "") + "ORDER BY m.id", *([int(cid)] if cid else []))
             for m in rows:
                 wr.writerow([m["conv"], time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(m["ts"])),
-                             m["name"], m["pid"], m["raw"], "да" if m["deleted"] else ""])
+                             m["name"], m["pid"], m["raw"], {1: "удалено модератором", 2: "текст стёрт по сроку хранения"}.get(m["deleted"], "")])
             name = "artrostov-chat%s.csv" % ("-" + cid if cid else "")
             # BOM — чтобы Excel сразу открыл русские буквы правильно
             http(w, 200, "﻿" + buf.getvalue(), "text/csv; charset=utf-8",
@@ -1183,7 +1188,7 @@ document.querySelectorAll('section[data-p]').forEach(function(s){s.classList.tog
 if(v==='now')loadNow();if(v==='convs')loadConvs();if(v==='people')loadPeople();if(v==='bans')loadNow()}
 function banBtns(v){return v.banned?'<button data-unban="'+v.banned+'">Разблокировать</button>':'<button class="danger" data-ban="'+v.id+'">Заблокировать</button>'}
 function loadNow(){api('state').then(function(d){var s=d.stats;
-$('#stats').innerHTML='<div><b>'+d.online.length+'</b><span class="mute">сейчас онлайн</span></div><div><b>'+s.visitors+'</b><span class="mute">посетителей всего</span></div><div><b>'+s.convs+'</b><span class="mute">разговоров</span></div><div><b>'+s.msgs+'</b><span class="mute">сообщений</span></div><div class="mute" style="flex-basis:100%">Хранение: переписка '+s.keep[0]+' дн., сведения о посетителях '+s.keep[1]+' дн. — старее удаляется автоматически.</div>';
+$('#stats').innerHTML='<div><b>'+d.online.length+'</b><span class="mute">сейчас онлайн</span></div><div><b>'+s.visitors+'</b><span class="mute">посетителей всего</span></div><div><b>'+s.convs+'</b><span class="mute">разговоров</span></div><div><b>'+s.msgs+'</b><span class="mute">сообщений</span></div><div class="mute" style="flex-basis:100%">Хранение: текст сообщений '+s.keep[0]+' дн., сведения о посетителях и фактах переписки '+s.keep[1]+' дн. — старее удаляется автоматически.</div>';
 $('#online').innerHTML=d.online.length?'<table><tr><th>Имя</th><th>Где</th><th>Адрес</th><th></th></tr>'+d.online.map(function(v){return'<tr><td>'+who(v.name,v)+' <span class="mute">'+esc(v.pid)+'</span></td><td>'+esc(place(v))+'</td><td class="mute">'+esc(v.ip)+'</td><td><button data-find="'+esc(v.pid)+'">Переписка</button> '+banBtns(v)+'</td></tr>'}).join('')+'</table>':'<p class="mute">Никого нет.</p>';
 $('#reports').innerHTML=d.reports.length?'<table><tr><th>Когда</th><th>Кто</th><th>На кого</th><th>Текст</th><th></th></tr>'+d.reports.map(function(r){return'<tr><td class="mute">'+dt(r.ts)+'</td><td>'+esc(r.reporter_name)+'</td><td>'+esc(r.target_name)+'</td><td>'+esc(r.text)+'</td><td>'+(r.conv?'<button data-conv="'+r.conv+'">Открыть разговор</button> ':'')+'<button data-done="'+r.id+'">Разобрано</button></td></tr>'}).join('')+'</table>':'<p class="mute">Жалоб нет.</p>';
 $('#bans').innerHTML=d.bans.length?'<table><tr><th>Кто</th><th>Причина</th><th>С</th><th>До</th><th></th></tr>'+d.bans.map(function(b){return'<tr><td>'+esc(b.name||'')+(b.ip?' <span class="mute">и адрес '+esc(b.ip)+'</span>':'')+'</td><td>'+esc(b.reason)+'</td><td class="mute">'+dt(b.created)+'</td><td class="mute">'+(b.until?dt(b.until):'навсегда')+'</td><td><button data-unban="'+b.id+'">Снять</button></td></tr>'}).join('')+'</table>':'<p class="mute">Блокировок нет.</p>'})}
@@ -1191,7 +1196,7 @@ function loadConvs(){var p='convs?q='+encodeURIComponent($('#cq').value)+'&from=
 api(p).then(function(d){$('#convs').innerHTML=d.convs.length?'<table><tr><th>Кто пригласил</th><th>Кого</th><th>Состояние</th><th>Сообщений</th><th>Последнее</th></tr>'+d.convs.map(function(c){return'<tr class="click" data-conv="'+c.id+'"><td>'+esc(c.an)+'</td><td>'+esc(c.bn)+'</td><td class="mute">'+({pending:'ждёт ответа',accepted:'идёт',declined:'отклонено',expired:'без ответа',closed:'закрыт'}[c.state]||c.state)+'</td><td>'+c.n+'</td><td class="mute">'+dt(c.lastmsg||c.updated)+'</td></tr>'}).join('')+'</table>':'<p class="mute">Ничего не найдено.</p>'})}
 function openConv(id){view('convs');api('conv?id='+id).then(function(d){var box=$('#convbox');box.classList.remove('hide');
 box.innerHTML='<div class="row"><h2 style="margin:0;flex:1">'+who(d.a.name,d.a)+' ↔ '+who(d.b.name,d.b)+'</h2><a class="btn" href="admin/api/export.csv?conv='+d.conv.id+'">CSV</a> '+banBtns(d.a).replace('Заблокировать','Заблокировать '+esc(d.a.name))+' '+banBtns(d.b).replace('Заблокировать','Заблокировать '+esc(d.b.name))+'</div>'+
-(d.msgs.length?d.msgs.map(function(m){return'<div class="msg'+(m.author===d.conv.b?' b':'')+(m.deleted?' del':'')+'"><div class="meta"><b>'+esc(m.name)+'</b><span>'+dt(m.ts)+'</span>'+(m.deleted?'<button data-restore="'+m.id+'">Вернуть</button>':'<button class="danger" data-del="'+m.id+'">Удалить</button>')+'</div>'+esc(m.raw)+'</div>'}).join(''):'<p class="mute">Сообщений нет.</p>');
+(d.msgs.length?d.msgs.map(function(m){return'<div class="msg'+(m.author===d.conv.b?' b':'')+(m.deleted?' del':'')+'"><div class="meta"><b>'+esc(m.name)+'</b><span>'+dt(m.ts)+'</span>'+(m.deleted==2?'':m.deleted?'<button data-restore="'+m.id+'">Вернуть</button>':'<button class="danger" data-del="'+m.id+'">Удалить</button>')+'</div>'+(m.deleted==2?'<i class="mute">текст удалён: истёк срок хранения (6 мес.)</i>':esc(m.raw))+'</div>'}).join(''):'<p class="mute">Сообщений нет.</p>');
 box.setAttribute('data-id',id);box.scrollIntoView({behavior:'smooth'})})}
 function loadPeople(){api('visitors?q='+encodeURIComponent($('#pq').value)).then(function(d){$('#people').innerHTML='<table><tr><th>Имя</th><th>Впервые</th><th>Последний раз</th><th>Согласие</th><th>Адрес</th><th></th></tr>'+d.visitors.map(function(v){return'<tr><td>'+who(v.name,v)+' '+(v.online?'<span class="tag on">онлайн</span>':'')+' <span class="mute">'+esc(v.pid)+'</span></td><td class="mute">'+dt(v.first)+'</td><td class="mute">'+dt(v.last)+'</td><td class="mute">'+(v.consent?dt(v.consent):'нет')+'</td><td class="mute">'+esc(v.ip)+'</td><td><button data-find="'+esc(v.pid)+'">Переписка</button> '+banBtns(v)+'</td></tr>'}).join('')+'</table>'})}
 function refresh(){if(cur==='now'||cur==='bans')loadNow();if(cur==='people')loadPeople();var b=$('#convbox');if(cur==='convs'&&!b.classList.contains('hide'))openConv(b.getAttribute('data-id'))}
@@ -1254,7 +1259,7 @@ def check():
               ("" if len(ADMIN_PASSWORD) >= 10 else " — лучше не короче 10"))
     else:
         print("  ! пароль модератора не задан (LIVE_ADMIN_PASSWORD) — страница модератора будет закрыта")
-    print("хранение: переписка %d дн., сведения о посетителях %d дн." % (KEEP_MSG_DAYS, KEEP_VISITOR_DAYS))
+    print("хранение: текст сообщений %d дн., сведения о посетителях и фактах переписки %d дн." % (KEEP_MSG_DAYS, KEEP_VISITOR_DAYS))
     print("сайты:", ", ".join(ORIGINS))
     print("слушаю:", "%s:%d" % (HOST, PORT))
     print("готово" if ok else "есть ошибки")

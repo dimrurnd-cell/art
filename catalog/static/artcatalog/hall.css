@@ -907,6 +907,7 @@
 .artc-live__go { width: 100%; height: 46px; margin-top: 12px; border: 0; border-radius: 23px; background: #E0736A; color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
 .artc-live__go:hover { background: #D4574F; }
 .artc-live__go:disabled { opacity: .5; cursor: default; }
+.artc-live__hint { margin: 6px 2px 0; font-size: 12.5px; color: #8A867E; }
 .artc-live__consent { display: flex; align-items: flex-start; gap: 9px; margin: 12px 0 0; padding: 8px 10px; border-radius: 12px; font-size: 13px; line-height: 1.35; color: #4A4A46; cursor: pointer; }
 .artc-live__consent input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: #2A2A2A; cursor: pointer; }
 .artc-live__consent a { color: #2A2A2A; text-decoration: underline; text-underline-offset: 2px; }

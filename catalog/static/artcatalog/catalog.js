@@ -3011,6 +3011,7 @@
         '<div class="artc-live__looks">' + outfits + '</div>' +
         '<label class="artc-live__label" for="artc-live-name">Ваше имя</label>' +
         '<input id="artc-live-name" class="artc-live__name" name="name" maxlength="24" autocomplete="given-name" placeholder="Например, Анна" value="' + esc(L.name) + '" required>' +
+        '<p class="artc-live__hint">Имя видят все посетители выставки — можно указать псевдоним.</p>' +
         (L.err ? '<p class="artc-live__err" role="alert">' + esc(L.err) + '</p>' : '') +
         (L.needConsent ? '' : consent) +
         '<button type="submit" class="artc-live__go"' + (L.banned ? ' disabled' : '') + '>Сохранить</button>' +
