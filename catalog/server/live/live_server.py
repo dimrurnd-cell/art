@@ -129,7 +129,7 @@ FRAME_MAX = 65536        # байт в одном сообщении WebSocket
 PING_EVERY = 25          # секунд между ping
 IDLE_MAX = 75            # без единого кадра дольше — соединение мёртвое
 TICK = 0.066             # рассылка позиций 15 раз/с — движение в реальном времени
-OUTFITS = 4
+OUTFITS = 8              # образы 0…7: avatars/f0.glb … m7.glb
 
 
 def now():
@@ -392,7 +392,9 @@ class Client:
         if self.dead:
             return
         try:
-            if self.w.transport.get_write_buffer_size() > 512 * 1024:   # не читает — отключаем
+            # соединение уже оборвано (массовый уход) — не пишем: asyncio засыпал бы журнал
+            # «socket.send() raised exception»
+            if self.w.transport.is_closing() or self.w.transport.get_write_buffer_size() > 512 * 1024:   # не читает — отключаем
                 self.kill()
                 return
             self.w.write(frame(1, json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8")))
@@ -554,7 +556,7 @@ class Hub:
             for c in list(self.clients):
                 if c.full and c.v and not c.dead:
                     try:
-                        if c.w.transport.get_write_buffer_size() > 512 * 1024:
+                        if c.w.transport.is_closing() or c.w.transport.get_write_buffer_size() > 512 * 1024:
                             c.kill()
                         else:
                             c.w.write(data)
@@ -883,7 +885,8 @@ class Server:
             if self.per_ip[ip] <= 0:
                 self.per_ip.pop(ip, None)
             try:
-                writer.write(frame(8))
+                if not writer.transport.is_closing():
+                    writer.write(frame(8))
             except Exception:
                 pass
             c.kill()
@@ -892,7 +895,10 @@ class Server:
         while not c.dead:
             await asyncio.sleep(PING_EVERY)
             try:
-                c.w.write(frame(9))
+                if c.w.transport.is_closing():
+                    c.kill()
+                else:
+                    c.w.write(frame(9))
             except Exception:
                 c.kill()
 

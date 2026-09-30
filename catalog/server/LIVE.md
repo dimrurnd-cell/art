@@ -145,6 +145,10 @@ curl -s https://donexpocentre.ru/api/artcatalog/live/ping
 - **Новая версия службы** — заменить `/opt/artcatalog-live/live_server.py`
   (как в шаге 1) и `sudo systemctl restart artcatalog-live`. Переписка
   остаётся: она в базе, а не в службе.
+- **Аватары (8 образов на пол)** — служба принимает образ `outfit` 0…7;
+  старая версия (0…3) превращала бы новые образы в «0». Поэтому вместе с
+  папкой `avatars/` обновите и службу (пункт выше). Сами модели лежат в
+  статике (`/static/artcatalog/avatars/`), служба их не касается.
 - **Сменить пароль модератора** — поправить `/etc/artcatalog-live.env`,
   затем `sudo systemctl restart artcatalog-live`.
 - **Резервная копия переписки** — файл

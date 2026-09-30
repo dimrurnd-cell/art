@@ -2434,30 +2434,34 @@
      службу на сервере (server/live), адрес — data-live блока на Tilda. */
 
   var LIVE_KEY = 'artc-live';
-  var LIVE_OUTFITS = [
-    { c: '#2A2A2A', t: 'Классика' },
-    { c: '#C9A27E', t: 'Беж' },
-    { c: '#2F6B5A', t: 'Изумруд' },
-    { c: '#8E2F3C', t: 'Бордо' }
-  ];
+  // образы (outfit 0…7) — как avatars/f0.glb … m7.glb в 3D-зале; c — основной цвет одежды
+  var LIVE_OUTFITS = {
+    f: [
+      { t: 'Деловой костюм', c: '#2B2B2E' }, { t: 'Платье', c: '#4A3024' },
+      { t: 'Костюм с юбкой', c: '#7A6250' }, { t: 'Повседневный', c: '#C97A82' },
+      { t: 'Блузка и юбка', c: '#4A5680' }, { t: 'Нарядный топ', c: '#5A4A48' },
+      { t: 'Свитер и юбка', c: '#C8C8BC' }, { t: 'Летний', c: '#D8D6CC' }
+    ],
+    m: [
+      { t: 'Чёрный костюм', c: '#26262A' }, { t: 'Тёмно-синий костюм', c: '#2C3448' },
+      { t: 'Рубашка', c: '#8FA8C4' }, { t: 'Повседневный', c: '#A8302C' },
+      { t: 'Клетчатый костюм', c: '#3A3836' }, { t: 'Белая рубашка', c: '#E6E6E2' },
+      { t: 'Свитер', c: '#B8A488' }, { t: 'Джемпер', c: '#58585C' }
+    ]
+  };
+  var liveBase = '';                // папка catalog.js — там avatars/*.webp
   var ICON_PEOPLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.6"/><path d="M15.8 14.2c2.3.1 4 1.7 4.6 4.3"/></svg>';
   var ICON_BACK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>';
   var ICON_X = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
   var ICON_SEND = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 
-  /* Фигурка образа: у женщины — платье, у мужчины — пиджак; цвет — костюм */
-  function liveAvatar(sex, outfit, size) {
-    var c = (LIVE_OUTFITS[outfit] || LIVE_OUTFITS[0]).c;
+  /* Значок образа: лицо в круге; big — портрет по пояс для окна выбора */
+  function liveAvatar(sex, outfit, size, big) {
+    sex = sex === 'm' ? 'm' : 'f';
+    var o = LIVE_OUTFITS[sex][outfit] ? +outfit : 0;
     var s = size || 36;
-    var body = sex === 'm'
-      ? '<path d="M8 30c0-6 3.6-10 10-10s10 4 10 10z" fill="' + c + '"/><path d="M18 20l-2.2 5 2.2 5 2.2-5z" fill="#fff" opacity=".85"/>'
-      : '<path d="M18 19c-4 0-6 2.5-7 6l-2 5h18l-2-5c-1-3.5-3-6-7-6z" fill="' + c + '"/>';
-    return '<svg class="artc-live__ava" viewBox="0 0 36 36" width="' + s + '" height="' + s + '" aria-hidden="true">' +
-      '<circle cx="18" cy="18" r="18" fill="#EFEBE3"/>' + body +
-      '<circle cx="18" cy="12.5" r="5" fill="#E9C9A8"/>' +
-      (sex === 'm' ? '<path d="M13 11.5c.3-3.3 2.4-5 5-5s4.7 1.7 5 5c-1.3-1.2-3-1.8-5-1.8s-3.7.6-5 1.8z" fill="#4A3A2E"/>'
-                   : '<path d="M12.6 13c-.4-4.3 1.7-7 5.4-7s5.8 2.7 5.4 7c-.2 2.5-.6 4.6-1.2 6-.4-2.6-1-4.5-1.8-5.6-.8.4-1.6.6-2.4.6s-1.6-.2-2.4-.6c-.8 1.1-1.4 3-1.8 5.6-.6-1.4-1-3.5-1.2-6z" fill="#4A3A2E"/>') +
-      '</svg>';
+    return '<img class="artc-live__ava' + (big ? ' artc-live__ava--big' : '') + '" src="' + liveBase + 'avatars/' + sex + o + (big ? '' : '-face') + '.webp" alt=""' +
+      ' width="' + s + '" height="' + (big ? Math.round(s * 1.25) : s) + '" decoding="async">';
   }
 
   function liveToken() {
@@ -2483,9 +2487,10 @@
   /* Запуск: состояние из браузера; был в онлайн-режиме — сразу подключаемся */
   Widget.prototype.liveInit = function () {
     if (this.live || !this.liveUrl || !window.WebSocket) return;
+    liveBase = this.url('');
     var d = this.liveLoad();
     this.live = {
-      token: d.token, name: d.name || '', sex: d.sex === 'm' ? 'm' : 'f', outfit: +d.outfit || 0,
+      token: d.token, name: d.name || '', sex: d.sex === 'm' ? 'm' : 'f', outfit: Math.min(7, Math.max(0, +d.outfit || 0)),
       want: !!(d.on && d.name), ws: null, up: false, me: null, roster: {}, convs: {}, invites: {},
       view: 'people', cur: null, retry: 0, err: '', pos: null, typingAt: 0
     };
@@ -2902,9 +2907,9 @@
 
   Widget.prototype.liveJoinHTML = function () {
     var L = this.live;
-    var outfits = LIVE_OUTFITS.map(function (o, i) {
+    var outfits = LIVE_OUTFITS[L.sex].map(function (o, i) {
       return '<button type="button" class="artc-live__look' + (i === L.outfit ? ' is-on' : '') + '" data-outfit="' + i + '" aria-pressed="' + (i === L.outfit) + '" title="' + o.t + '">' +
-        liveAvatar(L.sex, i, 44) + '<span>' + o.t + '</span></button>';
+        liveAvatar(L.sex, i, 64, true) + '<span>' + o.t + '</span></button>';
     }).join('');
     return this.liveHeadHTML('Онлайн-режим', 'посетители выставки — вместе') +
       '<form class="artc-live__body artc-live__join" data-form="join">' +

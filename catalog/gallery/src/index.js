@@ -176,7 +176,7 @@ class Gallery {
     this.buildMs = Math.round(performance.now() - tb);
     this.scene = this.world.scene;
     // онлайн-режим: другие посетители фигурами; catalog.js кормит их через this.peers
-    this.peers = bridge.live ? new Peers(this.scene, this.small) : null;
+    this.peers = bridge.live ? new Peers(this.scene, this.small, (p) => bridge.url(p), this.world.pickables) : null;
     if (this.peers) this.world.pickables.push(...this.peers.meshes);
     // тени спотов (на компьютере); сама карта теней включена всегда, а
     // уровни качества включают и выключают тени у спотов

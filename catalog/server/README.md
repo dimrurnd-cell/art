@@ -23,6 +23,7 @@
 ├── gallery-assets/    ← фактуры помещения (hi — компьютер, lo — телефон), ~11 МБ
 ├── music/             ← тихая музыка зала: 7 пьес MP3 (~22 МБ) и CREDITS.txt
 ├── curator/           ← куратор: faq.json, kb.md, фото (figure.webp, face.webp), движение (idle.mp4/.webm/.webp)
+├── avatars/           ← онлайн-режим: 16 аватаров f0…m7 (.glb, портреты .webp), anims.glb, CREDITS.txt, ~6 МБ
 ├── catalog.css
 ├── hall.css
 ├── artists.json
@@ -85,8 +86,8 @@ rm -rf repo.zip art-claude-repository-overview-h8lcj2
 
 ```bash
 cd /home/develop/donexpo/static/artcatalog
-find . -type f | wc -l    # 189 (после сборки атласа — больше)
-du -sh .                  # ~51M
+find . -type f | wc -l    # 239 (после сборки атласа — больше)
+du -sh .                  # ~57M
 ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 ```
 
@@ -94,13 +95,13 @@ ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 
 | Файл | Байт |
 |---|---|
-| `catalog.js` | 196 011 |
+| `catalog.js` | 196 402 |
 | `catalog.css` | 24 214 |
-| `hall.css` | 56 481 |
+| `hall.css` | 56 805 |
 | `artists.json` | 324 671 |
 | `artists.js` | 256 705 |
-| `catalog-standalone.css` | 108 063 |
-| `gallery.js` | 1 012 645 |
+| `catalog-standalone.css` | 108 387 |
+| `gallery.js` | 1 119 219 |
 | `fonts/parangon.woff2` | 20 328 |
 | `img/logo.webp` | 31 726 |
 | `curator/figure.webp` | 42 828 |
@@ -110,6 +111,9 @@ ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 | `curator/idle.mp4` | 461 748 |
 | `curator/idle.webm` | 392 123 |
 | `curator/idle.webp` | 822 682 |
+| `avatars/anims.glb` | 139 584 |
+| `avatars/f0.glb` | 340 476 |
+| `avatars/m7.glb` | 293 476 |
 
 Признак испорченного шрифта — заголовки каталога рисуются обычным шрифтом
 вместо фирменного каллиграфического; испорченные изображения не открываются.
