@@ -972,10 +972,12 @@
       simple: function () { self.setHallMode('css'); },
       curator: function (host) { self.openCurator(host); },
       onMove: function (sec, room, x, z, yaw) { if (self.live) self.liveMove(sec, room, x, z, yaw); },
+      live: !!this.liveUrl,
+      livePick: function (id) { self.livePick(id); },
       fallback: function (reason) { self.glFallback(reason); }
     });
     if (!this.gl) { this.glFallback('webgl'); return; }
-    if (this.live && this.gl.stage) this.liveMount(this.gl.stage);
+    if (this.live && this.gl.stage) { this.liveMount(this.gl.stage); this.livePeersSync(); this.liveWhere(true); }
     if (/^#artc-(work|room)=/.test(location.hash)) {
       var stage = root.querySelector('.artg-stage');
       if (stage) stage.focus({ preventScroll: true });
@@ -2569,18 +2571,27 @@
         L.convs = {};
         (d.convs || []).forEach(function (c) { self.liveConvSet(c); });
         if (L.view === 'join') L.view = 'people';
+        L.full = false;                     // служба после hello считает, что 3D нет
+        this.livePeersSync();
         this.liveWhere(true);
         break;
       case 'join':
         L.roster[d.id] = d;
+        this.livePeersSync();
         break;
       case 'leave':
         delete L.roster[d.id];
+        if (this.gl && this.gl.peers) this.gl.peers.drop(d.id);
         this.liveEachConv(function (c) { if (c.with.id === d.id) c.online = false; });
         break;
       case 'place':
         if (L.roster[d.id]) { L.roster[d.id].where = d.where; L.roster[d.id].sec = d.sec; L.roster[d.id].room = d.room; }
+        this.livePeersSync();
         break;
+      case 'moves':
+        // движения других — в 3D-зал, в реальном времени (список и кнопки не трогаем)
+        if (this.gl && this.gl.peers) this.gl.peers.move(d.m, d.ts);
+        return;
       case 'invite':
         L.invites[d.conv] = d;
         this.liveToast(d);
@@ -2662,6 +2673,9 @@
       var st = this.hall.stops[this.hall.cur];
       p = { where: 'simple', sec: this.section || 0, room: st && st.seg && st.seg.gi != null ? st.seg.gi : -1, x: 0, z: 0, yaw: 0 };
     } else p = { where: 'catalog', sec: this.section || 0, room: -1, x: 0, z: 0, yaw: 0 };
+    // позиции других 15 раз/с нужны только 3D-залу
+    var full = !!(hallOn && this.gl && this.gl.peers);
+    if (L.full !== full) { L.full = full; this.liveSend({ t: 'mode', full: full }); }
     var o = L.pos;
     if (!force && o && o.where === p.where && o.sec === p.sec && o.room === p.room &&
         Math.abs(o.x - p.x) < 0.05 && Math.abs(o.z - p.z) < 0.05 && Math.abs(o.yaw - p.yaw) < 0.03) return;
@@ -2674,10 +2688,40 @@
     var L = this.live;
     if (!L) return;
     L.pos3d = { where: '3d', sec: sec, room: room, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, yaw: Math.round(yaw * 1000) / 1000 };
-    var t = Date.now();
-    if (t - (L.moveAt || 0) < 100) return;
+    var t = Date.now(), self = this;
+    clearTimeout(L.moveT);
+    if (t - (L.moveAt || 0) < 66) {
+      // чаще 15 раз/с не шлём, но последнюю точку (остановку) — обязательно
+      L.moveT = setTimeout(function () { L.moveAt = Date.now(); self.liveWhere(); }, 66 - (t - (L.moveAt || 0)));
+      return;
+    }
     L.moveAt = t;
     this.liveWhere();
+  };
+
+  /* Кто сейчас в 3D — фигурами в 3D-зале (кроме себя) */
+  Widget.prototype.livePeersSync = function () {
+    var L = this.live, P = this.gl && this.gl.peers;
+    if (!L || !P) return;
+    P.me = L.me ? L.me.id : null;
+    var list = [];
+    if (L.up) for (var k in L.roster) if (Object.prototype.hasOwnProperty.call(L.roster, k) && L.roster[k].where === '3d') list.push(L.roster[k]);
+    P.set(list);
+  };
+
+  /* Нажали на фигуру в 3D: окно со списком, этот посетитель — отмечен */
+  Widget.prototype.livePick = function (id) {
+    var L = this.live;
+    if (!L || !L.up) return;
+    L.view = 'people';
+    L.focus = id;
+    this.livePanel(true);
+    var row = this.livePanelEl && this.livePanelEl.querySelector('[data-pid="' + id + '"]');
+    if (row) {
+      row.scrollIntoView({ block: 'nearest' });
+      row.classList.add('is-focus');
+      setTimeout(function () { row.classList.remove('is-focus'); }, 1800);
+    }
   };
 
   Widget.prototype.livePlace = function (p) {
@@ -2891,7 +2935,7 @@
       else if (c && c.mine) act = '<span class="artc-live__state">Ждём ответа…</span>';
       else if (c) act = '<button type="button" class="artc-live__act" data-accept="' + c.conv + '">Принять приглашение</button>';
       else act = '<button type="button" class="artc-live__act" data-invite="' + esc(p.id) + '">Пригласить</button>';
-      return '<li>' + liveAvatar(p.sex, p.outfit) +
+      return '<li data-pid="' + esc(p.id) + '">' + liveAvatar(p.sex, p.outfit) +
         '<div class="artc-live__who"><b>' + esc(p.name) + '</b><span>' + esc(self.livePlace(p)) + '</span></div>' + act + '</li>';
     }).join('');
     // разговоры: и с теми, кто уже ушёл, — переписка остаётся

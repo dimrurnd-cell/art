@@ -128,7 +128,7 @@ HISTORY = 60             # сообщений разговора отдаём п
 FRAME_MAX = 65536        # байт в одном сообщении WebSocket
 PING_EVERY = 25          # секунд между ping
 IDLE_MAX = 75            # без единого кадра дольше — соединение мёртвое
-TICK = 0.1               # рассылка позиций 10 раз/с
+TICK = 0.066             # рассылка позиций 15 раз/с — движение в реальном времени
 OUTFITS = 4
 
 
@@ -385,7 +385,7 @@ class Client:
         self.msg_rate = Rate(MSG_RATE, 60)
         self.inv_rate = Rate(INVITE_RATE, 60)
         self.typing_rate = Rate(1, 2)
-        self.pos_rate = Rate(15, 1)
+        self.pos_rate = Rate(22, 1)
         self.report_rate = Rate(5, 3600)
 
     def send(self, obj):
@@ -526,6 +526,15 @@ class Hub:
             self.conv_changed(self.db.conv(cid))
 
     # --- позиции
+    def snapshot(self, c):
+        """Все, кто сейчас в 3D, — одним пакетом: вошедший в 3D видит их сразу"""
+        moves = []
+        for vid, p in self.place.items():
+            cs = self.by_vid.get(vid)
+            if p[0] == "3d" and cs and (not c.v or vid != c.v["id"]):
+                moves.append([next(iter(cs)).v["pid"], p[1], p[2], p[3], p[4], p[5]])
+        c.send({"t": "moves", "ts": int(now() * 1000), "m": moves, "snap": True})
+
     async def ticker(self):
         while True:
             await asyncio.sleep(TICK)
@@ -540,7 +549,8 @@ class Hub:
             self.dirty.clear()
             if not moves:
                 continue
-            data = frame(1, json.dumps({"t": "moves", "m": moves}, separators=(",", ":")).encode("utf-8"))
+            data = frame(1, json.dumps({"t": "moves", "ts": int(now() * 1000), "m": moves},
+                                       separators=(",", ":")).encode("utf-8"))
             for c in list(self.clients):
                 if c.full and c.v and not c.dead:
                     try:
@@ -575,7 +585,9 @@ class Hub:
             if not old or old[:3] != [where, sec, room]:
                 self.others(vid, {"t": "place", "id": c.v["pid"], "where": where, "sec": sec, "room": room})
         elif t == "mode":
-            c.full = bool(d.get("full"))
+            was, c.full = c.full, bool(d.get("full"))
+            if c.full and not was:
+                self.snapshot(c)
         elif t == "invite":
             self.invite(c, d)
         elif t == "answer":
@@ -653,6 +665,8 @@ class Hub:
         if len(self.by_vid.get(v["id"], ())):
             self.refresh_visitor(v["id"])
         self.attach(c)
+        if c.full:
+            self.snapshot(c)
 
     def invite(self, c, d):
         vid = c.v["id"]

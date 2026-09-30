@@ -9,6 +9,8 @@
      onRoom(i)              — зритель перешёл в зал раздела i (−1 — холл);
      onFullscreen(el|null)  — перенести модальные окна в развёрнутый элемент;
      onMove(sec, room, x, z, yaw) — где стоит зритель (онлайн-режим), ~20 раз/с;
+     live                   — онлайн-режим включён: другие посетители — фигурами (peers);
+     livePick(id)           — нажали на фигуру посетителя;
      fallback(reason)       — WebGL-зал невозможен, вернуть CSS-зал. */
 import * as THREE from 'three';
 import {
@@ -25,6 +27,7 @@ import { Quality, NAMES } from './quality.js';
 import { Tour } from './tour.js';
 import { Spots } from './lights.js';
 import { Probe } from './probe.js';
+import { Peers } from './peers.js';
 import { FloorMarks } from './markers.js';
 import { PBR_OPTS } from './pbr.js';
 import { Atmosphere } from './atmosphere.js';
@@ -172,6 +175,9 @@ class Gallery {
     this.curator = bridge.curator ? new Curator(this.world, bridge) : null;
     this.buildMs = Math.round(performance.now() - tb);
     this.scene = this.world.scene;
+    // онлайн-режим: другие посетители фигурами; catalog.js кормит их через this.peers
+    this.peers = bridge.live ? new Peers(this.scene, this.small) : null;
+    if (this.peers) this.world.pickables.push(...this.peers.meshes);
     // тени спотов (на компьютере); сама карта теней включена всегда, а
     // уровни качества включают и выключают тени у спотов
     renderer.shadowMap.enabled = !this.small;
@@ -689,6 +695,37 @@ class Gallery {
         dot(cx + colW / 2 + (nav.x - c.cx) / (COR_HALF) * half * 0.85, bottom - (r.idx + t) * rh);
       }
     });
+    // другие посетители (онлайн-режим) — точками цвета костюма, с именем
+    if (this.peers) {
+      g.font = '500 13px "Helvetica Neue", Arial, sans-serif';
+      g.textAlign = 'left';
+      const named = [];
+      for (const p of this.peers.dots()) {
+        let px, py;
+        const sec = roomAt(this.plan, p.x, p.z);
+        if (sec < 0) {
+          px = hx + (p.x - hall.x0) / (hall.x1 - hall.x0) * hw;
+          py = hy + hallH * Math.max(0.2, Math.min(0.8, (p.z - hall.z0) / (hall.z1 - hall.z0)));
+        } else {
+          const c = cs[sec], r = subRoomAt(this.plan, p.x, p.z);
+          if (!c || !r) continue;
+          const cx = x0 + sec * (colW + 24), rh = (bottom - top) / c.rooms.length;
+          const t = Math.max(0, Math.min(1, (r.z0 - p.z) / (r.z0 - r.z1)));
+          px = cx + colW / 2 + (p.x - c.cx) / COR_HALF * (colW / 2) * 0.85;
+          py = bottom - (r.idx + t) * rh;
+        }
+        g.fillStyle = p.color;
+        g.beginPath(); g.arc(px, py, 5.5, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = '#fff'; g.lineWidth = 2; g.stroke();
+        // имя — в залах, если рядом ещё нет подписи; в холле (узкая полоса) — только точки
+        if (sec >= 0 && !named.some((q) => Math.abs(q[0] - px) < 70 && Math.abs(q[1] - py) < 16)) {
+          g.fillStyle = '#2a2a2a';
+          g.fillText(p.name, px + 9, py + 4);
+          named.push([px, py]);
+        }
+      }
+      g.textAlign = 'center';
+    }
     if (this.room < 0) {
       const t = (nav.x - hall.x0) / (hall.x1 - hall.x0);
       dot(hx + t * hw, hy + hallH * Math.max(0.2, Math.min(0.8, (nav.z - hall.z0) / (hall.z1 - hall.z0))));
@@ -881,7 +918,7 @@ class Gallery {
     this.hoverT = now;
     const h = this.pick(e);
     const u = h && h.object.userData;
-    const link = u && (u.art || u.plaque || u.action || u.banner || u.curator);
+    const link = u && (u.art || u.plaque || u.action || u.banner || u.curator || u.peer);
     this.stage.style.cursor = link ? 'pointer' : '';
     // табличка или имя на стене под курсором — чуть крупнее: видно, что это ссылка
     this.setHover(u && (u.plaque || u.banner) ? h.object : null);
@@ -948,6 +985,9 @@ class Gallery {
       this.bridge.openArtist(u.banner.gi);
     } else if (u.curator) {
       this.askCurator();
+    } else if (u.peer) {
+      const id = this.peers && this.peers.hitId(h);
+      if (id && this.bridge.livePick) this.bridge.livePick(id);
     } else if (u.action) {
       const a = u.action;
       if (a.type === 'enter') this.goToRoom(a.room);
@@ -1169,6 +1209,7 @@ class Gallery {
       this.curator.play(this.room < 0 && Math.hypot(nav.x - cp.x, nav.z - cp.z) < 30);
       this.placeSay();
     }
+    if (this.peers) this.peers.update(dt, cam);
 
     if (this.tick++ % 6 === 0) {
       this.world.update(nav);
@@ -1402,6 +1443,7 @@ class Gallery {
     clearTimeout(this.revealT);
     if (this.fsFake) this.fakeFs(false);
     if (this.quality) this.quality.dropComposer();
+    if (this.peers) this.peers.dispose();
     if (this.probe) this.probe.dispose();
     if (this.curator) this.curator.dispose();
     if (this.sound) this.sound.dispose();
