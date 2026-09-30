@@ -181,6 +181,8 @@
     // data-curator: адрес куратора на сервере (…/api/artcatalog/curator/); без него — готовые ответы
     this.curatorUrl = (root.getAttribute('data-curator') || '').replace(/\/?$/, '/').replace(/^\/$/, '');
     this.curatorName = root.getAttribute('data-curator-name') || '';
+    // data-live: адрес службы онлайн-режима (…/api/artcatalog/live/); без него режима нет
+    this.liveUrl = (root.getAttribute('data-live') || '').replace(/\/?$/, '/').replace(/^\/$/, '');
     // data-hall: "webgl" | "css" | "" (сам решит по устройству)
     this.hallMode = root.getAttribute('data-hall') || '';
     var base = this.base;
@@ -467,6 +469,10 @@
       if (b) self.switchView(b.getAttribute('data-view'));
     });
 
+    // онлайн-режим: кнопка под переключателем и подключение, если посетитель уже был онлайн
+    this.liveInit();
+    this.liveHead();
+
     // поиск и указатель по буквам
     var search = wrap.querySelector('.artc-search__input');
     var clear = wrap.querySelector('.artc-search__clear');
@@ -648,6 +654,7 @@
     wrap.querySelector('.artc-view--grid').classList.toggle('is-active', view !== 'hall');
     if (view === 'hall') this.refreshHall();
     else this.goTo(this.index, true);
+    if (this.live) this.liveWhere();
   };
 
   /* ---------------- карусель ---------------- */
@@ -964,9 +971,11 @@
       onReady: function () { self.glReady(); },
       simple: function () { self.setHallMode('css'); },
       curator: function (host) { self.openCurator(host); },
+      onMove: function (sec, room, x, z, yaw) { if (self.live) self.liveMove(sec, room, x, z, yaw); },
       fallback: function (reason) { self.glFallback(reason); }
     });
     if (!this.gl) { this.glFallback('webgl'); return; }
+    if (this.live && this.gl.stage) this.liveMount(this.gl.stage);
     if (/^#artc-(work|room)=/.test(location.hash)) {
       var stage = root.querySelector('.artg-stage');
       if (stage) stage.focus({ preventScroll: true });
@@ -1367,6 +1376,7 @@
     }
     h.stage.querySelector('.artc-hw__prev').disabled = h.cur <= 0;
     h.stage.querySelector('.artc-hw__next').disabled = h.cur >= h.stops.length - 1;
+    if (this.live) { this.liveMount(h.stage); this.liveWhere(); }
   };
 
   /* Перейти к остановке i (плавно) */
@@ -2413,6 +2423,742 @@
       host.classList.remove('has-cur');
       try { host.focus({ preventScroll: true }); } catch (e) { /* старый браузер */ }
     }
+  };
+
+  /* ---------------- онлайн-режим ----------------
+     Посетитель выбирает образ и имя — другие видят его в списке «Сейчас на
+     выставке» (с местом: зал, художник) и могут пригласить к разговору;
+     второй принимает приглашение, дальше — переписка тет-а-тет. Всё через
+     службу на сервере (server/live), адрес — data-live блока на Tilda. */
+
+  var LIVE_KEY = 'artc-live';
+  var LIVE_OUTFITS = [
+    { c: '#2A2A2A', t: 'Классика' },
+    { c: '#C9A27E', t: 'Беж' },
+    { c: '#2F6B5A', t: 'Изумруд' },
+    { c: '#8E2F3C', t: 'Бордо' }
+  ];
+  var ICON_PEOPLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.6"/><path d="M15.8 14.2c2.3.1 4 1.7 4.6 4.3"/></svg>';
+  var ICON_BACK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>';
+  var ICON_X = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  var ICON_SEND = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+
+  /* Фигурка образа: у женщины — платье, у мужчины — пиджак; цвет — костюм */
+  function liveAvatar(sex, outfit, size) {
+    var c = (LIVE_OUTFITS[outfit] || LIVE_OUTFITS[0]).c;
+    var s = size || 36;
+    var body = sex === 'm'
+      ? '<path d="M8 30c0-6 3.6-10 10-10s10 4 10 10z" fill="' + c + '"/><path d="M18 20l-2.2 5 2.2 5 2.2-5z" fill="#fff" opacity=".85"/>'
+      : '<path d="M18 19c-4 0-6 2.5-7 6l-2 5h18l-2-5c-1-3.5-3-6-7-6z" fill="' + c + '"/>';
+    return '<svg class="artc-live__ava" viewBox="0 0 36 36" width="' + s + '" height="' + s + '" aria-hidden="true">' +
+      '<circle cx="18" cy="18" r="18" fill="#EFEBE3"/>' + body +
+      '<circle cx="18" cy="12.5" r="5" fill="#E9C9A8"/>' +
+      (sex === 'm' ? '<path d="M13 11.5c.3-3.3 2.4-5 5-5s4.7 1.7 5 5c-1.3-1.2-3-1.8-5-1.8s-3.7.6-5 1.8z" fill="#4A3A2E"/>'
+                   : '<path d="M12.6 13c-.4-4.3 1.7-7 5.4-7s5.8 2.7 5.4 7c-.2 2.5-.6 4.6-1.2 6-.4-2.6-1-4.5-1.8-5.6-.8.4-1.6.6-2.4.6s-1.6-.2-2.4-.6c-.8 1.1-1.4 3-1.8 5.6-.6-1.4-1-3.5-1.2-6z" fill="#4A3A2E"/>') +
+      '</svg>';
+  }
+
+  function liveToken() {
+    var a = new Uint8Array(24);
+    (window.crypto || window.msCrypto).getRandomValues(a);
+    var s = '';
+    for (var i = 0; i < a.length; i++) s += String.fromCharCode(a[i]);
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  Widget.prototype.liveLoad = function () {
+    var d = {};
+    try { d = JSON.parse(localStorage.getItem(LIVE_KEY) || '{}') || {}; } catch (e) { /* приватный режим */ }
+    if (!d.token) d.token = liveToken();
+    return d;
+  };
+
+  Widget.prototype.liveSave = function () {
+    var L = this.live, d = { token: L.token, name: L.name, sex: L.sex, outfit: L.outfit, on: L.want };
+    try { localStorage.setItem(LIVE_KEY, JSON.stringify(d)); } catch (e) { /* приватный режим */ }
+  };
+
+  /* Запуск: состояние из браузера; был в онлайн-режиме — сразу подключаемся */
+  Widget.prototype.liveInit = function () {
+    if (this.live || !this.liveUrl || !window.WebSocket) return;
+    var d = this.liveLoad();
+    this.live = {
+      token: d.token, name: d.name || '', sex: d.sex === 'm' ? 'm' : 'f', outfit: +d.outfit || 0,
+      want: !!(d.on && d.name), ws: null, up: false, me: null, roster: {}, convs: {}, invites: {},
+      view: 'people', cur: null, retry: 0, err: '', pos: null, typingAt: 0
+    };
+    this.liveSave();
+    var self = this;
+    if (this.live.want) this.liveConnect();
+    document.addEventListener('visibilitychange', function () {
+      var L = self.live;
+      if (!L) return;
+      clearTimeout(L.hideT);
+      // вкладку убрали надолго — посетитель ушёл с выставки; вернулся — снова здесь
+      if (document.hidden) L.hideT = setTimeout(function () { self.liveDisconnect(true); }, 60000);
+      else if (L.want && !L.ws) self.liveConnect();
+    });
+  };
+
+  Widget.prototype.liveWsUrl = function () {
+    var u = this.liveUrl;
+    if (!/^https?:\/\//.test(u)) u = location.origin + (u.charAt(0) === '/' ? '' : '/') + u;
+    return u.replace(/^http/, 'ws') + 'ws';
+  };
+
+  Widget.prototype.liveConnect = function () {
+    var L = this.live, self = this;
+    if (!L || L.ws) return;
+    var ws;
+    try { ws = new WebSocket(this.liveWsUrl()); } catch (e) { return; }
+    L.ws = ws;
+    ws.onopen = function () {
+      L.retry = 0;
+      ws.send(JSON.stringify({ t: 'hello', token: L.token, name: L.name, avatar: { sex: L.sex, outfit: L.outfit }, full: false }));
+    };
+    ws.onmessage = function (e) {
+      var d;
+      try { d = JSON.parse(e.data); } catch (x) { return; }
+      self.liveOn(d);
+    };
+    ws.onclose = function () {
+      if (L.ws !== ws) return;
+      L.ws = null;
+      L.up = false;
+      self.liveShow();
+      if (L.want && !L.banned && !document.hidden) {
+        // переподключение с нарастающей паузой: 1, 2, 4, 8, 15 с
+        var wait = Math.min(15000, 1000 * Math.pow(2, L.retry++));
+        clearTimeout(L.retryT);
+        L.retryT = setTimeout(function () { if (L.want && !L.ws) self.liveConnect(); }, wait);
+      }
+    };
+    ws.onerror = function () { /* закрытие придёт следом */ };
+  };
+
+  Widget.prototype.liveDisconnect = function (keep) {
+    var L = this.live;
+    if (!L) return;
+    clearTimeout(L.retryT);
+    if (!keep) L.want = false;
+    var ws = L.ws;
+    L.ws = null;
+    L.up = false;
+    if (ws) { try { ws.close(); } catch (e) { /* уже закрыто */ } }
+    this.liveShow();
+  };
+
+  Widget.prototype.liveSend = function (obj) {
+    var L = this.live;
+    if (L && L.ws && L.up && L.ws.readyState === 1) {
+      try { L.ws.send(JSON.stringify(obj)); return true; } catch (e) { /* закрывается */ }
+    }
+    return false;
+  };
+
+  /* Сообщение от службы */
+  Widget.prototype.liveOn = function (d) {
+    var L = this.live, self = this;
+    switch (d.t) {
+      case 'welcome':
+        L.up = true;
+        L.err = '';
+        L.me = d.me;
+        L.roster = {};
+        (d.roster || []).forEach(function (p) { L.roster[p.id] = p; });
+        L.convs = {};
+        (d.convs || []).forEach(function (c) { self.liveConvSet(c); });
+        if (L.view === 'join') L.view = 'people';
+        this.liveWhere(true);
+        break;
+      case 'join':
+        L.roster[d.id] = d;
+        break;
+      case 'leave':
+        delete L.roster[d.id];
+        this.liveEachConv(function (c) { if (c.with.id === d.id) c.online = false; });
+        break;
+      case 'place':
+        if (L.roster[d.id]) { L.roster[d.id].where = d.where; L.roster[d.id].sec = d.sec; L.roster[d.id].room = d.room; }
+        break;
+      case 'invite':
+        L.invites[d.conv] = d;
+        this.liveToast(d);
+        this.liveBeep();
+        break;
+      case 'conv':
+        this.liveConvSet(d.conv);
+        var c = L.convs[d.conv.conv];
+        if (d.conv.state === 'accepted' && c.mine && c.justAccepted !== false && L.view !== 'conv') {
+          // собеседник принял наше приглашение — сразу в разговор
+          c.justAccepted = false;
+          this.liveOpenConv(c.conv);
+        }
+        if (c.mine && (d.conv.state === 'declined' || d.conv.state === 'expired')) {
+          this.liveNote(d.conv.with.name + (d.conv.state === 'declined' ? ' сейчас не может поговорить' : ' не ответил(а) на приглашение'));
+        }
+        if (d.conv.state !== 'pending') { delete L.invites[d.conv.conv]; this.liveToastDrop(d.conv.conv); }
+        break;
+      case 'msg':
+        var cv = L.convs[d.conv];
+        if (!cv) break;
+        if (d.n != null) cv.msgs = cv.msgs.filter(function (m) { return m.n !== d.n; });   // своё — вместо черновика
+        if (!cv.msgs.some(function (m) { return m.id === d.m.id; })) cv.msgs.push(d.m);
+        cv.typing = 0;
+        if (d.m.from !== (L.me && L.me.id)) {
+          var reading = L.view === 'conv' && L.cur === d.conv && this.livePanelOpen();
+          if (reading) this.liveSend({ t: 'read', conv: d.conv });
+          else { cv.unread = (cv.unread || 0) + 1; this.liveMsgToast(cv, d.m); this.liveBeep(); }
+        }
+        break;
+      case 'del':
+        if (L.convs[d.conv]) L.convs[d.conv].msgs = L.convs[d.conv].msgs.filter(function (m) { return m.id !== d.id; });
+        break;
+      case 'typing':
+        if (L.convs[d.conv]) { L.convs[d.conv].typing = Date.now(); setTimeout(function () { self.liveRender(); }, 3200); }
+        break;
+      case 'reported':
+        this.liveNote('Жалоба отправлена модератору. Спасибо!');
+        break;
+      case 'error':
+        if (d.code === 'banned') { L.banned = true; L.want = false; this.liveSave(); }
+        if (d.code === 'name' || d.code === 'token' || d.code === 'banned') {
+          L.err = d.text;
+          L.view = 'join';
+          if (d.code !== 'banned') { L.want = false; this.liveDisconnect(); }
+          this.livePanel(true);
+        } else if (d.n != null) {
+          // сообщение не ушло — черновик помечаем
+          this.liveEachConv(function (c) { c.msgs.forEach(function (m) { if (m.n === d.n) m.failed = d.text; }); });
+        } else {
+          this.liveNote(d.text || 'Не получилось');
+        }
+        break;
+    }
+    this.liveShow();
+  };
+
+  Widget.prototype.liveEachConv = function (fn) {
+    var cs = this.live.convs;
+    for (var k in cs) if (Object.prototype.hasOwnProperty.call(cs, k)) fn(cs[k]);
+  };
+
+  Widget.prototype.liveConvSet = function (c) {
+    var L = this.live, old = L.convs[c.conv];
+    c.msgs = c.msgs || (old ? old.msgs : []);
+    if (old && old.justAccepted === false) c.justAccepted = false;
+    if (old && old.mine && old.state === 'pending' && c.state === 'accepted') c.justAccepted = true;
+    L.convs[c.conv] = c;
+  };
+
+  /* Где посетитель: 3D (зал, координаты), простой зал (у чьих работ), каталог */
+  Widget.prototype.liveWhere = function (force) {
+    var L = this.live;
+    if (!L || !L.up) return;
+    var hallOn = this.wrap && this.wrap.querySelector('.artc-view--hall.is-active');
+    var p;
+    if (hallOn && this.gl && L.pos3d) p = L.pos3d;
+    else if (hallOn && this.hall && this.hall.stops) {
+      var st = this.hall.stops[this.hall.cur];
+      p = { where: 'simple', sec: this.section || 0, room: st && st.seg && st.seg.gi != null ? st.seg.gi : -1, x: 0, z: 0, yaw: 0 };
+    } else p = { where: 'catalog', sec: this.section || 0, room: -1, x: 0, z: 0, yaw: 0 };
+    var o = L.pos;
+    if (!force && o && o.where === p.where && o.sec === p.sec && o.room === p.room &&
+        Math.abs(o.x - p.x) < 0.05 && Math.abs(o.z - p.z) < 0.05 && Math.abs(o.yaw - p.yaw) < 0.03) return;
+    L.pos = { where: p.where, sec: p.sec, room: p.room, x: p.x, z: p.z, yaw: p.yaw };
+    this.liveSend({ t: 'pos', where: p.where, sec: p.sec, room: p.room, x: p.x, z: p.z, yaw: p.yaw });
+  };
+
+  /* Из 3D-галереи, не чаще 10 раз в секунду */
+  Widget.prototype.liveMove = function (sec, room, x, z, yaw) {
+    var L = this.live;
+    if (!L) return;
+    L.pos3d = { where: '3d', sec: sec, room: room, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, yaw: Math.round(yaw * 1000) / 1000 };
+    var t = Date.now();
+    if (t - (L.moveAt || 0) < 100) return;
+    L.moveAt = t;
+    this.liveWhere();
+  };
+
+  Widget.prototype.livePlace = function (p) {
+    if (!p) return '';
+    var sec = this.sections[p.sec];
+    var st = sec ? sec.title : '';
+    if (p.where === '3d') {
+      if (p.sec < 0) return '3D-зал, холл';
+      return (st || '3D-зал') + (p.room >= 0 ? ', зал ' + (p.room + 1) : '');
+    }
+    if (p.where === 'simple') {
+      var a = this.artists[p.room];
+      return a ? 'у работ: ' + a.name : (st || 'в зале');
+    }
+    if (p.where === 'catalog') return 'смотрит каталог';
+    return 'на выставке';
+  };
+
+  /* ---------- кнопки «Онлайн» ---------- */
+
+  /* Кнопка в сцене зала (простого и 3D) — под кнопками справа */
+  Widget.prototype.liveMount = function (host) {
+    if (!this.live || !host || host.querySelector('.artc-live-pill')) return;
+    var self = this;
+    var b = el('button', 'artc-live-pill');
+    b.type = 'button';
+    b.innerHTML = ICON_PEOPLE + '<span class="artc-live-pill__t"></span><i class="artc-live-pill__n" hidden></i>';
+    ['pointerdown', 'mousedown', 'touchstart'].forEach(function (ev) {
+      b.addEventListener(ev, function (e) { e.stopPropagation(); }, { passive: true });
+    });
+    b.addEventListener('click', function (e) { e.stopPropagation(); self.liveToggle(self.liveHostNow()); });
+    host.appendChild(b);
+    host.classList.add('has-live');
+    this.liveShow();
+  };
+
+  Widget.prototype.liveHead = function () {
+    if (!this.live || !this.wrap) return;
+    var views = this.wrap.querySelector('.artc-views');
+    if (!views || this.wrap.querySelector('.artc-live-pill--head')) return;
+    var self = this;
+    var b = el('button', 'artc-live-pill artc-live-pill--head');
+    b.type = 'button';
+    b.innerHTML = ICON_PEOPLE + '<span class="artc-live-pill__t"></span><i class="artc-live-pill__n" hidden></i>';
+    b.addEventListener('click', function () { self.liveToggle(self.liveHostNow()); });
+    views.parentNode.insertBefore(b, views.nextSibling);
+  };
+
+  /* Куда класть окно: в сцену зала, если зал на экране (так его видно и во весь
+     экран), иначе — поверх страницы */
+  Widget.prototype.liveHostNow = function () {
+    var hallOn = this.wrap && this.wrap.querySelector('.artc-view--hall.is-active');
+    var st = null;
+    if (hallOn) st = (this.gl && this.gl.stage) || (this.hall && this.hall.stage) || null;
+    // телефон: сцена на странице невысокая (~400 px) — окно на весь экран поверх
+    // страницы; во весь экран сцена сама занимает экран — тогда в ней
+    if (st && window.innerWidth <= 560 && !st.classList.contains('is-fs')) return null;
+    return st;
+  };
+
+  Widget.prototype.liveCount = function () {
+    var n = 0, r = this.live.roster;
+    for (var k in r) if (Object.prototype.hasOwnProperty.call(r, k)) n++;
+    return n;
+  };
+
+  Widget.prototype.liveUnread = function () {
+    var n = 0;
+    this.liveEachConv(function (c) { n += c.unread || 0; });
+    for (var k in this.live.invites) if (Object.prototype.hasOwnProperty.call(this.live.invites, k)) n++;
+    return n;
+  };
+
+  /* Подписи кнопок, счётчик непрочитанного, содержимое окна */
+  Widget.prototype.liveShow = function () {
+    var L = this.live;
+    if (!L) return;
+    var label = L.up ? 'На выставке: ' + (this.liveCount() + 1) : (L.want ? 'Подключаемся…' : 'Онлайн-режим');
+    var unread = L.up ? this.liveUnread() : 0;
+    var pills = document.querySelectorAll('.artc-live-pill');
+    for (var i = 0; i < pills.length; i++) {
+      pills[i].querySelector('.artc-live-pill__t').textContent = label;
+      var n = pills[i].querySelector('.artc-live-pill__n');
+      n.hidden = !unread;
+      n.textContent = unread > 9 ? '9+' : String(unread);
+      pills[i].classList.toggle('is-on', !!L.up);
+      pills[i].setAttribute('aria-label', label + (unread ? ', новых: ' + unread : ''));
+    }
+    this.liveRender();
+  };
+
+  /* ---------- окно ---------- */
+
+  Widget.prototype.livePanelOpen = function () {
+    return !!(this.livePanelEl && !this.livePanelEl.hidden);
+  };
+
+  Widget.prototype.liveToggle = function (host) {
+    if (this.livePanelOpen() && this.livePanelEl.parentNode === (host || document.body)) this.livePanel(false);
+    else this.livePanel(true, host);
+  };
+
+  Widget.prototype.livePanel = function (on, host) {
+    var self = this, L = this.live;
+    var p = this.livePanelEl;
+    if (!p) {
+      p = this.livePanelEl = el('div', 'artc-live');
+      p.setAttribute('role', 'dialog');
+      p.setAttribute('aria-label', 'Онлайн-режим');
+      p.hidden = true;
+      // окно — часть сцены: жесты и колесо над ним не ходят по залу
+      ['pointerdown', 'mousedown', 'touchstart', 'wheel'].forEach(function (ev) {
+        p.addEventListener(ev, function (e) { e.stopPropagation(); }, { passive: true });
+      });
+      p.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') self.livePanel(false);
+        e.stopPropagation();
+      });
+      p.addEventListener('click', function (e) { self.liveClick(e); });
+      p.addEventListener('submit', function (e) { e.preventDefault(); self.liveSubmit(e.target); });
+      p.addEventListener('input', function (e) {
+        if (e.target.classList.contains('artc-live__input') && L.cur && Date.now() - L.typingAt > 2000) {
+          L.typingAt = Date.now();
+          self.liveSend({ t: 'typing', conv: L.cur });
+        }
+      });
+    }
+    if (!on) {
+      if (!p.hidden) {
+        p.hidden = true;
+        if (p.parentNode && p.parentNode.classList) p.parentNode.classList.remove('has-live-open');
+      }
+      return;
+    }
+    var target = host || this.liveHostNow() || document.body;
+    if (p.parentNode !== target) target.appendChild(p);
+    p.classList.toggle('artc-live--page', target === document.body);
+    if (target.classList) target.classList.add('has-live-open');
+    if (!L.up && !L.want) L.view = 'join';
+    else if (L.view === 'join' && L.up) L.view = 'people';
+    p.hidden = false;
+    this.liveRender(true);
+    if (this.hall && this.hall.wall) this.stopTour();
+  };
+
+  Widget.prototype.liveRender = function (focus) {
+    var p = this.livePanelEl, L = this.live;
+    if (!p || p.hidden) return;
+    var html;
+    if (L.view === 'join' || (!L.up && !L.want)) html = this.liveJoinHTML();
+    else if (!L.up) html = this.liveHeadHTML('Онлайн-режим', '') + '<div class="artc-live__body"><p class="artc-live__wait">Подключаемся к выставке…</p></div>';
+    else if (L.view === 'conv' && L.convs[L.cur]) html = this.liveConvHTML(L.convs[L.cur]);
+    else html = this.livePeopleHTML();
+    // поле ввода не пересобираем, если в нём пишут: сохраняем текст и курсор
+    var inp = p.querySelector('.artc-live__input'), keep = null;
+    if (inp && document.activeElement === inp) keep = { v: inp.value, s: inp.selectionStart };
+    var logEl = p.querySelector('.artc-live__log');
+    var atBottom = !logEl || logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 40;
+    p.innerHTML = html;
+    var ni = p.querySelector('.artc-live__input');
+    if (ni && keep && L.view === 'conv') {
+      ni.value = keep.v;
+      try { ni.focus({ preventScroll: true }); ni.setSelectionRange(keep.s, keep.s); } catch (e) { /* нет выделения */ }
+    } else if (ni && focus && !isTouch()) {
+      setTimeout(function () { try { ni.focus({ preventScroll: true }); } catch (e) { ni.focus(); } }, 50);
+    }
+    var nl = p.querySelector('.artc-live__log');
+    if (nl && (atBottom || focus)) nl.scrollTop = nl.scrollHeight;
+  };
+
+  Widget.prototype.liveHeadHTML = function (title, sub, back) {
+    return '<div class="artc-live__head">' +
+      (back ? '<button type="button" class="artc-live__icon" data-live="back" aria-label="К списку">' + ICON_BACK + '</button>' : '') +
+      '<div class="artc-live__title"><b>' + esc(title) + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + '</div>' +
+      '<button type="button" class="artc-live__icon" data-live="close" aria-label="Закрыть">' + ICON_X + '</button>' +
+    '</div>';
+  };
+
+  Widget.prototype.liveJoinHTML = function () {
+    var L = this.live;
+    var outfits = LIVE_OUTFITS.map(function (o, i) {
+      return '<button type="button" class="artc-live__look' + (i === L.outfit ? ' is-on' : '') + '" data-outfit="' + i + '" aria-pressed="' + (i === L.outfit) + '" title="' + o.t + '">' +
+        liveAvatar(L.sex, i, 44) + '<span>' + o.t + '</span></button>';
+    }).join('');
+    return this.liveHeadHTML('Онлайн-режим', 'посетители выставки — вместе') +
+      '<form class="artc-live__body artc-live__join" data-form="join">' +
+        '<p class="artc-live__lead">Выберите образ и имя — другие посетители увидят, что вы на выставке, и смогут пригласить вас к разговору.</p>' +
+        '<div class="artc-live__sex" role="radiogroup" aria-label="Образ">' +
+          '<button type="button" data-sex="f" role="radio" aria-checked="' + (L.sex === 'f') + '"' + (L.sex === 'f' ? ' class="is-on"' : '') + '>Женщина</button>' +
+          '<button type="button" data-sex="m" role="radio" aria-checked="' + (L.sex === 'm') + '"' + (L.sex === 'm' ? ' class="is-on"' : '') + '>Мужчина</button>' +
+        '</div>' +
+        '<div class="artc-live__looks">' + outfits + '</div>' +
+        '<label class="artc-live__label" for="artc-live-name">Ваше имя</label>' +
+        '<input id="artc-live-name" class="artc-live__name" name="name" maxlength="24" autocomplete="given-name" placeholder="Например, Анна" value="' + esc(L.name) + '" required>' +
+        (L.err ? '<p class="artc-live__err" role="alert">' + esc(L.err) + '</p>' : '') +
+        '<button type="submit" class="artc-live__go"' + (L.banned ? ' disabled' : '') + '>' + (L.up ? 'Сохранить' : 'Войти на выставку') + '</button>' +
+        (L.up ? '<button type="button" class="artc-live__quit" data-live="quit">Выйти из онлайн-режима</button>' : '') +
+      '</form>';
+  };
+
+  Widget.prototype.livePeopleHTML = function () {
+    var L = this.live, self = this;
+    var people = [];
+    for (var k in L.roster) if (Object.prototype.hasOwnProperty.call(L.roster, k)) people.push(L.roster[k]);
+    people.sort(function (a, b) { return a.name.localeCompare(b.name, 'ru'); });
+    var convWith = {};
+    this.liveEachConv(function (c) { if (c.state === 'pending' || c.state === 'accepted') convWith[c.with.id] = c; });
+    var rows = people.map(function (p) {
+      var c = convWith[p.id], act;
+      if (c && c.state === 'accepted') act = '<button type="button" class="artc-live__act" data-open="' + c.conv + '">Открыть разговор</button>';
+      else if (c && c.mine) act = '<span class="artc-live__state">Ждём ответа…</span>';
+      else if (c) act = '<button type="button" class="artc-live__act" data-accept="' + c.conv + '">Принять приглашение</button>';
+      else act = '<button type="button" class="artc-live__act" data-invite="' + esc(p.id) + '">Пригласить</button>';
+      return '<li>' + liveAvatar(p.sex, p.outfit) +
+        '<div class="artc-live__who"><b>' + esc(p.name) + '</b><span>' + esc(self.livePlace(p)) + '</span></div>' + act + '</li>';
+    }).join('');
+    // разговоры: и с теми, кто уже ушёл, — переписка остаётся
+    var convs = [];
+    this.liveEachConv(function (c) { if (c.state === 'accepted' || c.state === 'closed') convs.push(c); });
+    convs.sort(function (a, b) {
+      var ta = a.msgs.length ? a.msgs[a.msgs.length - 1].ts : 0, tb = b.msgs.length ? b.msgs[b.msgs.length - 1].ts : 0;
+      return tb - ta;
+    });
+    var convRows = convs.map(function (c) {
+      var last = c.msgs.length ? c.msgs[c.msgs.length - 1] : null;
+      return '<li class="artc-live__conv" data-open="' + c.conv + '" tabindex="0" role="button">' + liveAvatar(c.with.sex, c.with.outfit) +
+        '<div class="artc-live__who"><b>' + esc(c.with.name) + '</b><span>' +
+          esc(last ? (last.from === L.me.id ? 'Вы: ' : '') + last.text : (c.state === 'closed' ? 'Разговор завершён' : 'Напишите первым')) + '</span></div>' +
+        (c.unread ? '<i class="artc-live__badge">' + c.unread + '</i>' : '') + '</li>';
+    }).join('');
+    var me = L.me;
+    return this.liveHeadHTML('Сейчас на выставке', people.length + 1 + ' ' + plural(people.length + 1, 'человек', 'человека', 'человек')) +
+      '<div class="artc-live__body">' +
+        '<div class="artc-live__me">' + liveAvatar(me.sex, me.outfit, 32) + '<span>Вы — <b>' + esc(me.name) + '</b></span>' +
+          '<button type="button" class="artc-live__link" data-live="edit">Изменить</button></div>' +
+        (convRows ? '<p class="artc-live__sec">Разговоры</p><ul class="artc-live__list">' + convRows + '</ul>' : '') +
+        '<p class="artc-live__sec">Посетители</p>' +
+        (rows ? '<ul class="artc-live__list">' + rows + '</ul>'
+              : '<p class="artc-live__empty">Пока вы здесь одни. Когда на выставку зайдёт кто-то ещё, он появится в этом списке — и его можно будет пригласить к разговору.</p>') +
+      '</div>';
+  };
+
+  Widget.prototype.liveConvHTML = function (c) {
+    var L = this.live, me = L.me.id;
+    var p = L.roster[c.with.id];
+    var sub = p ? esc(this.livePlace(p)) : 'ушёл с выставки';
+    var msgs = c.msgs.map(function (m) {
+      var mine = m.from === me;
+      var t = m.ts ? new Date(m.ts * 1000) : null;
+      return '<div class="artc-live__msg' + (mine ? ' is-me' : '') + (m.failed ? ' is-fail' : '') + '">' +
+        esc(m.text) +
+        '<small>' + (m.failed ? esc(m.failed) : m.pending ? 'отправляется…' : (t ? ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) : '')) + '</small></div>';
+    }).join('');
+    var typing = c.typing && Date.now() - c.typing < 3000;
+    var closed = c.state !== 'accepted';
+    return this.liveHeadHTML(c.with.name, sub, true) +
+      '<div class="artc-live__tools">' +
+        '<button type="button" class="artc-live__link" data-report="' + esc(c.with.id) + '">Пожаловаться</button>' +
+        (c.blocked ? '<span class="artc-live__state">Заблокирован</span>'
+                   : '<button type="button" class="artc-live__link" data-block="' + esc(c.with.id) + '">Заблокировать</button>') +
+      '</div>' +
+      '<div class="artc-live__log" aria-live="polite">' +
+        (msgs || '<p class="artc-live__empty">Разговор начался — напишите первое сообщение.</p>') +
+        (typing ? '<div class="artc-live__typing">' + esc(c.with.name) + ' пишет…</div>' : '') +
+      '</div>' +
+      (closed
+        ? '<p class="artc-live__closed">Разговор завершён.</p>'
+        : '<form class="artc-live__form" data-form="msg">' +
+            '<input type="text" class="artc-live__input" maxlength="500" autocomplete="off" enterkeyhint="send" placeholder="Сообщение" aria-label="Сообщение">' +
+            '<button type="submit" class="artc-live__send" aria-label="Отправить">' + ICON_SEND + '</button>' +
+          '</form>');
+  };
+
+  Widget.prototype.liveOpenConv = function (cid) {
+    var L = this.live, c = L.convs[cid];
+    if (!c) return;
+    L.view = 'conv';
+    L.cur = cid;
+    if (c.unread) { c.unread = 0; this.liveSend({ t: 'read', conv: cid }); }
+    this.liveToastDrop(cid, true);
+    if (!this.livePanelOpen()) this.livePanel(true);
+    else this.liveRender(true);
+    this.liveShow();
+  };
+
+  Widget.prototype.liveClick = function (e) {
+    var L = this.live, self = this;
+    var t = e.target.closest('[data-live],[data-sex],[data-outfit],[data-invite],[data-open],[data-accept],[data-report],[data-block]');
+    if (!t) return;
+    this.liveAudio();
+    var a = t.getAttribute('data-live');
+    if (a === 'close') { this.livePanel(false); return; }
+    if (a === 'back') { L.view = 'people'; L.cur = null; this.liveRender(); return; }
+    if (a === 'edit') { L.view = 'join'; L.err = ''; this.liveRender(true); return; }
+    if (a === 'quit') {
+      this.liveDisconnect();
+      L.view = 'join';
+      this.liveSave();
+      this.livePanel(false);
+      return;
+    }
+    if (t.hasAttribute('data-sex')) {
+      L.sex = t.getAttribute('data-sex');
+      this.liveKeepName();
+      this.liveRender();
+      return;
+    }
+    if (t.hasAttribute('data-outfit')) {
+      L.outfit = +t.getAttribute('data-outfit');
+      this.liveKeepName();
+      this.liveRender();
+      return;
+    }
+    if (t.hasAttribute('data-invite')) {
+      if (this.liveSend({ t: 'invite', to: t.getAttribute('data-invite') })) {
+        t.disabled = true;
+        t.textContent = 'Приглашаем…';
+      }
+      return;
+    }
+    if (t.hasAttribute('data-accept')) { this.liveAnswer(+t.getAttribute('data-accept'), true); return; }
+    if (t.hasAttribute('data-open')) { this.liveOpenConv(+t.getAttribute('data-open')); return; }
+    if (t.hasAttribute('data-report')) {
+      var text = window.prompt('Что случилось? Модератор посмотрит переписку.', '');
+      if (text === null) return;
+      this.liveSend({ t: 'report', id: t.getAttribute('data-report'), conv: L.cur, text: text });
+      return;
+    }
+    if (t.hasAttribute('data-block')) {
+      if (!window.confirm('Заблокировать собеседника? Разговор закончится, и он больше не сможет приглашать вас.')) return;
+      this.liveSend({ t: 'block', id: t.getAttribute('data-block') });
+      self.liveEachConv(function (c) { if (c.with.id === t.getAttribute('data-block')) c.blocked = true; });
+      this.liveRender();
+    }
+  };
+
+  /* Имя из поля — чтобы выбор образа его не стирал */
+  Widget.prototype.liveKeepName = function () {
+    var inp = this.livePanelEl && this.livePanelEl.querySelector('.artc-live__name');
+    if (inp) this.live.name = inp.value;
+  };
+
+  Widget.prototype.liveSubmit = function (form) {
+    var L = this.live;
+    if (form.getAttribute('data-form') === 'join') {
+      var name = form.querySelector('.artc-live__name').value.replace(/\s+/g, ' ').trim();
+      if (name.length < 2) { L.err = 'Имя — хотя бы две буквы'; this.liveRender(); return; }
+      L.name = name;
+      L.err = '';
+      L.want = true;
+      L.banned = false;
+      this.liveSave();
+      this.liveAudio();
+      if (L.ws && L.up) this.liveSend({ t: 'hello', token: L.token, name: L.name, avatar: { sex: L.sex, outfit: L.outfit }, full: false });
+      else this.liveConnect();
+      L.view = 'people';
+      this.liveShow();
+      return;
+    }
+    if (form.getAttribute('data-form') === 'msg') {
+      var inp = form.querySelector('.artc-live__input');
+      var text = inp.value.trim();
+      var c = L.convs[L.cur];
+      if (!text || !c) return;
+      var n = Date.now() % 1e9;
+      if (!this.liveSend({ t: 'msg', conv: c.conv, text: text, n: n })) {
+        this.liveNote('Нет связи — сообщение не отправлено');
+        return;
+      }
+      c.msgs.push({ n: n, from: L.me.id, text: text, pending: true });
+      inp.value = '';
+      this.liveRender();
+    }
+  };
+
+  Widget.prototype.liveAnswer = function (cid, accept) {
+    var L = this.live;
+    this.liveSend({ t: 'answer', conv: cid, accept: !!accept });
+    delete L.invites[cid];
+    this.liveToastDrop(cid);
+    if (accept) {
+      var inv = L.convs[cid];
+      if (!inv) {
+        // разговора ещё нет в списке — служба пришлёт его; откроем, когда придёт
+        var self = this, tries = 0;
+        var wait = setInterval(function () {
+          if (L.convs[cid] && L.convs[cid].state === 'accepted') { clearInterval(wait); self.liveOpenConv(cid); }
+          else if (++tries > 30) clearInterval(wait);
+        }, 100);
+      } else this.liveOpenConv(cid);
+    }
+    this.liveShow();
+  };
+
+  /* ---------- уведомления ---------- */
+
+  Widget.prototype.liveToastBox = function () {
+    var host = this.liveHostNow() || document.body;
+    var box = host.querySelector(':scope > .artc-live-toasts');
+    if (!box) {
+      box = el('div', 'artc-live-toasts' + (host === document.body ? ' artc-live-toasts--page' : ''));
+      ['pointerdown', 'mousedown', 'touchstart', 'wheel'].forEach(function (ev) {
+        box.addEventListener(ev, function (e) { e.stopPropagation(); }, { passive: true });
+      });
+      host.appendChild(box);
+    }
+    return box;
+  };
+
+  Widget.prototype.liveToast = function (inv) {
+    var self = this;
+    var box = this.liveToastBox();
+    var t = el('div', 'artc-live-toast');
+    t.setAttribute('data-toast', inv.conv);
+    t.setAttribute('role', 'alert');
+    t.innerHTML = liveAvatar(inv.from.sex, inv.from.outfit, 40) +
+      '<div class="artc-live-toast__t"><b>' + esc(inv.from.name) + '</b> приглашает вас поговорить</div>' +
+      '<div class="artc-live-toast__btns"><button type="button" class="artc-live-toast__yes">Принять</button>' +
+      '<button type="button" class="artc-live-toast__no">Отклонить</button></div>';
+    t.querySelector('.artc-live-toast__yes').addEventListener('click', function () { self.liveAudio(); self.liveAnswer(inv.conv, true); });
+    t.querySelector('.artc-live-toast__no').addEventListener('click', function () { self.liveAnswer(inv.conv, false); });
+    box.appendChild(t);
+    setTimeout(function () {
+      if (self.live.invites[inv.conv]) { delete self.live.invites[inv.conv]; self.liveShow(); }
+      self.liveToastDrop(inv.conv);
+    }, 60000);
+  };
+
+  Widget.prototype.liveMsgToast = function (c, m) {
+    var self = this;
+    var box = this.liveToastBox();
+    var old = box.querySelector('[data-mtoast="' + c.conv + '"]');
+    if (old) old.parentNode.removeChild(old);
+    var t = el('button', 'artc-live-toast artc-live-toast--msg');
+    t.type = 'button';
+    t.setAttribute('data-mtoast', c.conv);
+    t.innerHTML = liveAvatar(c.with.sex, c.with.outfit, 32) +
+      '<div class="artc-live-toast__t"><b>' + esc(c.with.name) + '</b><span>' + esc(m.text.length > 80 ? m.text.slice(0, 79) + '…' : m.text) + '</span></div>';
+    t.addEventListener('click', function () { self.liveOpenConv(c.conv); });
+    box.appendChild(t);
+    setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 7000);
+  };
+
+  Widget.prototype.liveToastDrop = function (cid, msgToo) {
+    var ts = document.querySelectorAll('[data-toast="' + cid + '"]' + (msgToo ? ',[data-mtoast="' + cid + '"]' : ''));
+    for (var i = 0; i < ts.length; i++) ts[i].parentNode.removeChild(ts[i]);
+  };
+
+  Widget.prototype.liveNote = function (text) {
+    var box = this.liveToastBox();
+    var t = el('div', 'artc-live-toast artc-live-toast--note', esc(text));
+    box.appendChild(t);
+    setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 4000);
+  };
+
+  /* Короткий мягкий сигнал; звук возможен после первого касания страницы */
+  Widget.prototype.liveAudio = function () {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    try {
+      if (!this.liveAC) this.liveAC = new AC();
+      if (this.liveAC.state === 'suspended') this.liveAC.resume();
+    } catch (e) { /* без звука */ }
+  };
+
+  Widget.prototype.liveBeep = function () {
+    var ac = this.liveAC;
+    if (!ac || ac.state !== 'running') return;
+    try {
+      var t = ac.currentTime;
+      [660, 880].forEach(function (f, i) {
+        var o = ac.createOscillator(), g = ac.createGain();
+        o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t + i * 0.12);
+        g.gain.exponentialRampToValueAtTime(0.06, t + i * 0.12 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.12 + 0.18);
+        o.connect(g).connect(ac.destination);
+        o.start(t + i * 0.12);
+        o.stop(t + i * 0.12 + 0.2);
+      });
+    } catch (e) { /* без звука */ }
   };
 
   /* «Перейти к работам»: в 3D — подойти к первой работе, в простом зале —

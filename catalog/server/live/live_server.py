@@ -73,6 +73,9 @@ for _n in ("stdout", "stderr"):
         setattr(sys, _n, io.TextIOWrapper(_s.buffer, encoding="utf-8", errors="replace", line_buffering=True))
 
 
+_FILE_ENV = {}
+
+
 def env_file(argv):
     """--env ФАЙЛ: настройки из файла в формате systemd (ИМЯ=значение, # — комментарий)"""
     if "--env" not in argv:
@@ -84,15 +87,24 @@ def env_file(argv):
             if not line or line.startswith("#") or "=" not in line:
                 continue
             k, v = line.split("=", 1)
-            os.environ[k.strip()] = v.strip().strip('"').strip("'")
+            # не через os.environ: в «C»-локали Python 3.6 не пишет туда кириллицу
+            _FILE_ENV[k.strip()] = v.strip().strip('"').strip("'")
 
 
 env_file(sys.argv)
 
 
 def E(name, default=""):
+    if name in _FILE_ENV:
+        return _FILE_ENV[name]
     v = os.environ.get(name)
-    return default if v is None else v
+    if v is None:
+        return default
+    # systemd в «C»-локали: русские буквы приходят «суррогатами» — возвращаем UTF-8
+    try:
+        return v.encode("utf-8", "surrogateescape").decode("utf-8")
+    except UnicodeError:
+        return v
 
 
 ADMIN_PASSWORD = E("LIVE_ADMIN_PASSWORD", "")

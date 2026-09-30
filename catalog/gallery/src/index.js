@@ -8,6 +8,7 @@
      openArtist(gi)         — открыть карточку художника;
      onRoom(i)              — зритель перешёл в зал раздела i (−1 — холл);
      onFullscreen(el|null)  — перенести модальные окна в развёрнутый элемент;
+     onMove(sec, room, x, z, yaw) — где стоит зритель (онлайн-режим), ~20 раз/с;
      fallback(reason)       — WebGL-зал невозможен, вернуть CSS-зал. */
 import * as THREE from 'three';
 import {
@@ -1203,6 +1204,9 @@ class Gallery {
       const map = this.stage.querySelector('.artg-map');
       if (!map.hidden && this.tick % 12 === 1) this.drawMap();
     }
+
+    // онлайн-режим: где стоит зритель (частоту режет сам каталог)
+    if (this.bridge.onMove && this.tick % 3 === 1) this.bridge.onMove(this.room, this.sub ? this.sub.idx : -1, nav.x, nav.z, nav.yaw);
 
     let t1 = performance.now();
     this.tex.flush();
