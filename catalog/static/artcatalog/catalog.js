@@ -895,6 +895,7 @@
 
   /* Сцена готова: загрузчик плавно уходит */
   Widget.prototype.glReady = function () {
+    if (this.live && this.gl && this.gl.stage) this.liveAutoOpen(this.gl.stage);
     var L = this.glLoad;
     if (!L) return;
     this.glProgress(1);
@@ -2767,8 +2768,28 @@
   /* ---------- кнопки «Онлайн» ---------- */
 
   /* Кнопка в сцене зала (простого и 3D) — под кнопками справа */
+  /* Окно закрыл сам посетитель — до конца визита оно само не открывается */
+  Widget.prototype.liveShut = function () {
+    this.live.shut = true;
+    try { sessionStorage.setItem('artc-live-shut', '1'); } catch (e) { /* приватный режим */ }
+    this.livePanel(false);
+  };
+
+  /* Компьютер: окно «Сейчас на выставке» открыто в зале сразу (справа внизу) —
+     видно, кто рядом, и как сменить имя и образ. Крестик — закрыть. На
+     телефоне окно закрывало бы зал — там только по кнопке. */
+  Widget.prototype.liveAutoOpen = function (host) {
+    var L = this.live;
+    if (!L || !L.want || L.shut || isTouch() || window.innerWidth <= 900) return;
+    try { if (sessionStorage.getItem('artc-live-shut')) { L.shut = true; return; } } catch (e) { /* приватный режим */ }
+    if (this.livePanelOpen() || this.liveHostNow() !== host) return;
+    if (this.gl && host === this.gl.stage && !this.gl.revealed) return;   // 3D ещё грузится — откроем в glReady
+    this.livePanel(true, host);
+  };
+
   Widget.prototype.liveMount = function (host) {
-    if (!this.live || !host || host.querySelector('.artc-live-pill')) return;
+    if (!this.live || !host) return;
+    if (host.querySelector('.artc-live-pill')) { this.liveAutoOpen(host); return; }
     var self = this;
     var b = el('button', 'artc-live-pill');
     b.type = 'button';
@@ -2780,6 +2801,7 @@
     host.appendChild(b);
     host.classList.add('has-live');
     this.liveShow();
+    this.liveAutoOpen(host);
   };
 
   Widget.prototype.liveHead = function () {
@@ -2844,7 +2866,7 @@
   };
 
   Widget.prototype.liveToggle = function (host) {
-    if (this.livePanelOpen() && this.livePanelEl.parentNode === (host || document.body)) this.livePanel(false);
+    if (this.livePanelOpen() && this.livePanelEl.parentNode === (host || document.body)) this.liveShut();
     else this.livePanel(true, host);
   };
 
@@ -2861,7 +2883,7 @@
         p.addEventListener(ev, function (e) { e.stopPropagation(); }, { passive: true });
       });
       p.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') self.livePanel(false);
+        if (e.key === 'Escape') self.liveShut();
         e.stopPropagation();
       });
       p.addEventListener('click', function (e) { self.liveClick(e); });
@@ -3141,7 +3163,7 @@
     if (!t) return;
     this.liveAudio();
     var a = t.getAttribute('data-live');
-    if (a === 'close') { this.livePanel(false); return; }
+    if (a === 'close') { this.liveShut(); return; }
     if (a === 'back') { L.view = 'people'; L.cur = null; L.needConsent = false; L.ck = null; L.err = ''; this.liveRender(); return; }
     if (a === 'emo') { L.emo = !L.emo; this.liveRender(); return; }
     if (t.hasAttribute('data-emo')) { this.liveEmoji(t.getAttribute('data-emo')); return; }

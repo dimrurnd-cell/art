@@ -39,6 +39,25 @@ function stackedAlpha(mat) {
   return mat;
 }
 
+/* Для прохода нормалей GTAO: нормаль в пространстве камеры (как у
+   MeshNormalMaterial) только там, где маска непрозрачна. stacked — маска в
+   нижней половине кадра ролика, иначе — альфа картинки */
+function aoCutout(map, stacked) {
+  return new THREE.ShaderMaterial({
+    uniforms: { map: { value: map } },
+    vertexShader: 'varying vec2 vUv; varying vec3 vN;\n' +
+      'void main() { vUv = uv; vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: 'uniform sampler2D map; varying vec2 vUv; varying vec3 vN;\n' +
+      'void main() {\n' +
+      (stacked ? '  float a = texture2D(map, vec2(vUv.x, vUv.y * 0.5)).g;\n' : '  float a = texture2D(map, vUv).a;\n') +
+      '  if (a < 0.5) discard;\n' +
+      '  vec3 n = normalize(vN); if (!gl_FrontFacing) n = -n;\n' +
+      '  gl_FragColor = vec4(n * 0.5 + 0.5, 1.0);\n' +
+      '}',
+    side: THREE.DoubleSide,
+  });
+}
+
 /* Фото: альфа в фигуре ~0.9–0.99, а не 1 — сквозь Татьяну просвечивали стена и
    пол. Как у ролика: всё выше порога — непрозрачно, мягким остаётся край */
 function solidAlpha(mat) {
@@ -94,7 +113,8 @@ export class Curator {
     })));
     this.mesh.position.copy(this.pos);
     this.mesh.userData.curator = true;
-    this.mesh.userData.noAO = true;           // плоскость в проходе нормалей GTAO дала бы тёмный прямоугольник
+    this.mesh.userData.noAO = true;
+    this.mesh.userData.aoCutout = aoCutout(tex, false);           // плоскость в проходе нормалей GTAO дала бы тёмный прямоугольник
     const sh = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.55).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({
       map: shadowTexture(), transparent: true, depthWrite: false, toneMapped: false,
       polygonOffset: true, polygonOffsetFactor: -2,
@@ -128,6 +148,7 @@ export class Curator {
     mesh.position.copy(this.pos);
     mesh.visible = false;
     mesh.userData.noAO = true;
+    mesh.userData.aoCutout = aoCutout(tex, true);
     world.hallGroup.add(mesh);
     this.video = { v, mesh, tex, ok: false, broken: false, pending: false, blocked: false };
     // ширина — по пропорциям самого ролика (кадр — две половины друг над другом)

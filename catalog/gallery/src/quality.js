@@ -144,8 +144,38 @@ export class Quality {
     ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
     ao.blendIntensity = 0.55;
     // лучи спотов прозрачны: в проход нормалей GTAO их пускать нельзя
+    // Вырезанные по маске плоскости (куратор): в проход нормалей своим материалом
+    // (userData.aoCutout) — по силуэту, без прямоугольника. Иначе их нет в буфере
+    // глубины GTAO, и затенение стыка стены с полом позади ложилось на лицо —
+    // казалось, что фигура просвечивает.
     const hide = ao.overrideVisibility.bind(ao);
-    ao.overrideVisibility = () => { hide(); g.scene.traverse((o) => { if (o.userData.noAO) o.visible = false; }); };
+    let cut = [];
+    ao.overrideVisibility = () => {
+      hide();
+      cut = [];
+      g.scene.traverse((o) => {
+        if (!o.userData.noAO) return;
+        if (o.userData.aoCutout && o.visible && o.material.visible) cut.push(o);
+        o.visible = false;
+      });
+    };
+    const over = ao.renderOverride.bind(ao);
+    ao.renderOverride = (renderer, mat, rt, cc, ca) => {
+      over(renderer, mat, rt, cc, ca);
+      if (mat !== ao.normalMaterial || !cut.length) return;
+      const auto = renderer.autoClear;
+      renderer.setRenderTarget(rt);
+      renderer.autoClear = false;
+      for (const o of cut) {
+        const m = o.material;
+        o.visible = true;
+        o.material = o.userData.aoCutout;
+        renderer.render(o, g.camera);
+        o.material = m;
+        o.visible = false;
+      }
+      renderer.autoClear = auto;
+    };
     c.addPass(ao);
     c.addPass(new ShaderPass(SANITIZE));
     // свечение: только то, что ярче белого, — линзы спотов, световые линии и панели
