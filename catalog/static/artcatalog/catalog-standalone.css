@@ -1464,6 +1464,8 @@
 .artg-stage .artc-live-pill { top: 62px; }
 /* открыты меню или панель зала (план, художники, качество) — кнопка не мешает им */
 .artg-stage.is-menu .artc-live-pill, .artg-stage.has-panel .artc-live-pill { display: none; }
+/* окно онлайн-режима открыто в зале — кнопка «На выставке: N» дублировала бы его; закрыли — снова видна */
+.has-live-open > .artc-live-pill { display: none; }
 .artc-live-pill--head { position: static; display: flex; width: max-content; margin: -4px auto 18px; box-shadow: 0 2px 10px rgba(0, 0, 0, .08); }
 .artg-stage.is-narrow .artc-live-pill { top: 56px; right: 10px; height: 34px; font-size: 13px; padding: 0 12px 0 10px; }
 .artg-stage.is-narrow.has-live .artg-where { padding-right: 150px; }

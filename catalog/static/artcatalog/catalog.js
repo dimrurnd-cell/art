@@ -895,7 +895,6 @@
 
   /* Сцена готова: загрузчик плавно уходит */
   Widget.prototype.glReady = function () {
-    if (this.live && this.gl && this.gl.stage) this.liveAutoOpen(this.gl.stage);
     var L = this.glLoad;
     if (!L) return;
     this.glProgress(1);
@@ -970,6 +969,7 @@
         [self.artistModal, self.lightbox, self.formModal].forEach(function (m) {
           if (m && m.parentNode !== target) target.appendChild(m);
         });
+        if (fsEl && self.live && self.gl && self.gl.stage) self.liveAutoOpen(self.gl.stage);
       },
       onProgress: function (f) { self.glProgress(0.15 + f * 0.85); },
       onReady: function () { self.glReady(); },
@@ -1885,6 +1885,7 @@
     [this.artistModal, this.lightbox, this.formModal].forEach(function (m) {
       if (m && m.parentNode !== host) host.appendChild(m);
     });
+    if (on && this.live) this.liveAutoOpen(stage);
 
     // зал не пересобираем (выбросило бы из полного экрана): камера сама
     // подстраивает расстояние под новый размер сцены
@@ -2775,15 +2776,15 @@
     this.livePanel(false);
   };
 
-  /* Компьютер: окно «Сейчас на выставке» открыто в зале сразу (справа внизу) —
-     видно, кто рядом, и как сменить имя и образ. Крестик — закрыть. На
-     телефоне окно закрывало бы зал — там только по кнопке. */
+  /* Компьютер: вошёл в зал во весь экран («Войти в 3D-зал» или «Полный
+     экран») — окно «Сейчас на выставке» открывается само, справа внизу: видно,
+     кто рядом, и как сменить имя и образ. Пока зал на странице — не мешаем.
+     Крестик — закрыть до конца визита. На телефоне — только по кнопке. */
   Widget.prototype.liveAutoOpen = function (host) {
     var L = this.live;
     if (!L || !L.want || L.shut || isTouch() || window.innerWidth <= 900) return;
     try { if (sessionStorage.getItem('artc-live-shut')) { L.shut = true; return; } } catch (e) { /* приватный режим */ }
-    if (this.livePanelOpen() || this.liveHostNow() !== host) return;
-    if (this.gl && host === this.gl.stage && !this.gl.revealed) return;   // 3D ещё грузится — откроем в glReady
+    if (!host.classList.contains('is-fs') || this.livePanelOpen() || this.liveHostNow() !== host) return;
     this.livePanel(true, host);
   };
 
@@ -3067,7 +3068,8 @@
     var L = this.live, self = this;
     var people = [];
     for (var k in L.roster) if (Object.prototype.hasOwnProperty.call(L.roster, k)) people.push(L.roster[k]);
-    people.sort(function (a, b) { return a.name.localeCompare(b.name, 'ru'); });
+    // «Гость 5» — раньше «Гость 49»: числа в именах сравниваем как числа
+    people.sort(function (a, b) { return a.name.localeCompare(b.name, 'ru', { numeric: true }); });
     var convWith = {};
     this.liveEachConv(function (c) { if (c.state === 'pending' || c.state === 'accepted') convWith[c.with.id] = c; });
     // приглашение нам — в строке пригласившего «Принять», а не «Пригласить»
