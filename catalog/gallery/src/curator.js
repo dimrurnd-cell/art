@@ -43,12 +43,15 @@ function shadowTexture() {
   const c = document.createElement('canvas');
   c.width = 128; c.height = 64;
   const g = c.getContext('2d');
-  const gr = g.createRadialGradient(64, 32, 2, 64, 32, 62);
+  // эллипс 2:1, гаснущий к краю по всем сторонам: круговой градиент радиусом
+  // 62 на канвасе высотой 64 обрезался сверху и снизу — тень была прямоугольной
+  g.setTransform(2, 0, 0, 1, 0, 0);
+  const gr = g.createRadialGradient(32, 32, 1, 32, 32, 31);
   gr.addColorStop(0, 'rgba(30,24,16,0.42)');
-  gr.addColorStop(0.55, 'rgba(30,24,16,0.16)');
+  gr.addColorStop(0.5, 'rgba(30,24,16,0.18)');
   gr.addColorStop(1, 'rgba(30,24,16,0)');
   g.fillStyle = gr;
-  g.fillRect(0, 0, 128, 64);
+  g.fillRect(0, 0, 64, 64);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;

@@ -942,6 +942,14 @@
 .artc-live__send:hover { background: #D4574F; }
 .artc-live__closed { flex: none; margin: 0; padding: 12px 16px; border-top: 1px solid rgba(0, 0, 0, .07); color: #6F6F6B; font-size: 14px; text-align: center; }
 .artc-live :focus-visible { outline: 2px solid #2A2A2A; outline-offset: 2px; }
+/* телефон, открыта клавиатура: места мало — строку жалобы прячем, шапку ужимаем */
+.artc-live.is-kb { min-height: 0; }
+.artc-live.is-still { animation: none; }
+.artc-live.is-kb .artc-live__tools { display: none; }
+.artc-live.is-kb .artc-live__head { padding-top: 6px; padding-bottom: 6px; }
+.artc-live.is-kb .artc-live__title span { display: none; }
+.artc-live.is-kb .artc-live__log { min-height: 0; }
+.artc-live.is-kb .artc-live__form { padding-top: 6px; padding-bottom: 6px; }
 
 .artc-live-toasts { position: absolute; left: 50%; top: 112px; transform: translateX(-50%); z-index: 32; width: min(380px, calc(100% - 24px)); display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
 .artc-live-toasts--page { position: fixed; top: 16px; z-index: 99985; }

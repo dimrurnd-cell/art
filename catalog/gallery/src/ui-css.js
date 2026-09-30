@@ -159,6 +159,10 @@ export const CSS = `
 .artg-load{position:absolute;left:0;right:0;top:0;height:3px;background:rgba(0,0,0,.06);transition:opacity .5s}
 .artg-load i{display:block;height:100%;width:0;background:#2a2a2a;transition:width .3s}
 .artg-load.is-done{opacity:0}
+.artg-enter{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(236,235,232,.28);touch-action:pan-y}
+.artg-enter[hidden]{display:none}
+.artg-enter__btn{height:56px;padding:0 26px 0 22px;font-size:17px;font-weight:600;gap:10px;background:#fff;box-shadow:0 10px 30px rgba(0,0,0,.18),0 1px 0 rgba(0,0,0,.06)}
+.artg-stage.has-enter .artg-move,.artg-stage.has-enter .artg-joy{display:none}
 .artg-fade{position:absolute;inset:0;background:#ecebe8;opacity:0;pointer-events:none;transition:opacity .3s}
 .artg-fade.is-on{opacity:1}
 .artg-stage.is-fs{max-width:none;height:100%;border-radius:0}

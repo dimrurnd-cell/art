@@ -69,6 +69,10 @@ class Gallery {
       '<div class="artg-stage" tabindex="0" role="application" ' +
         'aria-label="Виртуальная галерея: ходьба стрелками или W/S, полотна открываются нажатием">' +
         '<canvas class="artg-canvas"></canvas>' +
+        // телефон: зал на странице невысокий — вход одной кнопкой сразу во весь экран
+        '<div class="artg-enter" hidden><button type="button" class="artg-btn artg-enter__btn" data-a="enter">' +
+          '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>' +
+          '<span>Войти в 3D-зал</span></button></div>' +
         '<div class="artg-top">' +
           '<div class="artg-where"><b></b><span></span></div>' +
           '<div class="artg-actions">' +
@@ -241,6 +245,7 @@ class Gallery {
       this.tex.resetStats();
       this.applyHash();
       this.stage.querySelector('.artg-fade').classList.remove('is-on');
+      this.enterShow();
       if (bridge.onReady) bridge.onReady();
     };
     // Проявляем, когда пришли и атлас превью, и фактуры помещения: пока
@@ -323,6 +328,13 @@ class Gallery {
     });
     st.querySelector('.artg-map__plan').addEventListener('click', (e) => this.mapClick(e));
     st.querySelector('[data-a="fs"]').addEventListener('click', () => this.toggleFullscreen());
+    const enter = st.querySelector('.artg-enter');
+    ['pointerdown', 'touchstart'].forEach((ev) => enter.addEventListener(ev, (e) => e.stopPropagation(), { passive: true }));
+    st.querySelector('[data-a="enter"]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.enterShow(false);
+      if (!this.stage.classList.contains('is-fs')) this.toggleFullscreen();
+    });
     const sndBtn = st.querySelector('[data-a="snd"]');
     const sndShow = () => {
       sndBtn.setAttribute('aria-checked', String(this.sound.on));
@@ -814,8 +826,14 @@ class Gallery {
     const nav = this.nav;
     let down = null;
 
+    // Во весь экран окна каталога (работа, карточка, заявка) и онлайн-режима
+    // лежат внутри сцены: их нажатия и колесо — не зал. Иначе щелчок по
+    // крестику закрывал окно и тут же «попадал» в табличку за ним — карточка
+    // открывалась снова и снова.
+    const overlay = (e) => e.target && e.target.closest && e.target.closest('.artc-modal, .artc-live, .artc-live-toasts');
     st.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.artg-top, .artg-menu, .artg-panel, .artg-move, .artg-map, .artg-qpanel, .artg-tour, .artg-joy, .artg-say, .artc-cur')) return;
+      if (overlay(e)) { down = null; return; }
+      if (e.target.closest('.artg-enter, .artg-top, .artg-menu, .artg-panel, .artg-move, .artg-map, .artg-qpanel, .artg-tour, .artg-joy, .artg-say, .artc-cur')) return;
       // открыта панель — касание сцены её закрывает, а не ведёт по залу
       if (this.curator) this.curator.unblock();
       if (this.anyPanel()) { this.closePanels(); return; }
@@ -836,7 +854,7 @@ class Gallery {
           const k = (this.touch ? 1.25 : 1) * this.camera.fov / 62 / this.stage.clientHeight * 1.9;
           nav.look(dx * k, dy * k);
         }
-      } else if (!this.touch) {
+      } else if (!this.touch && !overlay(e)) {
         this.hoverAt(e);
       }
     });
@@ -857,7 +875,8 @@ class Gallery {
     st.addEventListener('pointerup', up);
     st.addEventListener('pointerleave', () => { this.marks.hover(null); this.setHover(null); });
     st.addEventListener('pointercancel', up);
-    st.addEventListener('click', () => {
+    st.addEventListener('click', (e) => {
+      if (overlay(e)) { this.pendingTap = null; clearTimeout(this.tapT); return; }
       const tap = this.pendingTap;
       if (!tap) return;
       this.pendingTap = null;
@@ -866,7 +885,7 @@ class Gallery {
     });
 
     st.addEventListener('wheel', (e) => {
-      if (e.ctrlKey) return;
+      if (e.ctrlKey || overlay(e)) return;      // над окном колесо прокручивает окно
       e.preventDefault();
       if (this.tour.running) this.tour.stop();
       nav.cancel();
@@ -1116,6 +1135,15 @@ class Gallery {
     } catch (e) { this.fakeFs(true); }
   }
 
+  /* Кнопка «Войти в 3D-зал» поверх сцены — только на телефоне и только не
+     во весь экран. on === undefined: показать, если так положено */
+  enterShow(on) {
+    const el = this.stage.querySelector('.artg-enter');
+    if (on === undefined) on = this.revealed && this.touch && window.innerWidth <= 900 && !this.stage.classList.contains('is-fs');
+    el.hidden = !on;
+    this.stage.classList.toggle('has-enter', !!on);
+  }
+
   /* iPhone: Fullscreen API нет — переносим сцену в body и растягиваем */
   fakeFs(on) {
     this.fsFake = on;
@@ -1141,6 +1169,7 @@ class Gallery {
     const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
     const on = fsEl === this.stage || this.fsFake;
     this.stage.classList.toggle('is-fs', !!on);
+    this.enterShow();                 // свернули — кнопка входа снова на месте
     // окна работы и карточки — внутри полноэкранного слоя, иначе они
     // открываются под ним (на iPhone полноэкранный режим — это слой поверх страницы)
     if (this.bridge.onFullscreen) this.bridge.onFullscreen(fsEl === this.stage ? this.stage : (this.fsFake ? this.fsHost : null));

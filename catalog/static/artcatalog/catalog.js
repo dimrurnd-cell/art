@@ -1449,7 +1449,8 @@
     // броска: быстрый жест уводит на соседнюю.
     var drag = null;
     stage.addEventListener('pointerdown', function (e) {
-      if (e.target.closest('.artc-hw__top, .artc-hw__nav, .artc-find, .artc-cur')) return;
+      // во весь экран окна работы и карточки лежат внутри сцены — они не стена
+      if (e.target.closest('.artc-hw__top, .artc-hw__nav, .artc-find, .artc-cur, .artc-modal, .artc-live, .artc-live-toasts')) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       user();
       try { stage.focus({ preventScroll: true }); } catch (err) { /* старый браузер */ }
@@ -1492,6 +1493,7 @@
 
     // нажатия: полотно — работа во весь экран, табличка и имя — карточка
     stage.addEventListener('click', function (e) {
+      if (e.target.closest('.artc-modal, .artc-live, .artc-live-toasts')) return;
       if (stage.wallMoved && performance.now() - stage.wallMoved < 350) return;   // это было перетаскивание
       var fin = e.target.closest('.artc-hw__go');
       if (fin) {
@@ -1523,6 +1525,7 @@
     // весь экран: иначе мышь над залом не могла бы листать страницу
     var acc = 0, accT = 0;
     stage.addEventListener('wheel', function (e) {
+      if (e.target.closest('.artc-modal, .artc-live')) return;     // колесо над окном — прокрутка окна
       var fs = stage.classList.contains('is-fs');
       var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (fs ? e.deltaY : 0);
       if (!d) return;
@@ -2853,10 +2856,21 @@
           self.liveSend({ t: 'typing', conv: L.cur });
         }
       });
+      // телефон: клавиатура — окно ужимаем до видимой над ней части экрана
+      var vv = window.visualViewport;
+      if (vv && isTouch()) {
+        var fit = function () { self.liveFit(); };
+        vv.addEventListener('resize', fit);
+        vv.addEventListener('scroll', fit);
+        p.addEventListener('focusin', function (e) {
+          if (e.target.tagName === 'INPUT') { fit(); setTimeout(fit, 300); }
+        });
+      }
     }
     if (!on) {
       if (!p.hidden) {
         p.hidden = true;
+        this.liveFit();
         if (p.parentNode && p.parentNode.classList) p.parentNode.classList.remove('has-live-open');
       }
       return;
@@ -2869,7 +2883,52 @@
     else if (L.view === 'join' && L.up) L.view = 'people';
     p.hidden = false;
     this.liveRender(true);
+    this.liveFit();
     if (this.hall && this.hall.wall) this.stopTour();
+  };
+
+  /* Экранная клавиатура телефона закрывает низ окна: браузер уменьшает только
+     видимую часть экрана (visualViewport), раскладка остаётся прежней. Пока
+     клавиатура открыта — окно ровно над ней, лента прокручена к последнему
+     сообщению; закрылась — снова по CSS. */
+  Widget.prototype.liveFit = function () {
+    var p = this.livePanelEl, vv = window.visualViewport;
+    if (!p || !vv) return;
+    var st = p.style;
+    var kb = p.hidden ? 0 : window.innerHeight - vv.height - vv.offsetTop;
+    var on = kb > 80;
+    var log = p.querySelector('.artc-live__log');
+    var atBottom = !log || log.scrollHeight - log.scrollTop - log.clientHeight < 60;
+    p.classList.toggle('is-kb', on);
+    // анимация появления — только при открытии, не после клавиатуры
+    if (on) p.classList.add('is-still');
+    else if (p.hidden) p.classList.remove('is-still');
+    if (!on) { st.top = st.bottom = st.height = st.maxHeight = ''; }
+    else if (p.classList.contains('artc-live--page')) {
+      // окно поверх страницы (fixed): вся видимая область над клавиатурой
+      st.top = (vv.offsetTop + 8) + 'px';
+      st.height = (vv.height - 16) + 'px';
+      st.bottom = 'auto';
+      st.maxHeight = 'none';
+    } else if (p.parentNode && p.parentNode.getBoundingClientRect) {
+      // окно в сцене зала (во весь экран): низ — над клавиатурой
+      var r = p.parentNode.getBoundingClientRect();
+      var top = Math.max(6, vv.offsetTop - r.top + 6);
+      var bottom = Math.max(6, r.bottom - (vv.offsetTop + vv.height) + 6);
+      st.top = top + 'px';
+      st.bottom = bottom + 'px';
+      st.height = 'auto';
+      st.maxHeight = 'none';
+    }
+    if (log && atBottom) log.scrollTop = log.scrollHeight;
+    // окно входа: поле имени и кнопка «Войти» — в видимой части, а не под прокруткой
+    var ae = document.activeElement, body = on && ae && p.contains(ae) && ae.closest('.artc-live__body');
+    if (body) {
+      var go = body.querySelector('.artc-live__go'), br = body.getBoundingClientRect();
+      var want = go ? go.getBoundingClientRect().bottom : ae.getBoundingClientRect().bottom;
+      var d = want + 10 - br.bottom;
+      if (d > 0) body.scrollTop += Math.min(d, ae.getBoundingClientRect().top - br.top - 8);
+    }
   };
 
   Widget.prototype.liveRender = function (focus) {
@@ -2934,6 +2993,11 @@
     people.sort(function (a, b) { return a.name.localeCompare(b.name, 'ru'); });
     var convWith = {};
     this.liveEachConv(function (c) { if (c.state === 'pending' || c.state === 'accepted') convWith[c.with.id] = c; });
+    // приглашение нам — в строке пригласившего «Принять», а не «Пригласить»
+    for (var ic in L.invites) {
+      var inv = L.invites[ic];
+      if (Object.prototype.hasOwnProperty.call(L.invites, ic) && inv.from && !convWith[inv.from.id]) convWith[inv.from.id] = { conv: inv.conv, state: 'pending', mine: false };
+    }
     var rows = people.map(function (p) {
       var c = convWith[p.id], act;
       if (c && c.state === 'accepted') act = '<button type="button" class="artc-live__act" data-open="' + c.conv + '">Открыть разговор</button>';
