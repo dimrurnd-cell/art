@@ -39,6 +39,17 @@ function stackedAlpha(mat) {
   return mat;
 }
 
+/* Фото: альфа в фигуре ~0.9–0.99, а не 1 — сквозь Татьяну просвечивали стена и
+   пол. Как у ролика: всё выше порога — непрозрачно, мягким остаётся край */
+function solidAlpha(mat) {
+  mat.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>',
+      '#include <map_fragment>\n  diffuseColor.a = smoothstep( 0.1, 0.75, diffuseColor.a );');
+  };
+  mat.customProgramCacheKey = () => 'curator-solid-alpha';
+  return mat;
+}
+
 function shadowTexture() {
   const c = document.createElement('canvas');
   c.width = 128; c.height = 64;
@@ -78,9 +89,9 @@ export class Curator {
     tex.anisotropy = world.aniso;
 
     const geo = new THREE.PlaneGeometry(H * AR, H).translate(0, H / 2, 0);
-    this.mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+    this.mesh = new THREE.Mesh(geo, solidAlpha(new THREE.MeshBasicMaterial({
       map: tex, transparent: true, alphaTest: 0.08, toneMapped: false,
-    }));
+    })));
     this.mesh.position.copy(this.pos);
     this.mesh.userData.curator = true;
     this.mesh.userData.noAO = true;           // плоскость в проходе нормалей GTAO дала бы тёмный прямоугольник

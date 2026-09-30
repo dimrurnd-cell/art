@@ -2455,7 +2455,10 @@
       { t: 'Свитер', c: '#B8A488' }, { t: 'Джемпер', c: '#58585C' }
     ]
   };
-  var liveBase = '';                // папка catalog.js — там avatars/*.webp
+  var liveBase = '';
+  // смайлики для переписки — обычные символы Юникода: рисует шрифт устройства
+  var LIVE_EMOJI = ['🙂', '😊', '😄', '😂', '😉', '😍', '🥰', '😎', '🤔', '😮', '😅', '😢',
+    '👍', '👏', '🙏', '👋', '🤝', '❤️', '🔥', '✨', '🎉', '🎨', '🖼️', '🌸', '🌷', '☕', '🍰', '💐'];                // папка catalog.js — там avatars/*.webp
   var ICON_PEOPLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.6"/><path d="M15.8 14.2c2.3.1 4 1.7 4.6 4.3"/></svg>';
   var ICON_BACK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>';
   var ICON_X = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
@@ -2862,6 +2865,9 @@
         e.stopPropagation();
       });
       p.addEventListener('click', function (e) { self.liveClick(e); });
+      p.addEventListener('mousedown', function (e) {
+        if (e.target.closest('[data-emo],[data-live="emo"]')) e.preventDefault();
+      });
       p.addEventListener('submit', function (e) { e.preventDefault(); self.liveSubmit(e.target); });
       p.addEventListener('input', function (e) {
         if (e.target.classList.contains('artc-live__input') && L.cur && Date.now() - L.typingAt > 2000) {
@@ -2957,14 +2963,18 @@
     else html = this.livePeopleHTML();
     // поле ввода не пересобираем, если в нём пишут: сохраняем текст и курсор
     var inp = p.querySelector('.artc-live__input'), keep = null;
-    if (inp && document.activeElement === inp) keep = { v: inp.value, s: inp.selectionStart };
+    // черновик сообщения переживает перерисовку, даже если поле без фокуса (нажали смайлик)
+    if (inp && p.getAttribute('data-conv') === String(L.cur)) {
+      keep = { v: inp.value, s: inp.selectionStart, f: document.activeElement === inp };
+    }
     var logEl = p.querySelector('.artc-live__log');
     var atBottom = !logEl || logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 40;
     p.innerHTML = html;
+    p.setAttribute('data-conv', L.view === 'conv' ? String(L.cur) : '');
     var ni = p.querySelector('.artc-live__input');
     if (ni && keep && L.view === 'conv') {
       ni.value = keep.v;
-      try { ni.focus({ preventScroll: true }); ni.setSelectionRange(keep.s, keep.s); } catch (e) { /* нет выделения */ }
+      if (keep.f) try { ni.focus({ preventScroll: true }); ni.setSelectionRange(keep.s, keep.s); } catch (e) { /* нет выделения */ }
     } else if (ni && focus && !isTouch()) {
       setTimeout(function () { try { ni.focus({ preventScroll: true }); } catch (e) { ni.focus(); } }, 50);
     }
@@ -3104,7 +3114,10 @@
       '</div>' +
       (closed
         ? '<p class="artc-live__closed">Разговор завершён.</p>'
-        : '<form class="artc-live__form" data-form="msg">' +
+        : (L.emo ? '<div class="artc-live__emo" role="group" aria-label="Смайлики">' +
+              LIVE_EMOJI.map(function (e) { return '<button type="button" data-emo="' + e + '">' + e + '</button>'; }).join('') + '</div>' : '') +
+          '<form class="artc-live__form" data-form="msg">' +
+            '<button type="button" class="artc-live__emo-btn' + (L.emo ? ' is-on' : '') + '" data-live="emo" aria-label="Смайлики" aria-expanded="' + !!L.emo + '">🙂</button>' +
             '<input type="text" class="artc-live__input" maxlength="500" autocomplete="off" enterkeyhint="send" placeholder="Сообщение" aria-label="Сообщение">' +
             '<button type="submit" class="artc-live__send" aria-label="Отправить">' + ICON_SEND + '</button>' +
           '</form>');
@@ -3124,12 +3137,14 @@
 
   Widget.prototype.liveClick = function (e) {
     var L = this.live, self = this;
-    var t = e.target.closest('[data-live],[data-sex],[data-outfit],[data-invite],[data-open],[data-accept],[data-report],[data-block]');
+    var t = e.target.closest('[data-live],[data-sex],[data-outfit],[data-invite],[data-open],[data-accept],[data-report],[data-block],[data-emo]');
     if (!t) return;
     this.liveAudio();
     var a = t.getAttribute('data-live');
     if (a === 'close') { this.livePanel(false); return; }
     if (a === 'back') { L.view = 'people'; L.cur = null; L.needConsent = false; L.ck = null; L.err = ''; this.liveRender(); return; }
+    if (a === 'emo') { L.emo = !L.emo; this.liveRender(); return; }
+    if (t.hasAttribute('data-emo')) { this.liveEmoji(t.getAttribute('data-emo')); return; }
     if (a === 'edit') { L.view = 'join'; L.err = ''; this.liveRender(true); return; }
     if (a === 'off') {                     // «Офлайн»: другие вас не видят, вы — их
       L.off = true;
@@ -3183,6 +3198,20 @@
       self.liveEachConv(function (c) { if (c.with.id === t.getAttribute('data-block')) c.blocked = true; });
       this.liveRender();
     }
+  };
+
+  /* Смайлик — в поле сообщения, туда, где стоял курсор */
+  Widget.prototype.liveEmoji = function (e) {
+    var inp = this.livePanelEl && this.livePanelEl.querySelector('.artc-live__input');
+    if (!inp) return;
+    var v = inp.value, a = inp.selectionStart == null ? v.length : inp.selectionStart;
+    var b = inp.selectionEnd == null ? a : inp.selectionEnd;
+    if ((v.slice(0, a) + e + v.slice(b)).length > 500) return;
+    inp.value = v.slice(0, a) + e + v.slice(b);
+    var pos = a + e.length;
+    try { inp.setSelectionRange(pos, pos); } catch (x) { /* нет выделения */ }
+    // на компьютере курсор остаётся в поле; на телефоне клавиатуру не открываем — панель видна
+    if (!isTouch()) try { inp.focus({ preventScroll: true }); } catch (x) { inp.focus(); }
   };
 
   /* Имя из поля — чтобы выбор образа его не стирал */
@@ -3241,6 +3270,7 @@
       }
       c.msgs.push({ n: n, from: L.me.id, text: text, pending: true });
       inp.value = '';
+      L.emo = false;
       this.liveRender();
     }
   };

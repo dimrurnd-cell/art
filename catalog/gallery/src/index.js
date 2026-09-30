@@ -332,6 +332,7 @@ class Gallery {
     ['pointerdown', 'touchstart'].forEach((ev) => enter.addEventListener(ev, (e) => e.stopPropagation(), { passive: true }));
     st.querySelector('[data-a="enter"]').addEventListener('click', (e) => {
       e.stopPropagation();
+      this.entered = true;
       this.enterShow(false);
       if (!this.stage.classList.contains('is-fs')) this.toggleFullscreen();
     });
@@ -1136,11 +1137,14 @@ class Gallery {
     } catch (e) { this.fakeFs(true); }
   }
 
-  /* Кнопка «Войти в 3D-зал» поверх сцены — только на телефоне и только не
-     во весь экран. on === undefined: показать, если так положено */
+  /* Кнопка «Войти в 3D-зал» поверх сцены — вход сразу во весь экран.
+     Телефон: всякий раз, когда зал не во весь экран (иначе сцена на странице
+     перехватывала бы прокрутку). Компьютер: только первый раз — свернул зал,
+     значит хочет гулять по нему на странице. on === undefined: как положено */
   enterShow(on) {
     const el = this.stage.querySelector('.artg-enter');
-    if (on === undefined) on = this.revealed && this.touch && window.innerWidth <= 900 && !this.stage.classList.contains('is-fs');
+    const phone = this.touch && window.innerWidth <= 900;
+    if (on === undefined) on = this.revealed && !this.stage.classList.contains('is-fs') && (phone || !this.entered);
     el.hidden = !on;
     this.stage.classList.toggle('has-enter', !!on);
   }
@@ -1170,6 +1174,7 @@ class Gallery {
     const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
     const on = fsEl === this.stage || this.fsFake;
     this.stage.classList.toggle('is-fs', !!on);
+    if (on) this.entered = true;
     this.enterShow();                 // свернули — кнопка входа снова на месте
     // окна работы и карточки — внутри полноэкранного слоя, иначе они
     // открываются под ним (на iPhone полноэкранный режим — это слой поверх страницы)
