@@ -1037,7 +1037,8 @@ class Gallery {
     const st = this.stage, w = st.clientWidth, h = st.clientHeight;
     let p = null;
     if (this.revealed && this.curator.ready && this.room < 0 && !this.tour.running &&
-        !st.classList.contains('has-cur') && !st.classList.contains('has-panel')) {
+        !st.classList.contains('has-cur') && !st.classList.contains('has-panel') &&
+        !st.classList.contains('has-enter')) {       // на телефоне Татьяна заговорит, когда зритель войдёт в зал
       p = this.curator.head(this.camera, w, h);
       if (p && (p.d > 15 || p.d < 1.2 || p.x < 12 || p.x > w - 60 || p.y < 70 || p.y > h - 40)) p = null;
     }

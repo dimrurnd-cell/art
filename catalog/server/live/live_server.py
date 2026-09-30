@@ -635,7 +635,7 @@ class Hub:
         elif t in ("invite", "answer", "msg"):
             # общаться — только с согласием на обработку персональных данных
             if not c.v["consent"] and (t != "answer" or d.get("accept")):
-                c.send({"t": "error", "code": "consent", "text": "Чтобы общаться, отметьте согласие на обработку персональных данных"})
+                c.send({"t": "error", "code": "consent", "text": "Чтобы общаться, обновите страницу и отметьте согласие на обработку персональных данных (кнопка «Изменить»)"})
                 return
             if t == "invite":
                 self.invite(c, d)
