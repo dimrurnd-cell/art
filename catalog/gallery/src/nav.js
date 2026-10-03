@@ -18,8 +18,10 @@ function angDiff(a, b) {
 export class Nav {
   constructor(plan) {
     this.plan = plan;
-    this.x = 0;
-    this.z = plan.hall.z1 - 2.2;
+    // место у входа — чуть разное у каждого: иначе в онлайн-режиме вошедшие
+    // одновременно стояли бы друг в друге (камера внутри чужой головы)
+    this.x = (Math.random() * 2 - 1) * 1.4;
+    this.z = plan.hall.z1 - 2.2 - Math.random() * 0.8;
     this.yaw = 0;
     this.pitch = -0.02;
     this.keys = {};

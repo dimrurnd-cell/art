@@ -2472,7 +2472,9 @@
     var o = LIVE_OUTFITS[sex][outfit] ? +outfit : 0;
     var s = size || 36;
     return '<img class="artc-live__ava' + (big ? ' artc-live__ava--big' : '') + '" src="' + liveBase + 'avatars/' + sex + o + (big ? '' : '-face') + '.webp" alt=""' +
-      ' width="' + s + '" height="' + (big ? Math.round(s * 1.25) : s) + '" decoding="async">';
+      ' width="' + s + '" height="' + (big ? Math.round(s * 1.25) : s) + '" decoding="async"' +
+      // не загрузилось (экономия трафика, сбой сети) — пустой кружок, а не значок битой картинки
+      ' onerror="this.onerror=null;this.removeAttribute(\'src\')">';
   }
 
   function liveToken() {

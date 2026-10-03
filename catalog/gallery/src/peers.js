@@ -34,6 +34,7 @@ const FAR = 40;               // дальше не рисуем, м
 const DELAY = 100;            // задержка показа при ровной сети, мс (дальше — по разбросу)
 const EXTRA = 150;            // продолжение по инерции, мс
 const JUMP = 6;               // скачок дальше — перенос, а не шаг, м
+const CLOSE = 0.8;                // ближе — посетителя не рисуем (камера была бы внутри него), м
 const NEAR = 14, NEAR_OUT = 17;   // аватар ближе NEAR, обратно в фигуру — дальше NEAR_OUT, м
 
 /* Часть фигуры: геометрия + цвет вершин (для одежды — белый: красит экземпляр) */
@@ -310,7 +311,8 @@ export class Peers {
       o.speed += (Math.min(v, 3) - o.speed) * Math.min(1, dt * 8);
       o.shown = true;
       o.d = Math.hypot(o.x - cx, o.z - cz);
-      if (o.d < FAR) vis.push(o);
+      // вплотную к камере не рисуем: иначе видно лицо изнутри (губы, зубы, ресницы)
+      if (o.d < FAR && o.d > CLOSE) vis.push(o);
     }
     vis.sort((a, b) => a.d - b.d);
     if (vis.length > MAX) vis.length = MAX;
