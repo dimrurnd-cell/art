@@ -1,0 +1,34 @@
+Музыка виртуального зала «Арт-Ростов» — фортепиано, записи в общественном
+достоянии (Public domain) или CC0 с Wikimedia Commons. Указывать авторов
+лицензии не требуют; исполнители перечислены из уважения к их работе.
+
+Файлы для сайта: обрезана тишина в начале и в конце, громкость выровнена
+(EBU R128, около −23 LUFS), MP3 96 кбит/с стерео.
+
+1. satie-gymnopedie-1.mp3 — Эрик Сати, Гимнопедия № 1
+   Исполняет Robin Alciatore. Public domain.
+   https://commons.wikimedia.org/wiki/File:Erik_Satie_-_gymnopedies_-_la_1_ere._lent_et_douloureux.ogg
+
+2. bach-goldberg-aria.mp3 — И. С. Бах, Ария из «Гольдберг-вариаций» BWV 988
+   Исполняет Kimiko Ishizaka (The Open Goldberg Variations). CC0.
+   https://commons.wikimedia.org/wiki/File:Kimiko_Ishizaka_-_01_-_Aria.ogg
+
+3. chopin-nocturne-op9-2.mp3 — Ф. Шопен, Ноктюрн ми-бемоль мажор op. 9 № 2
+   Исполняет Frank Lévy (Musopen). Public domain.
+   https://commons.wikimedia.org/wiki/File:Chopin_-_Nocturne_No._2_in_E-flat_major,_Op._9_No._2_(Frank_Levy).flac
+
+4. debussy-clair-de-lune.mp3 — К. Дебюсси, «Лунный свет» (Бергамасская сюита)
+   Исполняет Laurens Goedhart (2011). Public domain.
+   https://commons.wikimedia.org/wiki/File:Clair_de_lune_(Claude_Debussy)_Suite_bergamasque.ogg
+
+5. beethoven-fur-elise.mp3 — Л. ван Бетховен, Багатель «К Элизе» WoO 59
+   Исполняет Gaodifan (2006). Public domain (PD-self) и CC0.
+   https://commons.wikimedia.org/wiki/File:FurElise.ogg
+
+6. chopin-nocturne-op48-1.mp3 — Ф. Шопен, Ноктюрн до минор op. 48 № 1
+   Исполняет Luke Faulkner. CC0.
+   https://commons.wikimedia.org/wiki/File:Chopin_Nocturne_in_C_minor_Op._48_no._1_Luke_Faulkner.ogg
+
+7. beethoven-moonlight-1.mp3 — Л. ван Бетховен, Соната № 14 «Лунная», I часть (Adagio sostenuto)
+   Исполняет Paul Pitman (Musopen). Public domain.
+   https://commons.wikimedia.org/wiki/File:Ludwig_van_Beethoven_-_sonata_no._14_in_c_sharp_minor_'moonlight',_op._27_no._2_-_i._adagio_sostenuto.ogg

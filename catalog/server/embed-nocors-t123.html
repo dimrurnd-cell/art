@@ -1,0 +1,22 @@
+<!-- ============================================================
+     БЛОК 2 из 2 — в блок T123 («Другое → HTML-код») в том месте
+     страницы, где должен появиться каталог
+
+     Порядок строк важен: artists.js (данные) идёт перед catalog.js.
+     Данные подключены обычным скриптом, поэтому разрешения сервера
+     не требуется.
+
+     В этом варианте 3D-галерея не включается: без заголовка CORS браузер
+     не отдаёт картинки с чужого домена в WebGL, и виджет сразу показывает
+     простой зал. Для 3D-галереи — способ Б (embed-head/embed-t123).
+
+     Перед публикацией создайте попап-форму Tilda popup:artbuy —
+     она принимает заявки «Хочу купить картину» и отправляет их
+     на ads@donexpocentre.ru (см. README.md).
+     ============================================================ -->
+<div id="artrostov-catalog"
+     data-base="https://donexpocentre.ru/static/artcatalog/"
+     data-tilda-popup="popup:artbuy"
+     data-ticket-url="#"></div>
+<script src="https://donexpocentre.ru/static/artcatalog/artists.js"></script>
+<script src="https://donexpocentre.ru/static/artcatalog/catalog.js" defer></script>
