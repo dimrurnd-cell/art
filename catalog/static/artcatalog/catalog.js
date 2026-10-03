@@ -799,8 +799,32 @@
      мере загрузки, рядом проценты и сколько примерно осталось. Грузить
      начинаем, когда блок подошёл к экрану (или сразу, если пришли по ссылке
      на работу или зал). */
+  /* Нет ускорения графики (программная отрисовка: удалённый рабочий стол,
+     виртуальная машина, старый драйвер)? Проверка — до скачивания 3D-движка
+     (1,1 МБ), чтобы такой компьютер сразу получил простой зал. Тот же признак
+     ещё раз проверяет сама галерея. */
+  function softGPU() {
+    if (softGPU.v != null) return softGPU.v;
+    var v = false;
+    try {
+      var c = document.createElement('canvas');
+      var gl = c.getContext('webgl2') || c.getContext('webgl');
+      if (gl) {
+        var di = gl.getExtension('WEBGL_debug_renderer_info');
+        var name = String(gl.getParameter(di ? di.UNMASKED_RENDERER_WEBGL : gl.RENDERER) || '');
+        v = /swiftshader|llvmpipe|softpipe|software|basic render|mesa offscreen/i.test(name);
+        var lose = gl.getExtension('WEBGL_lose_context');
+        if (lose) lose.loseContext();
+      }
+    } catch (e) { /* не узнали — считаем, что ускорение есть */ }
+    return (softGPU.v = v);
+  }
+
   Widget.prototype.buildGL = function (host) {
     if (this.glHost === host) return;            // уже построена или строится
+    var forced = this.force3d || /[?&#]artforce\b/.test(location.search + location.hash);
+    try { forced = forced || !!sessionStorage.getItem('artg-force3d'); } catch (e) { /* приватный режим */ }
+    if (!forced && softGPU()) { this.glFallback('slow'); return; }
     var self = this;
     this.glHost = host;
     var id = 'artc-hg' + Math.random().toString(36).slice(2, 8);
@@ -1007,7 +1031,7 @@
       this.buildHall();
       var self = this;
       setTimeout(function () {
-        self.showHint('На этом компьютере 3D-галерея работала бы медленно — открыт простой зал. ' +
+        self.showHint('На этом устройстве 3D-галерея работала бы медленно — открыт простой зал. ' +
           'Кнопка <b>«3D-галерея»</b> вверху включит её всё равно.');
         clearTimeout(self.hintT);
         self.hintT = setTimeout(function () { self.hideHint(); }, 12000);
