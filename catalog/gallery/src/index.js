@@ -160,6 +160,32 @@ class Gallery {
     PBR_OPTS.max = this.lean ? 512 : 0;
     // отражения снимаются в формат с плавающей точкой — не все видеочипы это умеют
     const gl = renderer.getContext();
+    // Видеочип. Нет ускорения (программная графика: удалённый рабочий стол,
+    // виртуальная машина, старый драйвер) — 3D будет грузиться минутами и
+    // идти слайд-шоу: сразу простой зал, 3D — только если зритель сам попросил.
+    // Слабый встроенный (офисные Intel HD/UHD и т. п.) — облегчённый режим.
+    let gpu = '';
+    try {
+      const di = gl.getExtension('WEBGL_debug_renderer_info');
+      gpu = String(gl.getParameter(di ? di.UNMASKED_RENDERER_WEBGL : gl.RENDERER) || '');
+    } catch (e) { /* нет сведений */ }
+    this.gpu = gpu;
+    const flags = location.search + location.hash;
+    let forced = !!bridge.force3d || /[?&#]artforce\b/.test(flags);
+    try { forced = forced || !!sessionStorage.getItem('artg-force3d'); } catch (e) { /* приватный режим */ }
+    this.soft = /swiftshader|llvmpipe|softpipe|software|basic render|mesa offscreen/i.test(gpu);
+    if (this.soft && !forced) {
+      this.dead = true;
+      renderer.dispose();
+      if (bridge.fallback) bridge.fallback('slow');
+      return;
+    }
+    this.weak = this.soft || /[?&#]artweak\b/.test(flags) || (!this.small && (
+      /intel.*\b(hd|uhd)\b|intel\(r\) graphics(?! xe)|\bgma\b|radeon.*\b(r[2-7]|hd ?[4-7]\d{3})\b/i.test(gpu) ||
+      (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) ||
+      (navigator.deviceMemory && navigator.deviceMemory <= 4)));
+    this.light = this.small || this.weak;       // всё тяжёлое — в облегчённом варианте
+    PBR_OPTS.lo = this.weak;
     this.floatRT = !!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));
     this.diag = { shaderErrors: [], glErrors: 0, lost: 0, hitches: [] };
     this.prof = { on: false };
@@ -180,14 +206,14 @@ class Gallery {
     this.buildMs = Math.round(performance.now() - tb);
     this.scene = this.world.scene;
     // онлайн-режим: другие посетители фигурами; catalog.js кормит их через this.peers
-    this.peers = bridge.live ? new Peers(this.scene, this.small, (p) => bridge.url(p), this.world.pickables) : null;
+    this.peers = bridge.live ? new Peers(this.scene, this.light, (p) => bridge.url(p), this.world.pickables) : null;
     if (this.peers) this.world.pickables.push(...this.peers.meshes);
     // тени спотов (на компьютере); сама карта теней включена всегда, а
     // уровни качества включают и выключают тени у спотов
-    renderer.shadowMap.enabled = !this.small;
+    renderer.shadowMap.enabled = !this.light;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.spots = new Spots(this.scene, this.small);
-    this.atmo = new Atmosphere(this.scene, this.spots, this.small);
+    this.spots = new Spots(this.scene, this.light);
+    this.atmo = new Atmosphere(this.scene, this.spots, this.light);
     this.sound = new Sound((p) => bridge.url(p));
     // пьеса началась — её название короткой подсказкой
     this.sound.onTrack = (t) => this.hint('♪ ' + t.t + ' · исп. ' + t.p);
@@ -202,14 +228,14 @@ class Gallery {
     let lightPref = '';
     try { lightPref = localStorage.getItem(LIGHT_KEY) || ''; } catch (e) { /* приватный режим */ }
     this.naturalLight = lightPref === 'natural';
-    this.probe = new Probe(renderer, this.scene, this.small);
-    this.probe.off = !this.floatRT;
+    this.probe = new Probe(renderer, this.scene, this.light);
+    this.probe.off = !this.floatRT || this.weak;   // отражения — не для слабого видеочипа
     this.world.reflectMats().forEach((m) => this.probe.patch(m));
     this.probeKey = '';
     this.camera = new THREE.PerspectiveCamera(62, 1, 0.05, 140);
     this.camera.rotation.order = 'YXZ';
     this.nav = new Nav(this.plan);
-    this.tex = new TextureManager(renderer, bridge, this.small, this.lean);
+    this.tex = new TextureManager(renderer, bridge, this.light, this.lean);
     // мебель и оборудование: отражения, растения, экран, скульптура, свет по датчику, звуки
     const pr = this.props;
     pr.reflectMats().forEach((m) => this.probe.patch(m));
@@ -1305,7 +1331,8 @@ class Gallery {
     // движение для подстройки чёткости: шаг или поворот камеры
     const turn = Math.abs(nav.yaw - (this.lastYaw || 0)) + Math.abs(nav.pitch - (this.lastPitch || 0));
     this.lastYaw = nav.yaw; this.lastPitch = nav.pitch;
-    if (this.revealed) this.quality.frame(dt * 1000, moved > 1e-4 || turn > 1e-4 || !!nav.path);
+    // настоящее время кадра (dt обрезан до 0.1 с — с ним сильные тормоза не видны)
+    if (this.revealed) this.quality.frame(Math.min(gap, 1000), moved > 1e-4 || turn > 1e-4 || !!nav.path);
   }
 
   /* Строка панели: рывки за 30 с — сколько, худший и причины по частоте */

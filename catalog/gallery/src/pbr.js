@@ -9,12 +9,12 @@ import * as THREE from 'three';
 
 /* Бережный режим памяти (Android, мало ОЗУ): фактуры уменьшаются при
    загрузке до max px — вместо ~95 МБ видеопамяти около 24 МБ */
-export const PBR_OPTS = { max: 0 };
+export const PBR_OPTS = { max: 0, lo: false };   // lo — лёгкие фактуры (слабый видеочип)
 
 export class PBR {
   constructor(renderer, bridge, small) {
     this.bridge = bridge;
-    this.tier = small ? 'lo' : 'hi';
+    this.tier = small || PBR_OPTS.lo ? 'lo' : 'hi';
     this.aniso = Math.min(small ? 4 : 16, renderer.capabilities.getMaxAnisotropy());
     this.loader = new THREE.TextureLoader();
     this.loader.setCrossOrigin('anonymous');

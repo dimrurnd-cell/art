@@ -977,10 +977,12 @@
       curator: function (host) { self.openCurator(host); },
       onMove: function (sec, room, x, z, yaw) { if (self.live) self.liveMove(sec, room, x, z, yaw); },
       live: !!this.liveUrl,
+      force3d: !!this.force3d,
       livePick: function (id) { self.livePick(id); },
       fallback: function (reason) { self.glFallback(reason); }
     });
-    if (!this.gl) { this.glFallback('webgl'); return; }
+    // null: WebGL нет — или уже откатились в простой зал из-за медленной графики (glSlow)
+    if (!this.gl) { if (!this.glSlow) this.glFallback('webgl'); return; }
     if (this.live && this.gl.stage) { this.liveMount(this.gl.stage); this.livePeersSync(); this.liveWhere(true); }
     if (/^#artc-(work|room)=/.test(location.hash)) {
       var stage = root.querySelector('.artg-stage');
@@ -992,6 +994,26 @@
      (выбор зрителя — setHallMode) */
   Widget.prototype.glFallback = function (reason) {
     if (reason === 'user') { this.setHallMode('css'); return; }
+    if (reason === 'slow') {
+      // нет ускорения графики (удалённый рабочий стол, виртуальная машина,
+      // старый драйвер): 3D грузилось бы минутами — простой зал; кнопка
+      // «3D-галерея» вверху всё равно включит 3D (force3d)
+      var gs = this.gl;
+      this.gl = null;
+      this.glHost = null;
+      this.glOff = true;
+      this.glSlow = true;
+      if (gs) gs.destroy();
+      this.buildHall();
+      var self = this;
+      setTimeout(function () {
+        self.showHint('На этом компьютере 3D-галерея работала бы медленно — открыт простой зал. ' +
+          'Кнопка <b>«3D-галерея»</b> вверху включит её всё равно.');
+        clearTimeout(self.hintT);
+        self.hintT = setTimeout(function () { self.hideHint(); }, 12000);
+      }, 600);
+      return;
+    }
     if (window.console && console.warn) console.warn('[artcatalog] 3D-галерея недоступна (' + reason + '), CSS-зал');
     var g = this.gl;
     this.gl = null;
@@ -1208,7 +1230,14 @@
 
     var modeBtn = host.querySelector('.artc-mode');
     if (modeBtn) {
-      modeBtn.addEventListener('click', function (e) { e.stopPropagation(); self.setHallMode('webgl'); });
+      modeBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        // зритель сам выбрал 3D — проверку видеочипа не повторяем
+        self.force3d = true;
+        self.glSlow = false;
+        try { sessionStorage.setItem('artg-force3d', '1'); } catch (x) { /* приватный режим */ }
+        self.setHallMode('webgl');
+      });
     }
 
     this.hall = {

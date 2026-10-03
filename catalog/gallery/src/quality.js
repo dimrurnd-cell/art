@@ -84,7 +84,9 @@ export class Quality {
     this.set(this.mode === 'auto' ? this.autoLevel() : this.mode);
   }
 
-  autoLevel() { return this.g.small ? 'sd' : 'hd'; }
+  // Авто: всегда начинаем с SD — зал появляется быстро на любом железе. HD
+  // включается сам, если видеочип справляется с запасом (frame → upgrade)
+  autoLevel() { return 'sd'; }
 
   choose(mode) {
     this.mode = mode;
@@ -101,17 +103,19 @@ export class Quality {
     this.rest = false;
     this.still = 0;
     const dpr = window.devicePixelRatio || 1;
-    g.maxPR = Math.min(dpr, hd || g.small ? 2 : 1.5);
-    g.minPR = Math.min(g.maxPR, g.small ? 1 : 0.75);
+    g.maxPR = Math.min(dpr, g.weak ? 1.25 : hd || g.small ? 2 : 1.5);
+    g.minPR = Math.min(g.maxPR, g.weak ? 0.6 : g.small ? 1 : 0.75);
     this.ceil = g.maxPR;
     // телефон начинает с 1.5: полная плотность 2 редкому видеочипу по силам
-    this.work = g.small ? Math.min(g.maxPR, 1.5) : g.maxPR;
+    this.work = g.weak ? Math.min(g.maxPR, 1) : g.small ? Math.min(g.maxPR, 1.5) : g.maxPR;
+    this.heavy = 0;
+    this.good = 0;
     this.nextPR = null;
     this.applyPR(this.work);
     if (hd) this.makeComposer(); else this.dropComposer();
     g.world.setDetail(level);
     if (g.spots) g.spots.setShadows(hd);
-    const light = hd || !g.small;
+    const light = hd || !g.light;
     if (g.atmo) g.atmo.setEnabled(light);
     if (g.world && g.world.invTM) g.world.invTM.value = hd ? 1 : 0;
     // свет от экрана в холле — площадной источник
@@ -218,6 +222,46 @@ export class Quality {
     else g.renderer.render(g.scene, g.camera);
   }
 
+  /* Ступенька вниз. В авто сначала HD → SD (самое тяжёлое — постобработка),
+     потом чёткость; fast — тормозит сильно, шаг крупнее */
+  down(fast) {
+    const g = this.g;
+    if (this.mode === 'auto' && this.level === 'hd') {
+      this.noHD = true;                       // не справился — до конца визита без HD
+      this.set('sd');
+      return;
+    }
+    if (this.work > g.minPR) {
+      const step = fast ? 0.5 : 0.25;
+      this.ceil = Math.min(this.ceil, this.work - step);   // на этой ступени не успели
+      this.ceilAt = performance.now();
+      this.work = Math.max(g.minPR, this.work - step);
+      this.deferPR(this.work);
+      this.frames.length = 0;
+      this.skip = 10;
+    }
+  }
+
+  /* SD → HD без рывка: шейдеры для кадра постобработки собираем заранее, в
+     фоне (KHR_parallel_shader_compile), и переключаемся, когда готовы */
+  upgrade() {
+    const g = this.g, R = g.renderer;
+    if (this.upgrading || !R.compileAsync) { if (!R.compileAsync) this.set('hd'); return; }
+    this.upgrading = true;
+    const rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
+    const prev = R.getRenderTarget();
+    let job;
+    try {
+      R.setRenderTarget(rt);
+      job = R.compileAsync(g.scene, g.camera);
+    } finally { R.setRenderTarget(prev); }
+    job.then(() => {
+      rt.dispose();
+      this.upgrading = false;
+      if (this.mode === 'auto' && this.level === 'sd' && !this.noHD && !g.dead) this.set('hd');
+    }, () => { rt.dispose(); this.upgrading = false; this.noHD = true; });
+  }
+
   /* Замер кадра; moving — камера сдвинулась или повернулась */
   frame(ms, moving) {
     const g = this.g;
@@ -239,6 +283,11 @@ export class Quality {
         return;
       }
     }
+    // очень долгие кадры подряд — не ждём конца замера (на слабом ПК он шёл
+    // бы минуты): сразу ступенька вниз
+    if (ms > Math.max(100, this.budget * 4)) {
+      if (++this.heavy >= 4) { this.heavy = 0; this.down(true); return; }
+    } else this.heavy = 0;
     if (this.skip > 0) { this.skip--; return; }
     this.frames.push(ms);
     if (this.frames.length < WINDOW) return;
@@ -248,14 +297,12 @@ export class Quality {
     const med = f[f.length >> 1];
     this.frames.length = 0;
     if (med > this.budget * 1.08) {
-      if (this.work > g.minPR) {
-        this.ceil = Math.min(this.ceil, this.work - 0.25);   // на этой ступени не успели
-        this.ceilAt = performance.now();
-        this.work = Math.max(g.minPR, this.work - 0.25);
-        this.deferPR(this.work);
-      } else if (this.mode === 'auto' && this.level === 'hd') {
-        this.set('sd');
-      }
+      this.good = 0;
+      this.down(false);
+    } else if (this.mode === 'auto' && this.level === 'sd' && !g.light && !this.noHD &&
+               this.work >= g.maxPR && med < this.budget * 0.45) {
+      // SD в полной чёткости идёт с большим запасом два замера подряд — пробуем HD
+      if (++this.good >= 2) { this.good = 0; this.upgrade(); }
     } else if (med < this.budget * 0.62) {
       // запрет ступени — на 20 с: медленным мог быть разовый отрезок (загрузка, сборка залов)
       if (performance.now() - (this.ceilAt || 0) > 20000) this.ceil = g.maxPR;
