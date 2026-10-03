@@ -146,6 +146,11 @@ function projectArt(camera, x, it) {
 }
 
 /* Материал, куски которого при сборке сливаются в один меш */
+// «Эконом»: сила ламп холла вместо площадных светильников и множитель общего
+// света — подобраны по яркости кадра, чтобы было как в SD (холл 191 против 184,
+// зал 127 против 134 по замеру)
+const ECO_LAMP = 12, ECO_HEMI = 2.8;
+
 export function batch(mat, opts) {
   Object.assign(mat.userData, { batch: true }, opts || {});
   return mat;
@@ -189,6 +194,8 @@ export class World {
     this.scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
     this.scene.environmentIntensity = 0.32;
     pm.dispose();
+    this.areaLights = [];                // площадные светильники холла (в «Экономе» выключены)
+    this.ecoLights = [];                 // их замена в «Экономе» — обычные лампы
     this.hemi = new THREE.HemisphereLight(0xfffdf8, 0xc9c6bf, 0.55);
     this.scene.add(this.hemi);
     // «естественный свет»: 0 — картины под спотами, 1 — в цветах исходного
@@ -403,6 +410,14 @@ export class World {
       ra.position.set(0, H - 0.02, iz * D / 4.5);
       ra.lookAt(0, 0, iz * D / 4.5);
       this.add(ra);
+      this.areaLights.push(ra);
+      // замена для «Эконома»: простые материалы площадный свет не видят —
+      // обычная лампа на месте светильника, дальность — в пределах холла
+      const pl = new THREE.PointLight(0xfff6ea, ECO_LAMP, Math.max(W, D) * 0.9, 1);
+      pl.position.set(0, H - 0.6, iz * D / 4.5);
+      pl.visible = false;
+      this.add(pl);
+      this.ecoLights.push(pl);
     });
     // световая щель по периметру потолка
     this.plane(W - 1, 0.08, M.light, 0, H - 0.01, hall.z1 - 0.5, 0, Math.PI / 2);
@@ -865,6 +880,52 @@ export class World {
     this.mat.ao.visible = true;
     this.mat.shadow.visible = true;
     this.mat.ao.opacity = level === 'hd' ? 0.08 : 0.2;
+    // «Эконом»: без площадных светильников холла (самый дорогой свет) — вместо
+    // них ярче общий свет; без рельефа (карт нормалей) на стенах, полу, рамах
+    const eco = level === 'eco';
+    this.areaLights.forEach((l) => { l.visible = !eco; });
+    this.ecoLights.forEach((l) => { l.visible = eco; });
+    if (this.hemiBase == null) this.hemiBase = this.hemi.intensity;
+    this.hemi.intensity = this.hemiBase * (eco ? ECO_HEMI : 1);
+    this.eco = eco;
+    if (eco) this.ecoSweep(); else this.ecoRestore();
+  }
+
+  /* «Эконом»: физические материалы (MeshStandard: блики, рельеф, отражения) →
+     простые (MeshLambert). Каждый пиксель считается в 2,6 раза быстрее (замер
+     на программной графике). Не трогаем материалы со своей доработкой
+     шейдера (картины, запил рам, мебель со светодиодами) — их на экране мало.
+     Залы достраиваются по ходу, поэтому sweep повторяется из update(). */
+  ecoMat(m) {
+    if (!this.ecoCache) this.ecoCache = new Map();
+    let l = this.ecoCache.get(m);
+    if (l) return l;
+    l = new THREE.MeshLambertMaterial({
+      map: m.map, color: m.color, emissive: m.emissive, emissiveMap: m.emissiveMap,
+      emissiveIntensity: m.emissiveIntensity, aoMap: m.aoMap, aoMapIntensity: m.aoMapIntensity,
+      alphaMap: m.alphaMap, alphaTest: m.alphaTest, transparent: m.transparent, opacity: m.opacity,
+      side: m.side, vertexColors: m.vertexColors, fog: m.fog, depthWrite: m.depthWrite,
+      depthTest: m.depthTest, toneMapped: m.toneMapped, polygonOffset: m.polygonOffset,
+      polygonOffsetFactor: m.polygonOffsetFactor, polygonOffsetUnits: m.polygonOffsetUnits,
+    });
+    this.ecoCache.set(m, l);
+    return l;
+  }
+
+  ecoSweep() {
+    const own = (m) => Object.prototype.hasOwnProperty.call(m, 'onBeforeCompile') && !m.userData.probeOnly;
+    this.scene.traverse((o) => {
+      const m = o.material;
+      if (!o.isMesh || !m || Array.isArray(m) || !m.isMeshStandardMaterial || own(m)) return;
+      o.userData.stdMat = m;
+      o.material = this.ecoMat(m);
+    });
+  }
+
+  ecoRestore() {
+    this.scene.traverse((o) => {
+      if (o.userData.stdMat) { o.material = o.userData.stdMat; o.userData.stdMat = null; }
+    });
   }
 
   /* Полоса мягкой тени: p0–p1 — линия стыка, off — куда тень спадает.

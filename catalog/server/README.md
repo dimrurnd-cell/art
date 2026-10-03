@@ -101,7 +101,7 @@ ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 | `artists.json` | 324 671 |
 | `artists.js` | 256 705 |
 | `catalog-standalone.css` | 110 639 |
-| `gallery.js` | 1 124 619 |
+| `gallery.js` | 1 128 714 |
 | `fonts/parangon.woff2` | 20 328 |
 | `img/logo.webp` | 31 726 |
 | `curator/figure.webp` | 42 828 |

@@ -115,10 +115,14 @@ class Gallery {
         '<div class="artg-qpanel" hidden role="radiogroup" aria-label="Качество изображения">' +
           '<div class="artg-phead"><b>Качество изображения</b><button type="button" class="artg-close" data-close aria-label="Закрыть">' +
             '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
-          [['auto', 'Авто'], ['hd', 'HD · объём и свечение'], ['sd', 'SD · плавнее, для телефона']].map(([m, t]) => '<button type="button" role="radio" data-q="' + m + '">' + t + '</button>').join('') +
+          [['auto', 'Авто'], ['hd', 'HD · объём и свечение'], ['sd', 'SD · плавнее, для телефона'], ['eco', 'Эконом · для слабых компьютеров']].map(([m, t]) => '<button type="button" role="radio" data-q="' + m + '">' + t + '</button>').join('') +
           '<small></small>' +
         '</div>' +
         '<div class="artg-hint"></div>' +
+        // предложение перейти в простой зал, если 3D тормозит даже в «Экономе»
+        '<div class="artg-slow" hidden role="alert"><span>3D-зал идёт медленно на этом устройстве.</span>' +
+          '<button type="button" class="artg-btn" data-a="slow-yes">Перейти в простой зал</button>' +
+          '<button type="button" class="artg-btn artg-slow__no" data-a="slow-no">Остаться</button></div>' +
         (bridge.curator ? '<button type="button" class="artg-say" tabindex="-1" aria-hidden="true">Добро пожаловать на виртуальную выставку! Меня зовут Татьяна. Могу Вам помочь?</button>' : '') +
         '<div class="artg-tour" hidden aria-live="polite"></div>' +
         '<div class="artg-joy" aria-hidden="true"><i></i></div>' +
@@ -354,6 +358,15 @@ class Gallery {
     });
     st.querySelector('.artg-map__plan').addEventListener('click', (e) => this.mapClick(e));
     st.querySelector('[data-a="fs"]').addEventListener('click', () => this.toggleFullscreen());
+    st.querySelector('[data-a="slow-yes"]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (this.stage.classList.contains('is-fs')) this.toggleFullscreen();
+      this.bridge.simple();
+    });
+    st.querySelector('[data-a="slow-no"]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.stage.querySelector('.artg-slow').hidden = true;
+    });
     const enter = st.querySelector('.artg-enter');
     ['pointerdown', 'touchstart'].forEach((ev) => enter.addEventListener(ev, (e) => e.stopPropagation(), { passive: true }));
     st.querySelector('[data-a="enter"]').addEventListener('click', (e) => {
@@ -634,6 +647,15 @@ class Gallery {
     this.world.hemi.intensity = 0.55 + 0.35 * u.value;
   }
 
+  /* 3D тормозит даже в «Экономе» при наименьшей чёткости — один раз
+     предлагаем простой зал; насильно не переключаем */
+  offerSimple() {
+    if (this.slowOffered || !this.bridge.simple) return;
+    this.slowOffered = true;
+    const b = this.stage.querySelector('.artg-slow');
+    if (b) b.hidden = false;
+  }
+
   hint(text) {
     const h = this.stage.querySelector('.artg-hint');
     if (!h) return;
@@ -860,7 +882,7 @@ class Gallery {
     const overlay = (e) => e.target && e.target.closest && e.target.closest('.artc-modal, .artc-live, .artc-live-toasts');
     st.addEventListener('pointerdown', (e) => {
       if (overlay(e)) { down = null; return; }
-      if (e.target.closest('.artg-enter, .artg-top, .artg-menu, .artg-panel, .artg-move, .artg-map, .artg-qpanel, .artg-tour, .artg-joy, .artg-say, .artc-cur')) return;
+      if (e.target.closest('.artg-slow, .artg-enter, .artg-top, .artg-menu, .artg-panel, .artg-move, .artg-map, .artg-qpanel, .artg-tour, .artg-joy, .artg-say, .artc-cur')) return;
       // открыта панель — касание сцены её закрывает, а не ведёт по залу
       if (this.curator) this.curator.unblock();
       if (this.anyPanel()) { this.closePanels(); return; }
@@ -1274,6 +1296,7 @@ class Gallery {
 
     if (this.tick++ % 6 === 0) {
       this.world.update(nav);
+      if (this.world.eco && this.tick % 60 === 0) this.world.ecoSweep();   // новые залы — тоже простыми материалами
       this.spots.assign(this.world.paintings, cam);
       const tt = performance.now();
       this.tex.update(this.world.paintings, cam);

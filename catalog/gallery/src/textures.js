@@ -54,7 +54,8 @@ export class TextureManager {
 
   /* SD на компьютере — пороги как у HD: картинки те же, дешевле только свет */
   setQuality(level) {
-    const low = this.small;
+    const low = this.small || level === 'eco';
+    // «Эконом»: крупные картинки только вблизи, как на телефоне
     this.near = this.lean ? [0, 5, 22] : low ? [0, 7, 32] : [3.2, 10, 45];
   }
 

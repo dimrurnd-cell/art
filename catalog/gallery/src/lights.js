@@ -20,6 +20,7 @@ export class Spots {
     this.shadowN = small ? 0 : 4;
     this.shadows = !small;
     this.power = 75;          // сила света, кандел
+    this.active = this.n;     // сколько спотов работает (в «Экономе» — меньше)
     this.pool = [];
     for (let i = 0; i < this.n; i++) {
       // мягкий тёплый белый, как у музейных светодиодов ~4000 K: цвета
@@ -41,6 +42,18 @@ export class Spots {
     this.tmp = new THREE.Vector3();
     this.factor = null;
     this.dim = 1;          // 0 — споты погашены («естественный свет»)
+  }
+
+  /* Сколько спотов работает. Каждый пиксель стены считает свет от каждого
+     спота — в «Экономе» их 4 вместо 16. Лишние прячутся (visible = false):
+     шейдеры пересоберутся один раз, при смене уровня. */
+  setActive(k) {
+    this.active = Math.min(k, this.n);
+    this.pool.forEach((s, i) => {
+      const on = i < this.active;
+      s.l.visible = on;
+      if (!on) { s.it = null; s.next = undefined; s.cur = 0; s.l.intensity = 0; }
+    });
   }
 
   setShadows(on) {
@@ -67,10 +80,10 @@ export class Spots {
       cand.push({ it, score: it.dist - facing * 4 });
     }
     cand.sort((a, b) => a.score - b.score);
-    const want = new Set(cand.slice(0, this.n).map((c) => c.it));
+    const want = new Set(cand.slice(0, this.active).map((c) => c.it));
     // ближайшим — споты с тенью: они в начале пула
     const busy = new Set(this.pool.filter((s) => s.it && want.has(s.it)).map((s) => s.it));
-    const free = this.pool.filter((s) => !s.it || !want.has(s.it));
+    const free = this.pool.filter((s) => s.l.visible && (!s.it || !want.has(s.it)));
     const need = [...want].filter((it) => !busy.has(it));
     free.forEach((s, k) => { s.next = need[k] || null; });
     this.pool.forEach((s) => { if (s.it && want.has(s.it)) s.next = undefined; });

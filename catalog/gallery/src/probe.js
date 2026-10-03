@@ -54,6 +54,9 @@ export class Probe {
   patch(mat) {
     const u = this.u;
     // у материала может быть своя доработка шейдера (мебель) — она выполняется первой
+    // своей доработки нет — значит, патч только ради отражений: в «Экономе»
+    // такой материал можно заменить простым (world.ecoSweep)
+    mat.userData.probeOnly = !Object.prototype.hasOwnProperty.call(mat, 'onBeforeCompile');
     const own = mat.onBeforeCompile, ownKey = mat.customProgramCacheKey.call(mat);
     mat.onBeforeCompile = (sh, r) => {
       own.call(mat, sh, r);

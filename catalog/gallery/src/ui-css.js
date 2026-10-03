@@ -159,6 +159,10 @@ export const CSS = `
 .artg-load{position:absolute;left:0;right:0;top:0;height:3px;background:rgba(0,0,0,.06);transition:opacity .5s}
 .artg-load i{display:block;height:100%;width:0;background:#2a2a2a;transition:width .3s}
 .artg-load.is-done{opacity:0}
+.artg-slow{position:absolute;left:50%;bottom:86px;transform:translateX(-50%);z-index:6;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 10px;max-width:calc(100% - 24px);padding:12px 14px;border-radius:16px;background:rgba(42,42,42,.92);color:#fff;font:14px/1.35 "Inter","Helvetica Neue",Arial,sans-serif;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+.artg-slow[hidden]{display:none}
+.artg-slow .artg-btn{background:#fff;color:#2a2a2a}
+.artg-slow .artg-slow__no{background:transparent;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.5)}
 .artg-enter{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(236,235,232,.28);touch-action:pan-y}
 .artg-enter[hidden]{display:none}
 .artg-enter__btn{height:56px;padding:0 26px 0 22px;font-size:17px;font-weight:600;gap:10px;background:#fff;box-shadow:0 10px 30px rgba(0,0,0,.18),0 1px 0 rgba(0,0,0,.06)}

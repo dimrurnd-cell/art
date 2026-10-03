@@ -59,8 +59,8 @@ const FilmShader = {
     }`,
 };
 
-export const LEVELS = ['sd', 'hd'];
-export const NAMES = { auto: 'Авто', hd: 'HD', sd: 'SD' };
+export const LEVELS = ['eco', 'sd', 'hd'];
+export const NAMES = { auto: 'Авто', hd: 'HD', sd: 'SD', eco: 'Эконом' };
 const KEY = 'artg-quality';
 const OLD = { high: 'hd', medium: 'sd', low: 'sd' };   // сохранённый выбор прежних версий
 const WINDOW = 60;            // кадров в замере
@@ -86,7 +86,7 @@ export class Quality {
 
   // Авто: всегда начинаем с SD — зал появляется быстро на любом железе. HD
   // включается сам, если видеочип справляется с запасом (frame → upgrade)
-  autoLevel() { return 'sd'; }
+  autoLevel() { return this.g.weak ? 'eco' : 'sd'; }   // слабый видеочип — сразу «Эконом»
 
   choose(mode) {
     this.mode = mode;
@@ -96,26 +96,31 @@ export class Quality {
 
   set(level) {
     const g = this.g;
-    const hd = level === 'hd';
+    const hd = level === 'hd', eco = level === 'eco';
     this.level = level;
     this.frames.length = 0;
     this.skip = 30;                             // первые кадры после смены не считаем
     this.rest = false;
     this.still = 0;
     const dpr = window.devicePixelRatio || 1;
-    g.maxPR = Math.min(dpr, g.weak ? 1.25 : hd || g.small ? 2 : 1.5);
-    g.minPR = Math.min(g.maxPR, g.weak ? 0.6 : g.small ? 1 : 0.75);
+    g.maxPR = Math.min(dpr, eco ? 1 : g.weak ? 1.25 : hd || g.small ? 2 : 1.5);
+    g.minPR = Math.min(g.maxPR, eco ? 0.5 : g.weak ? 0.6 : g.small ? 1 : 0.75);
     this.ceil = g.maxPR;
     // телефон начинает с 1.5: полная плотность 2 редкому видеочипу по силам
-    this.work = g.weak ? Math.min(g.maxPR, 1) : g.small ? Math.min(g.maxPR, 1.5) : g.maxPR;
+    this.work = eco ? Math.min(g.maxPR, g.weak ? 0.75 : 1) : g.weak ? Math.min(g.maxPR, 1) : g.small ? Math.min(g.maxPR, 1.5) : g.maxPR;
+    this.stuck = 0;
+    this.levelAt = performance.now();
     this.heavy = 0;
     this.good = 0;
     this.nextPR = null;
     this.applyPR(this.work);
     if (hd) this.makeComposer(); else this.dropComposer();
     g.world.setDetail(level);
-    if (g.spots) g.spots.setShadows(hd);
-    const light = hd || !g.light;
+    if (g.spots) { g.spots.setShadows(hd); g.spots.setActive(eco ? 4 : g.spots.n); }
+    // «Эконом»: без отражений, посетители — только простыми фигурами
+    if (g.probe) { if (g.probeOff == null) g.probeOff = g.probe.off; g.probe.off = eco || g.probeOff; }
+    if (g.peers) g.peers.amax = eco ? 0 : (g.light ? 4 : 8);
+    const light = !eco && (hd || !g.light);
     if (g.atmo) g.atmo.setEnabled(light);
     if (g.world && g.world.invTM) g.world.invTM.value = hd ? 1 : 0;
     // свет от экрана в холле — площадной источник
@@ -224,11 +229,22 @@ export class Quality {
 
   /* Ступенька вниз. В авто сначала HD → SD (самое тяжёлое — постобработка),
      потом чёткость; fast — тормозит сильно, шаг крупнее */
-  down(fast) {
+  down(fast, med) {
     const g = this.g;
     if (this.mode === 'auto' && this.level === 'hd') {
       this.noHD = true;                       // не справился — до конца визита без HD
       this.set('sd');
+      return;
+    }
+    if (this.work <= g.minPR) {
+      // чёткость уже минимальная: SD → «Эконом»; в «Экономе» ниже некуда —
+      // предложить простой зал (не переключаем насильно)
+      if (this.mode === 'auto' && this.level === 'sd') { this.set('eco'); return; }
+      // только если правда медленно (меньше ~11 кадров/с) и уровень уже
+      // устоялся: сразу после смены идут пересборка шейдеров и долгие кадры
+      const slow = fast || med > 90;
+      if (this.level === 'eco' && slow && performance.now() - this.levelAt > 8000 &&
+          ++this.stuck >= 2 && g.offerSimple) g.offerSimple();
       return;
     }
     if (this.work > g.minPR) {
@@ -298,7 +314,7 @@ export class Quality {
     this.frames.length = 0;
     if (med > this.budget * 1.08) {
       this.good = 0;
-      this.down(false);
+      this.down(false, med);
     } else if (this.mode === 'auto' && this.level === 'sd' && !g.light && !this.noHD &&
                this.work >= g.maxPR && med < this.budget * 0.45) {
       // SD в полной чёткости идёт с большим запасом два замера подряд — пробуем HD
