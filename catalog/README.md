@@ -683,7 +683,14 @@ cd catalog && python3 -m http.server 8000
    ARTCATALOG_LEAD_EMAIL = "ads@donexpocentre.ru"  # получатель заявок
    ARTCATALOG_RATE_LIMIT = 5        # заявок с одного IP…
    ARTCATALOG_RATE_WINDOW = 3600    # …в час
+   ARTCATALOG_IP_HEADER = ""        # заголовок с адресом посетителя от вашего nginx,
+                                    # например "HTTP_X_REAL_IP"; пусто — X-Real-IP и
+                                    # последний адрес X-Forwarded-For, лимит по обоим
    ```
+   Лимит заявок хранится в кеше Django. Если сайт работает в нескольких
+   процессах (gunicorn, uwsgi), нужен общий кеш — Redis, memcached или
+   `django.core.cache.backends.db.DatabaseCache`: с кешем по умолчанию
+   у каждого процесса свой счётчик, и лимит умножается на число процессов.
 3. В корневом `urls.py` — строго **вне** `i18n_patterns` (иначе адрес станет
    `/ru/api/...`, а виджет обращается к `/api/...`):
 

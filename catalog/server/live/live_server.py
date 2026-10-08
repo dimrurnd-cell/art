@@ -45,6 +45,7 @@ https://<сервер>/api/artcatalog/live/… (WebSocket — /ws).
     LIVE_PER_IP=8        соединений с одного адреса
     LIVE_MSG_RATE=10     сообщений в минуту от посетителя
     LIVE_INVITE_RATE=5   приглашений в минуту
+    LIVE_NEW_PER_IP=20   новых посетителей с одного адреса в час
 
 Проверка без nginx и браузера:
     python3 live_server.py --check --env /etc/artcatalog-live.env
@@ -56,6 +57,7 @@ import hashlib
 import hmac
 import io
 import json
+import math
 import os
 import re
 import secrets
@@ -120,6 +122,7 @@ PORT = int(E("LIVE_PORT", "8767"))
 PER_IP = int(E("LIVE_PER_IP", "8"))
 MSG_RATE = int(E("LIVE_MSG_RATE", "10"))
 INVITE_RATE = int(E("LIVE_INVITE_RATE", "5"))
+NEW_PER_IP = int(E("LIVE_NEW_PER_IP", "20"))   # новых посетителей с адреса в час
 # Сроки хранения — как у организатора распространения информации (149-ФЗ, ст. 10.1,
 # в ред. с 01.01.2026): текст сообщений — 6 месяцев, сведения о пользователях и о
 # фактах переписки (кто, с кем, когда) — 3 года. Дольше не храним (152-ФЗ).
@@ -417,6 +420,30 @@ class Rate:
         return True
 
 
+def fnum(v, lo, hi):
+    """Конечное число в [lo, hi] или None. NaN и Infinity json.loads принимает,
+    а браузер в рассылке такое прочитать не может — пакет пропал бы у всех"""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    v = float(v)
+    return v if math.isfinite(v) and lo <= v <= hi else None
+
+
+def inum(v, lo, hi):
+    """Целое в [lo, hi] или None. Длина строки ограничена: в Python 3.6 нет
+    предела длины целого, а число из десятков тысяч цифр дорого печатать"""
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, str) and re.fullmatch(r"-?\d{1,9}", v.strip()):
+        v = int(v)
+    if isinstance(v, float) and math.isfinite(v) and v == int(v):
+        v = int(v)
+    return v if isinstance(v, int) and lo <= v <= hi else None
+
+
+WHERE = ("3d", "simple", "catalog", "")
+
+
 class Client:
     def __init__(self, reader, writer, ip, ua):
         self.r, self.w, self.ip, self.ua = reader, writer, ip, ua
@@ -424,11 +451,16 @@ class Client:
         self.full = False
         self.dead = False
         self.last = now()
-        self.msg_rate = Rate(MSG_RATE, 60)
-        self.inv_rate = Rate(INVITE_RATE, 60)
+        # лимиты соединения; сообщения, приглашения и жалобы — в Hub.rate():
+        # по посетителю, иначе их обходили бы переподключением и вкладками
         self.typing_rate = Rate(1, 2)
         self.pos_rate = Rate(22, 1)
-        self.report_rate = Rate(5, 3600)
+        self.place_rate = Rate(2, 1)          # смена зала — рассылка всем
+        self.frame_rate = Rate(60, 1)         # кадров в секунду всего
+        self.hello_rate = Rate(5, 60)
+        self.read_rate = Rate(30, 60)
+        self.block_rate = Rate(10, 60)
+        self.mode_rate = Rate(10, 10)
 
     def send(self, obj):
         if self.dead:
@@ -460,6 +492,19 @@ class Hub:
         self.place = {}               # id → [where, sec, room, x, z, yaw]
         self.dirty = set()            # чьи позиции изменились с прошлой рассылки
         self.timers = {}              # разговор → таймер истечения приглашения
+        self.rates = {}               # (посетитель или адрес, вид) → Rate
+
+    def rate(self, who, kind, limit, window):
+        """Лимит по посетителю (или адресу), а не по соединению"""
+        r = self.rates.get((who, kind))
+        if r is None:
+            r = self.rates[(who, kind)] = Rate(limit, window)
+        return r.ok()
+
+    def prune_rates(self):
+        t = now()
+        for k in [k for k, r in self.rates.items() if not r.t or t - r.t[-1] > r.window]:
+            del self.rates[k]
 
     # --- кто есть
     def pub(self, v):
@@ -580,8 +625,12 @@ class Hub:
         c.send({"t": "moves", "ts": int(now() * 1000), "m": moves, "snap": True})
 
     async def ticker(self):
+        n = 0
         while True:
             await asyncio.sleep(TICK)
+            n += 1
+            if n % 900 == 0:                  # раз в минуту
+                self.prune_rates()
             if not self.dirty:
                 continue
             moves = []
@@ -616,19 +665,24 @@ class Hub:
         if t == "pos":
             if not c.pos_rate.ok():
                 return
-            where = str(d.get("where", ""))[:10]
-            try:
-                sec, room = int(d.get("sec", -1)), int(d.get("room", -1))
-                x, z, yaw = round(float(d.get("x", 0)), 2), round(float(d.get("z", 0)), 2), round(float(d.get("yaw", 0)), 3)
-            except (TypeError, ValueError):
+            where = d.get("where", "")
+            sec, room = inum(d.get("sec", -1), -1, 99), inum(d.get("room", -1), -1, 999)
+            x, z, yaw = fnum(d.get("x", 0), -1000, 1000), fnum(d.get("z", 0), -1000, 1000), fnum(d.get("yaw", 0), -10, 10)
+            if where not in WHERE or None in (sec, room, x, z, yaw):
                 return
+            x, z, yaw = round(x, 2), round(z, 2), round(yaw, 3)
             old = self.place.get(vid)
+            moved = not old or old[:3] != [where, sec, room]
+            if moved and not c.place_rate.ok():
+                return
             self.place[vid] = [where, sec, room, x, z, yaw]
             if where == "3d":
                 self.dirty.add(vid)
-            if not old or old[:3] != [where, sec, room]:
+            if moved:
                 self.others(vid, {"t": "place", "id": c.v["pid"], "where": where, "sec": sec, "room": room})
         elif t == "mode":
+            if not c.mode_rate.ok():
+                return
             was, c.full = c.full, bool(d.get("full"))
             if c.full and not was:
                 self.snapshot(c)
@@ -644,17 +698,21 @@ class Hub:
             else:
                 self.message(c, d)
         elif t == "typing":
-            cv = self.db.conv(int(d.get("conv") or 0))
+            cv = self.db.conv(inum(d.get("conv"), 1, 2 ** 62) or 0)
             if cv and cv["state"] == "accepted" and vid in (cv["a"], cv["b"]) and c.typing_rate.ok():
                 other = cv["b"] if cv["a"] == vid else cv["a"]
                 if not self.db.blocked(other, vid):
                     self.to(other, {"t": "typing", "conv": cv["id"]})
         elif t == "read":
-            cv = self.db.conv(int(d.get("conv") or 0))
+            if not c.read_rate.ok():
+                return
+            cv = self.db.conv(inum(d.get("conv"), 1, 2 ** 62) or 0)
             if cv and vid in (cv["a"], cv["b"]):
                 last = self.db.one("SELECT MAX(id) m FROM messages WHERE conv=?", cv["id"])["m"] or 0
                 self.db.run("INSERT OR REPLACE INTO reads(visitor, conv, last) VALUES(?,?,?)", vid, cv["id"], last)
         elif t == "block":
+            if not c.block_rate.ok():
+                return
             other = self.vid_by_pid(d.get("id"))
             if other and other != vid:
                 self.db.run("INSERT OR IGNORE INTO blocks(who, whom, ts) VALUES(?,?,?)", vid, other, now())
@@ -664,19 +722,23 @@ class Hub:
                     self.conv_changed(self.db.conv(cv["id"]))
                 log("блокировка", c.v["pid"], "→", d.get("id"))
         elif t == "unblock":
+            if not c.block_rate.ok():
+                return
             other = self.vid_by_pid(d.get("id"))
             if other:
                 self.db.run("DELETE FROM blocks WHERE who=? AND whom=?", vid, other)
         elif t == "report":
             other = self.vid_by_pid(d.get("id"))
-            if other and c.report_rate.ok():
-                cid = int(d.get("conv") or 0) or None
+            if other and self.rate(vid, "report", 5, 3600) and self.rate(c.ip, "report", 20, 3600):
+                cid = inum(d.get("conv"), 1, 2 ** 62)
                 self.db.run("INSERT INTO reports(reporter, target, conv, text, ts) VALUES(?,?,?,?,?)",
                             vid, other, cid, str(d.get("text", ""))[:MSG_MAX], now())
                 c.send({"t": "reported"})
                 log("жалоба", c.v["pid"], "на", d.get("id"))
 
     def hello(self, c, d):
+        if not c.hello_rate.ok():
+            return
         token = str(d.get("token", ""))
         if not re.fullmatch(r"[A-Za-z0-9_-]{16,64}", token):
             c.send({"t": "error", "code": "token", "text": "Обновите страницу"})
@@ -685,16 +747,19 @@ class Hub:
         if not (NAME_MIN <= len(name) <= NAME_MAX) or bad_name(name):
             c.send({"t": "error", "code": "name", "text": "Имя — от 2 до 24 букв, без ссылок и грубых слов"})
             return
-        av = d.get("avatar") or {}
+        av = d.get("avatar") if isinstance(d.get("avatar"), dict) else {}
         sex = "m" if av.get("sex") == "m" else "f"
-        try:
-            outfit = max(0, min(OUTFITS - 1, int(av.get("outfit", 0))))
-        except (TypeError, ValueError):
-            outfit = 0
+        outfit = inum(av.get("outfit", 0), 0, OUTFITS - 1) or 0
         th = hashlib.sha256(token.encode("ascii")).hexdigest()
         known = self.db.visitor_by_token(th)
         if self.db.banned(known["id"] if known else None, c.ip):
             c.send({"t": "error", "code": "banned", "text": "Доступ к онлайн-режиму закрыт модератором"})
+            c.kill()
+            return
+        # каждый новый токен — новая строка в базе на 3 года: с одного адреса
+        # не больше NEW_PER_IP новых посетителей в час
+        if not known and not self.rate(c.ip, "new", NEW_PER_IP, 3600):
+            c.send({"t": "error", "code": "rate", "text": "Слишком много входов с вашего адреса — попробуйте позже"})
             c.kill()
             return
         was = c.v
@@ -747,7 +812,7 @@ class Hub:
                 self.conv_changed(self.db.conv(cv["id"]))
                 return
             return                                  # уже ждём ответа
-        if not c.inv_rate.ok():
+        if not self.rate(vid, "invite", INVITE_RATE, 60):
             c.send({"t": "error", "code": "rate", "text": "Слишком много приглашений — подождите минуту"})
             return
         t = now()
@@ -766,7 +831,7 @@ class Hub:
 
     def answer(self, c, d):
         vid = c.v["id"]
-        cv = self.db.conv(int(d.get("conv") or 0))
+        cv = self.db.conv(inum(d.get("conv"), 1, 2 ** 62) or 0)
         if not cv or cv["b"] != vid or cv["state"] != "pending":
             return
         self.cancel_timer(cv["id"])
@@ -780,7 +845,7 @@ class Hub:
 
     def message(self, c, d):
         vid = c.v["id"]
-        cv = self.db.conv(int(d.get("conv") or 0))
+        cv = self.db.conv(inum(d.get("conv"), 1, 2 ** 62) or 0)
         if not cv or vid not in (cv["a"], cv["b"]) or cv["state"] != "accepted":
             c.send({"t": "error", "code": "conv", "text": "Разговор закрыт", "n": d.get("n")})
             return
@@ -789,7 +854,7 @@ class Hub:
         if not raw:
             return
         raw = raw[:MSG_MAX]
-        if not c.msg_rate.ok():
+        if not self.rate(vid, "msg", MSG_RATE, 60):
             c.send({"t": "error", "code": "rate", "text": "Слишком часто — подождите немного", "n": d.get("n")})
             return
         text = clean(raw)
@@ -920,7 +985,7 @@ class Server:
                 if op == 9:
                     writer.write(frame(10, data))
                     continue
-                if op != 1:
+                if op != 1 or not c.frame_rate.ok():
                     continue
                 try:
                     d = json.loads(data.decode("utf-8"))
@@ -1113,8 +1178,8 @@ class Server:
                         ("WHERE conv=? " if cid else "") + "ORDER BY m.id", *([int(cid)] if cid else []))
             for m in rows:
                 wr.writerow([m["conv"], time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(m["ts"])),
-                             m["name"], m["pid"], m["raw"], {1: "удалено модератором", 2: "текст стёрт по сроку хранения"}.get(m["deleted"], "")])
-            name = "artrostov-chat%s.csv" % ("-" + cid if cid else "")
+                             cell(m["name"]), m["pid"], cell(m["raw"]), {1: "удалено модератором", 2: "текст стёрт по сроку хранения"}.get(m["deleted"], "")])
+            name = "artrostov-chat%s.csv" % ("-%d" % int(cid) if cid else "")
             # BOM — чтобы Excel сразу открыл русские буквы правильно
             http(w, 200, "﻿" + buf.getvalue(), "text/csv; charset=utf-8",
                  ['Content-Disposition: attachment; filename="%s"' % name])
@@ -1126,6 +1191,13 @@ class Server:
 
 
 # ---------------------------------------------------------------- страница модератора
+
+def cell(v):
+    """Ячейка CSV: текст посетителя, начатый с = + - @, Excel выполнил бы как
+    формулу (ссылка, DDE) — у модератора. Апостроф делает его просто текстом"""
+    v = "" if v is None else str(v)
+    return "'" + v if v[:1] in ("=", "+", "-", "@", "\t", "\r") else v
+
 
 ADMIN_HTML = r"""<!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">

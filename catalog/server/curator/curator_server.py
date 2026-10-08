@@ -489,16 +489,19 @@ class Store:
         self.answers = {}     # ключ вопроса → (время, ответ)
         self.last_error = ""
         self.down_until = 0   # нейросеть сбоила — минуту её не спрашиваем
+        self.fails = 0        # ошибок нейросети подряд
 
     def allow(self, ip):
         now = time.time()
         with self.lock:
             h = [t for t in self.hits.get(ip, []) if now - t < WINDOW]
-            h.append(now)
+            ok = len(h) < RATE
+            if ok:                # отказ не считаем: иначе список растёт без конца,
+                h.append(now)     # а настойчивый посетитель заблокирован навсегда
             self.hits[ip] = h
             if len(self.hits) > 20000:                    # не копить вечно
                 self.hits = dict((k, v) for k, v in self.hits.items() if v and now - v[-1] < WINDOW)
-            return len(h) <= RATE
+            return ok
 
     def ai_budget(self):
         today = time.strftime("%Y%m%d")
@@ -543,12 +546,25 @@ def answer(q, history, mode):
     if KEY and time.time() > store.down_until and store.ai_budget():
         try:
             got = ask_ai(q, history, mode)
-            store.remember(key, got)
+            # в общий кеш — только ответы без истории: историю присылает сам
+            # посетитель, и подложной историей можно было бы «научить» куратора
+            # отвечать что угодно — всем, кто спросит то же самое
+            if not history:
+                store.remember(key, got)
             store.last_error = ""
+            store.fails = 0
             return "ai", got
         except Exception as e:
             store.last_error = "%s: %s" % (type(e).__name__, txt(e))
-            store.down_until = time.time() + 60
+            code = getattr(e, "code", None)
+            if code == 401:
+                _token["value"] = None                     # токен отозван — получим новый
+            store.fails += 1
+            # сеть, перегрузка, 5xx — даём нейросети минуту. Ошибка 4xx бывает
+            # из-за самого вопроса: из-за одного посетителя ИИ не выключаем
+            client_err = isinstance(code, int) and 400 <= code < 500 and code != 429
+            if not client_err or store.fails >= 3:
+                store.down_until = time.time() + 60
             log("нейросеть не ответила —", store.last_error)
     if item:
         return "faq", faq_answer(item, mode)
@@ -625,7 +641,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         try:
             n = int(self.headers.get("Content-Length") or 0)
-            if n > BODY_MAX:
+            if n < 0 or n > BODY_MAX:
                 raise ValueError("слишком длинно")
             data = json.loads(self.rfile.read(n).decode("utf-8"))
             if not isinstance(data, dict):
@@ -638,7 +654,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send(400, {"error": "Задайте вопрос."})
             return
         history = data.get("history") if isinstance(data.get("history"), list) else []
-        history = [h for h in history if isinstance(h, dict) and isinstance(h.get("q"), TEXT) and isinstance(h.get("a"), TEXT)]
+        history = [h for h in history if isinstance(h, dict) and isinstance(h.get("q"), TEXT) and isinstance(h.get("a"), TEXT)
+                   and h["q"].strip() and h["a"].strip()][-2:]
         mode = "simple" if data.get("mode") == "simple" else "3d"
         ip = self.ip()
         if not store.allow(ip):
