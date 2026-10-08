@@ -191,8 +191,10 @@ export class World {
     // зала подставляется позже) и слабая полусфера — свет от пола и потолка.
     this.pbr = new PBR(renderer, bridge, renderer.capabilities.maxTextureSize < 8192 || /Mobi|Android|iPhone|iPad/.test(navigator.userAgent));
     const pm = new THREE.PMREMGenerator(renderer);
-    this.scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    const room = new RoomEnvironment();
+    this.scene.environment = pm.fromScene(room, 0.04).texture;
     this.scene.environmentIntensity = 0.32;
+    room.dispose();
     pm.dispose();
     this.areaLights = [];                // площадные светильники холла (в «Экономе» выключены)
     this.ecoLights = [];                 // их замена в «Экономе» — обычные лампы

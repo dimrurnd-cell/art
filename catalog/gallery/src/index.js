@@ -215,6 +215,7 @@ class Gallery {
     // тени спотов (на компьютере); сама карта теней включена всегда, а
     // уровни качества включают и выключают тени у спотов
     renderer.shadowMap.enabled = !this.light;
+    renderer.shadowMap.autoUpdate = false;       // обновляем сами — см. loop()
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.spots = new Spots(this.scene, this.light);
     this.atmo = new Atmosphere(this.scene, this.spots, this.light);
@@ -268,7 +269,7 @@ class Gallery {
     // так зритель не видит ни одной пустой рамы даже в первые секунды.
     const bar = this.stage.querySelector('.artg-load');
     const reveal = () => {
-      if (this.revealed || this.warming) return;
+      if (this.dead || this.revealed || this.warming) return;
       // сначала прогрев за завесой, потом показ
       if (!this.warmed) { this.warming = true; this.warm().then(() => { this.warming = false; reveal(); }); return; }
       this.revealed = true;
@@ -285,6 +286,7 @@ class Gallery {
     const texTotal = Object.keys(pbr.cache).length;
     let atlasN = 0, atlasT = 1, atlasDone = false;
     const progress = () => {
+      if (this.dead) return;                   // зал закрыли, пока грузилось
       const texDone = texTotal - pbr.pending;
       const frac = (atlasN + texDone) / (atlasT + texTotal);
       bar.firstChild.style.width = (frac * 100) + '%';
@@ -292,7 +294,8 @@ class Gallery {
       if (bridge.onProgress) bridge.onProgress(frac * 0.92);
       if (atlasDone && pbr.pending <= 0) {
         clearTimeout(this.revealT);
-        setTimeout(reveal, 120);                 // дать кадру отрисоваться, потом снять завесу
+        clearTimeout(this.showT);
+        this.showT = setTimeout(reveal, 120);    // дать кадру отрисоваться, потом снять завесу
         setTimeout(() => bar.classList.add('is-done'), 300);
       }
     };
@@ -319,6 +322,8 @@ class Gallery {
     document.addEventListener('fullscreenchange', this.fsHandler);
     document.addEventListener('webkitfullscreenchange', this.fsHandler);
     this.canvas.addEventListener('webglcontextlost', (e) => {
+      // зал уже закрыт: контекст отдали сами (destroy) — это не сбой видеокарты
+      if (this.dead) return;
       this.diag.lost++;
       e.preventDefault();
       this.dead = true;
@@ -1083,7 +1088,7 @@ class Gallery {
   placeSay() {
     const b = this.say;
     if (!b) return;
-    const st = this.stage, w = st.clientWidth, h = st.clientHeight;
+    const st = this.stage, w = this.stageW || st.clientWidth, h = this.stageH || st.clientHeight;
     let p = null;
     if (this.revealed && this.curator.ready && this.room < 0 && !this.tour.running &&
         !st.classList.contains('has-cur') && !st.classList.contains('has-panel') &&
@@ -1108,7 +1113,9 @@ class Gallery {
     const fade = this.stage.querySelector('.artg-fade');
     fade.classList.add('is-on');
     this.nav.cancel();
-    setTimeout(() => {
+    clearTimeout(this.travelT);                    // второй перенос отменяет первый
+    this.travelT = setTimeout(() => {
+      if (this.dead) return;
       // появляемся в нескольких шагах и подходим — так видно, куда попали
       const c = this.plan.corridors[roomAt(this.plan, x, z)];
       const r = c && subRoomAt(this.plan, x, z);
@@ -1235,6 +1242,9 @@ class Gallery {
   resize() {
     const w = this.stage.clientWidth, h = this.stage.clientHeight;
     if (!w || !h) return;
+    // размеры сцены — здесь, а не в каждом кадре: чтение clientWidth после
+    // записи стилей заставляло браузер пересчитывать раскладку на каждом кадре
+    this.stageW = w; this.stageH = h;
     // узкая сцена (телефон вертикально): редкие кнопки уходят в меню «⋯»
     this.stage.classList.toggle('is-narrow', w < 560);
     // средняя ширина (телефон горизонтально, планшет): кнопки только значками
@@ -1340,8 +1350,14 @@ class Gallery {
     this.props.update(dt, nav, speed, this.sub);
     this.stepNatural(dt);
     this.spots.update(dt);
+    // карты теней — не каждый кадр: споты неподвижны, пока не переедут к
+    // другой работе. Раз в 4 кадра — ради медленно вращающегося мобиля в холле
+    if (this.renderer.shadowMap.enabled && (this.spots.moved || this.tick % 4 === 0)) {
+      this.renderer.shadowMap.needsUpdate = true;
+      this.spots.moved = false;
+    }
     this.sound.update(moved, dt, this.room < 0);
-    this.atmo.update(cam, this.pr, this.stage.clientHeight);
+    this.atmo.update(cam, this.pr, this.stageH || this.stage.clientHeight);
     t1 = performance.now();
     this.updateVisibility();
     const t2 = performance.now();
@@ -1436,6 +1452,7 @@ class Gallery {
         .then(() => { lights.forEach((l) => { l.visible = false; }); return all(); })
         .then(() => { lights.forEach((l, i) => { l.visible = on[i]; }); });
       return Promise.race([job, new Promise((r) => setTimeout(r, 6000))]).catch(() => {}).then(() => {
+        if (this.dead) return;                   // зал закрыли во время прогрева
         restore();
         lights.forEach((l, i) => { l.visible = on[i]; });
         this.atmo.setEnabled(atmoOn);
@@ -1518,6 +1535,9 @@ class Gallery {
   destroy() {
     this.dead = true;
     cancelAnimationFrame(this.raf);
+    [this.revealT, this.showT, this.hintT, this.tapT, this.travelT].forEach(clearTimeout);
+    if (this.tour) this.tour.stop();
+    if (this.tex) this.tex.close();
     document.removeEventListener('keydown', this.onKeyDown);
     document.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
@@ -1533,17 +1553,54 @@ class Gallery {
     if (this.curator) this.curator.dispose();
     if (this.sound) this.sound.dispose();
     if (this.onVis) document.removeEventListener('visibilitychange', this.onVis);
-    if (this.renderer) this.renderer.dispose();
+    this.freeScene();
+    if (this.renderer) {
+      this.renderer.dispose();
+      // контекст WebGL отдаём сразу, не дожидаясь сборщика мусора: иначе
+      // видеопамять зала (атлас, фактуры) держалась бы и после выхода, а
+      // после нескольких входов браузер упёрся бы в лимит контекстов
+      this.renderer.forceContextLoss();
+    }
+    if (window.ArtGallery && window.ArtGallery.last === this) window.ArtGallery.last = null;
+  }
+
+  /* Освободить всё, что сцена держит в видеопамяти */
+  freeScene() {
+    const scene = this.scene;
+    if (!scene) return;
+    const seen = new Set();
+    const tex = (t) => { if (t && t.isTexture && !seen.has(t)) { seen.add(t); t.dispose(); } };
+    const mat = (m) => {
+      if (!m || seen.has(m)) return;
+      seen.add(m);
+      for (const k in m) tex(m[k]);
+      if (m.uniforms) for (const k in m.uniforms) { const v = m.uniforms[k] && m.uniforms[k].value; tex(v); }
+      m.dispose();
+    };
+    scene.traverse((o) => {
+      if (o.geometry && !seen.has(o.geometry)) { seen.add(o.geometry); o.geometry.dispose(); }
+      if (Array.isArray(o.material)) o.material.forEach(mat); else mat(o.material);
+      if (o.dispose && o.isLight) o.dispose();     // карты теней спотов
+    });
+    tex(scene.environment);
+    tex(scene.background);
+    if (this.world && this.world.pbr) for (const k in this.world.pbr.cache) tex(this.world.pbr.cache[k]);
   }
 }
 
 window.ArtGallery = {
   version: VERSION,
   supported() {
+    if (this.ok != null) return this.ok;
     try {
-      const c = document.createElement('canvas');
-      return !!c.getContext('webgl2');     // three.js r163+ работает только на WebGL2
-    } catch (e) { return false; }
+      const gl = document.createElement('canvas').getContext('webgl2');   // three.js r163+ — только WebGL2
+      this.ok = !!gl;
+      // пробный контекст сразу отдаём: у браузера их лимит (около 16), а
+      // проверка идёт при каждой постройке зала
+      const lose = gl && gl.getExtension('WEBGL_lose_context');
+      if (lose) lose.loseContext();
+    } catch (e) { this.ok = false; }
+    return this.ok;
   },
   create(host, bridge) {
     const g = new Gallery(host, bridge);

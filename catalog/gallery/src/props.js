@@ -719,7 +719,9 @@ export class Props {
     if (this.scr) {
       const s = this.scr, U = s.U;
       U.time.value = t;
-      if (t >= s.next) { s.next = t + 7; this.nextSlide(); }
+      // новый слайд — только пока холл виден: иначе экран качал бы по
+      // картинке каждые 7 с всё время, пока зритель ходит по дальним залам
+      if (t >= s.next && this.w.hallGroup.visible) { s.next = t + 7; this.nextSlide(); }
       U.mixv.value = Math.min(1, U.mixv.value + dt / 1.4);
       U.kB.value = 1 + Math.min(1, (t - (s.shownAt || 0)) / 8.4) * 0.05;
       U.kA.value = 1.05;

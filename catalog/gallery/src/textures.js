@@ -46,7 +46,9 @@ export class TextureManager {
     this.oks = 0;
     this.corsChecked = false;
     this.bitmaps = typeof createImageBitmap === 'function' && typeof fetch === 'function';
-    this.atlas = null;              // { json, pages: [THREE.Texture] }
+    this.atlas = null;              // { json, pages: [THREE.Texture], failed: {страница: true} }
+    this.closed = false;            // зал закрыт: загрузки прерваны, ответы не нужны
+    this.fetches = new Set();       // идущие загрузки — чтобы прервать их при выходе
     this.frustum = new THREE.Frustum();
     this.pv = new THREE.Matrix4();
     this.stats = { ticks: 0, blankTicks: 0, blankMax: 0, loads: 0, evictions: 0, downgrades: 0 };
@@ -76,25 +78,36 @@ export class TextureManager {
 
   loadAtlas(paintings, onProgress) {
     const done = (n, total) => { if (onProgress) onProgress(n, total); };
-    return fetch(this.bridge.url('atlas.json'), { mode: 'cors', credentials: 'omit' })
-      .then((r) => { if (!r.ok) throw new Error('atlas.json: ' + r.status); return r.json(); })
+    return this.fetchT(this.bridge.url('atlas.json'), (r) => { if (!r.ok) throw new Error('atlas.json: ' + r.status); return r.json(); })
       .then((json) => {
+        if (this.closed) return;
         // paintings — живой список собранных залов: он растёт по мере сборки
         this.plan = paintings;
-        this.atlas = { json, pages: [] };
+        this.atlas = { json, pages: [], failed: {} };
         for (const it of paintings) it.cell = json.items[it.work.thumb] || null;
         let n = 0;
         done(0, json.pages.length);
         // бережный режим: страницы атласа вдвое меньше — вчетверо меньше памяти
         const half = this.lean && json.size ? Math.round(json.size / 2) : 0;
         return Promise.all(json.pages.map((p, i) => this.fetchImage(this.bridge.url(p), half).then((img) => {
+          if (this.closed) { if (img.close) img.close(); return; }
           const t = this.makeTexture(img);
           this.atlas.pages[i] = t;
           for (const it of this.plan) {
             if (it.cell && it.cell[0] === i && !it.level && !it.mesh.material.map) this.toAtlas(it);
           }
           done(++n, json.pages.length);
-        }).catch(() => { done(++n, json.pages.length); })));
+        }).catch(() => {
+          // страница не пришла: её работы грузят свои 400 px, как без атласа.
+          // Иначе дальние работы висели бы пустыми, а бюджет памяти не
+          // соблюдался бы: спуститься «до атласа» им некуда
+          if (!this.closed) {
+            this.atlas.failed[i] = true;
+            for (const it of this.plan) if (it.cell && it.cell[0] === i) it.cell = null;
+            if (window.console) console.warn('[artgallery] страница атласа не загрузилась:', p);
+          }
+          done(++n, json.pages.length);
+        })));
       })
       .catch(() => { this.atlas = null; done(1, 1); });   // атласа нет — работаем без него
   }
@@ -104,6 +117,7 @@ export class TextureManager {
     if (!this.atlas) return;
     for (const it of items) {
       it.cell = this.atlas.json.items[it.work.thumb] || null;
+      if (it.cell && this.atlas.failed[it.cell[0]]) it.cell = null;
       if (!it.mesh.material.map) this.toAtlas(it);
     }
   }
@@ -113,7 +127,13 @@ export class TextureManager {
   toAtlas(it) {
     const page = this.atlas && it.cell && this.atlas.pages[it.cell[0]];
     if (!page) return false;
-    const t = page.clone();          // общий источник: в видеопамяти одна копия
+    // общий источник: в видеопамяти одна копия. clone() в three помечает
+    // общий источник «обновить» — и вся страница атласа (2048², с мипами)
+    // заново уходила бы в видеокарту при каждой смене уровня работы: рывок
+    // при ходьбе. Номер версии источника возвращаем.
+    const v = page.source.version;
+    const t = page.clone();
+    t.source.version = v;
     const S = this.atlas.json.size;
     const [, x, y, w, h] = it.cell;
     // полпикселя внутрь клетки: без этого по краю просвечивает соседняя работа
@@ -124,14 +144,44 @@ export class TextureManager {
 
   /* ---------------- загрузка ---------------- */
 
+  /* fetch с таймаутом: на плохой сети зависший запрос держал бы место в
+     очереди (их 4–6) минутами, и картинки переставали бы грузиться.
+     read — чтение ответа (тело тоже под таймаутом) */
+  fetchT(src, read, ms = 20000) {
+    if (typeof AbortController !== 'function') return fetch(src, { mode: 'cors', credentials: 'omit' }).then(read);
+    const c = new AbortController();
+    const timer = setTimeout(() => c.abort(), ms);
+    this.fetches.add(c);
+    const end = () => { clearTimeout(timer); this.fetches.delete(c); };
+    return fetch(src, { mode: 'cors', credentials: 'omit', signal: c.signal })
+      .then(read)
+      .then((v) => { end(); return v; }, (e) => { end(); throw e; });
+  }
+
+  /* Выход из зала: прервать загрузки, отпустить растры */
+  close() {
+    this.closed = true;
+    this.fetches.forEach((c) => c.abort());
+    this.fetches.clear();
+    for (const r of this.ready) if (r.img.close) r.img.close();
+    this.ready = [];
+    if (this.atlas) {
+      for (const t of this.atlas.pages) {
+        if (!t) continue;
+        if (t.image && t.image.close) t.image.close();
+        t.dispose();
+      }
+    }
+  }
+
   fetchImage(src, width) {
+    if (this.closed) return Promise.reject(new Error('closed'));
     if (this.bitmaps) {
-      return fetch(src, { mode: 'cors', credentials: 'omit' })
-        .then((r) => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+      return this.fetchT(src, (r) => { if (!r.ok) throw new Error(r.status); return r.blob(); })
         .then((b) => createImageBitmap(b, Object.assign({ premultiplyAlpha: 'none', colorSpaceConversion: 'none' },
           width ? { resizeWidth: width, resizeQuality: 'high' } : {})))
         .catch((e) => {
-          if (/\.webp(\?|$)/.test(src)) return this.fetchImage(src.replace(/\.webp(\?|$)/, '.jpg$1'));
+          if (!this.closed && /\.webp(\?|$)/.test(src)) return this.fetchImage(src.replace(/\.webp(\?|$)/, '.jpg$1'), width);
           throw e;
         });
     }
@@ -196,10 +246,12 @@ export class TextureManager {
     this.active++;
     this.stats.loads++;
     this.fetchImage(src).then((img) => {
+      if (this.closed) { if (img.close) img.close(); return; }
       this.active--; it.loading = 0; this.oks++;
       it.queued = level;
       this.ready.push({ it, img, level });
     }, () => {
+      if (this.closed) return;
       this.active--; it.loading = 0;
       (it.failed = it.failed || {})[level] = true;
       this.fails++;
@@ -210,7 +262,7 @@ export class TextureManager {
   /* Каждый кадр: из готовых картинок — в видеопамять ближайшие, в пределах
      лимита байт на кадр (одна — всегда) */
   flush() {
-    if (!this.ready.length) return;
+    if (this.closed || !this.ready.length) return;
     if (this.ready.length > 1) this.ready.sort((a, b) => (a.it.dist || 0) - (b.it.dist || 0));
     let spent = 0;
     while (this.ready.length) {

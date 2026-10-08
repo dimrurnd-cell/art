@@ -59,10 +59,12 @@ export class Spots {
   setShadows(on) {
     this.shadows = on;
     this.pool.forEach((s, i) => { s.l.castShadow = on && i < this.shadowN; });
+    this.moved = true;
   }
 
   place(s, it) {
     s.it = it;
+    this.moved = true;        // карты теней пора обновить
     s.l.position.set(it.x - it.side * TRACK, COR_H - 0.3, it.z);
     // целимся ниже центра: верх картины ближе к лампе, пятно уходит на стену под ней
     s.l.target.position.set(it.x - it.side * 0.05, ART_Y - it.h * 0.35, it.z);

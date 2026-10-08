@@ -88,11 +88,15 @@ export class PBR {
      three.js ругался бы на каждом кадре. Такая копия ждёт своей фактуры. */
   clone(name, kind) {
     const t = this.tex(name, kind);
+    const v = t.source.version;
     const c = t.clone();
     if (!t.image) {
       c.version = 0;
       const key = name + '_' + kind;
       (this.clones[key] = this.clones[key] || []).push(c);
+    } else {
+      // фактура уже в видеокарте: клон не должен заставлять грузить её заново
+      c.source.version = v;
     }
     return c;
   }

@@ -772,9 +772,15 @@
     if (m !== 'webgl' && window.ARTCATALOG_DATA && /^(https?:)?\/\//.test(this.base) &&
         this.base.indexOf(location.origin) !== 0) return false;
     if (window.ArtGallery) return window.ArtGallery.supported();
+    if (Widget.webgl2 != null) return Widget.webgl2;
     try {
-      return !!document.createElement('canvas').getContext('webgl2');   // three.js требует WebGL2
-    } catch (e) { return false; }
+      var gl = document.createElement('canvas').getContext('webgl2');   // three.js требует WebGL2
+      Widget.webgl2 = !!gl;
+      // пробный контекст сразу отдаём — у браузера их лимит
+      var lose = gl && gl.getExtension('WEBGL_lose_context');
+      if (lose) lose.loseContext();
+    } catch (e) { Widget.webgl2 = false; }
+    return Widget.webgl2;
   };
 
   /* Зритель переключил режим: 'css' — простой зал, 'webgl' — 3D-галерея.
