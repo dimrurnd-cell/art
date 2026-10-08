@@ -436,6 +436,7 @@
   padding: 11px 14px;
   font: inherit; font-size: 16px;   /* мельче 16 px iPhone приближает страницу при вводе */
 }
+.artc-find__input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; display: none; }
 .artc-find__input::placeholder { color: rgba(251, 243, 224, .55); }
 .artc-find__input:focus { outline: 2px solid var(--artc-teal); outline-offset: 1px; }
 .artc-find__close {
@@ -477,6 +478,11 @@
 .artc-find__meta b { display: block; font-weight: 600; font-size: 15px; }
 .artc-find__meta span { display: block; font-size: 12px; color: rgba(251, 243, 224, .6); }
 .artc-find__empty { margin: 0; padding: 6px 22px 20px; color: rgba(251, 243, 224, .6); font-size: 14px; }
+.artc-find__other {
+  margin-top: 8px; padding: 6px 12px; border: 1px solid rgba(251, 243, 224, .4); border-radius: 99px;
+  background: none; color: #FBF3E0; font: inherit; font-size: 14px; cursor: pointer;
+}
+.artc-find__other:hover, .artc-find__other:focus-visible { background: rgba(251, 243, 224, .14); outline: none; }
 
 @media (max-width: 600px) {
   .artc-sections { margin: -4px auto 18px; gap: 6px; }
@@ -553,7 +559,7 @@
 .artc-glload__num b { font-weight: 400; }
 .artc-glload__bar { width: min(320px, 70%); height: 4px; border-radius: 4px; background: rgba(0,0,0,.08); overflow: hidden; }
 .artc-glload__bar i { display: block; height: 100%; width: 0; background: #2A2A2A; border-radius: 4px; transition: width .4s ease; }
-.artc-glload__eta { margin: 0; font-size: 13px; color: #8C8C88; min-height: 1.4em; }
+.artc-glload__eta { margin: 0; font-size: 13px; color: #6E6E6A; min-height: 1.4em; }
 .artc-glload__css,
 .artc-mode {
   appearance: none;
@@ -568,7 +574,7 @@
 .artc-glload__css svg, .artc-mode svg { width: 17px; height: 17px; flex-shrink: 0; }
 .artc-glload__css:hover, .artc-mode:hover { background: #fff; border-color: rgba(42,42,42,.5); }
 .artc-glload__css:focus-visible, .artc-mode:focus-visible { outline: 2px solid #2A2A2A; outline-offset: 3px; }
-.artc-glload small { max-width: 360px; font-size: 12px; color: #8C8C88; }
+.artc-glload small { max-width: 360px; font-size: 12px; color: #6E6E6A; }
 /* кнопка «3D-галерея» в простом зале — слева сверху, всегда на виду */
           /* летающая пыль отвлекала — выключена */
 .artc-mode { position: absolute; left: 14px; top: 14px; z-index: 7; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
@@ -624,8 +630,8 @@
   appearance: none; border: 0; background: none; padding: 0; margin: 0; text-align: left; cursor: pointer;
   color: #2A2A2A; font: 300 44px/1.15 "Inter", "Helvetica Neue", Arial, sans-serif; letter-spacing: .01em;
 }
-.artc-hw__name small { display: block; margin-top: 6px; font-size: .42em; letter-spacing: .2em; color: #8C8C88; font-weight: 400; text-transform: uppercase; }
-.artc-hw__name i { display: inline-block; margin-top: 8px; font-style: normal; font-size: .34em; letter-spacing: .14em; color: #D4574F; font-weight: 600; text-transform: uppercase; }
+.artc-hw__name small { display: block; margin-top: 6px; font-size: .42em; letter-spacing: .2em; color: #6E6E6A; font-weight: 400; text-transform: uppercase; }
+.artc-hw__name i { display: inline-block; margin-top: 8px; font-style: normal; font-size: .34em; letter-spacing: .14em; color: #BF4C47; font-weight: 600; text-transform: uppercase; }
 .artc-hw__name:hover i { text-decoration: underline; text-underline-offset: 4px; }
 .artc-hw__spot { position: absolute; pointer-events: none; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 248, 232, .75), rgba(255, 248, 232, 0)); }
 .artc-hw__art {
@@ -643,7 +649,7 @@
 }
 .artc-hw__plq b { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; overflow-wrap: anywhere; font-weight: 600; }
 .artc-hw__plq span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; color: #6F6F6B; }
-.artc-hw__plq i { display: inline-block; margin-top: 6px; background: #D4574F; color: #fff; font-style: normal; font-weight: 600; font-size: 11px; padding: 3px 8px; border-radius: 99px; }
+.artc-hw__plq i { display: inline-block; margin-top: 6px; background: #BF4C47; color: #fff; font-style: normal; font-weight: 600; font-size: 11px; padding: 3px 8px; border-radius: 99px; }
 .artc-hw__art:focus-visible, .artc-hw__plq:focus-visible, .artc-hw__name:focus-visible { outline: 3px solid #2A2A2A; outline-offset: 4px; }
 .artc-hw__end { display: flex; align-items: center; justify-content: center; }
 .artc-hw__fin { text-align: center; color: #2A2A2A; font-family: "Inter", "Helvetica Neue", Arial, sans-serif; }
@@ -666,7 +672,7 @@
 .artc-hw .artc-mode { position: static; border: 0; background: rgba(255, 255, 255, .92); box-shadow: 0 4px 14px rgba(0,0,0,.1); padding: 0 16px; height: 42px; }
 .artc-hw__fin--intro h3 { font-size: 64px; letter-spacing: .02em; }
 .artc-hw__fin--intro p { font-size: 20px; }
-.artc-hw__fin--intro .artc-hw__invite { color: #D4574F; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: 16px; }
+.artc-hw__fin--intro .artc-hw__invite { color: #BF4C47; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: 16px; }
 .artc-hw__btn, .artc-hw .artc-fs {
   position: static; width: 42px; height: 42px; border-radius: 50%; border: 0; cursor: pointer; flex-shrink: 0;
   background: rgba(255, 255, 255, .92); color: #2A2A2A; display: flex; align-items: center; justify-content: center;
@@ -790,7 +796,7 @@
 .artc-cur__msg--me { align-self: flex-end; background: #2A2A2A; color: #fff; border-bottom-right-radius: 6px; }
 .artc-cur__go {
   display: block; margin: 8px 0 2px; padding: 0; border: 0; background: none; cursor: pointer;
-  color: #D4574F; font-size: 13px; font-weight: 600; letter-spacing: .02em;
+  color: #BF4C47; font-size: 13px; font-weight: 600; letter-spacing: .02em;
 }
 .artc-cur__go:hover { text-decoration: underline; text-underline-offset: 3px; }
 .artc-cur__dots { display: flex; gap: 5px; padding: 15px 16px; }
@@ -816,7 +822,7 @@
 .artc-cur__send {
   flex: none; width: 42px; height: 42px; border: 0; border-radius: 50%; padding: 0;
   display: grid; place-items: center;
-  background: #D4574F; color: #fff; cursor: pointer;
+  background: #BF4C47; color: #fff; cursor: pointer;
 }
 .artc-cur__send:hover { background: #BF4A43; }
 .artc-cur.is-busy .artc-cur__send { opacity: .5; cursor: default; }
@@ -827,7 +833,7 @@
 }
 .artc-cur__voice { width: 36px; height: 36px; }
 .artc-cur__mic:hover, .artc-cur__voice:hover { background: #E4E2DD; }
-.artc-cur__mic.is-on { background: #D4574F; color: #fff; animation: artc-cur-mic 1.2s ease-in-out infinite; }
+.artc-cur__mic.is-on { background: #BF4C47; color: #fff; animation: artc-cur-mic 1.2s ease-in-out infinite; }
 @keyframes artc-cur-mic { 0%, 100% { box-shadow: 0 0 0 0 rgba(212, 87, 79, .45); } 50% { box-shadow: 0 0 0 8px rgba(212, 87, 79, 0); } }
 .artc-cur__voice .artc-cur__wave { opacity: .25; }
 .artc-cur__voice.is-on { background: #2A2A2A; color: #fff; }
@@ -857,7 +863,7 @@
 .artc-live-pill:hover { background: #fff; }
 .artc-live-pill:focus-visible { outline: 2px solid #2A2A2A; outline-offset: 2px; }
 .artc-live-pill.is-on::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #3BA56E; box-shadow: 0 0 0 3px rgba(59, 165, 110, .18); margin-right: 1px; }
-.artc-live-pill__n { font-style: normal; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: #D4574F; color: #fff; font-size: 12px; line-height: 20px; text-align: center; }
+.artc-live-pill__n { font-style: normal; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: #BF4C47; color: #fff; font-size: 12px; line-height: 20px; text-align: center; }
 .artc-live-pill__n[hidden] { display: none; }
 .artg-stage .artc-live-pill { top: 62px; }
 /* открыты меню или панель зала (план, художники, качество) — кнопка не мешает им */
@@ -907,7 +913,7 @@
 .artc-live__name:focus, .artc-live__input:focus { outline: none; border-color: #2A2A2A; }
 .artc-live__err { margin: 8px 0 0; color: #C0443C; font-size: 13.5px; }
 .artc-live__go { width: 100%; height: 46px; margin-top: 12px; border: 0; border-radius: 23px; background: #E0736A; color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
-.artc-live__go:hover { background: #D4574F; }
+.artc-live__go:hover { background: #BF4C47; }
 .artc-live__go:disabled { opacity: .5; cursor: default; }
 .artc-live__hint { margin: 6px 2px 0; font-size: 12.5px; color: #8A867E; }
 .artc-live__consent { display: flex; align-items: flex-start; gap: 9px; margin: 12px 0 0; padding: 8px 10px; border-radius: 12px; font-size: 13px; line-height: 1.35; color: #4A4A46; cursor: pointer; }
@@ -937,7 +943,7 @@
 .artc-live__state { flex: none; font-size: 12.5px; color: #8A867E; }
 .artc-live__conv { cursor: pointer; }
 .artc-live__conv:hover .artc-live__who b { text-decoration: underline; text-underline-offset: 3px; }
-.artc-live__badge { flex: none; font-style: normal; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; background: #D4574F; color: #fff; font-size: 12px; line-height: 22px; text-align: center; }
+.artc-live__badge { flex: none; font-style: normal; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; background: #BF4C47; color: #fff; font-size: 12px; line-height: 22px; text-align: center; }
 .artc-live__tools { flex: none; display: flex; justify-content: flex-end; gap: 14px; padding: 4px 16px; border-bottom: 1px solid rgba(0, 0, 0, .05); }
 .artc-live__tools .artc-live__link { color: #6F6F6B; font-size: 12.5px; }
 .artc-live__log { flex: 1 1 auto; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; min-height: 120px; overscroll-behavior: contain; }
@@ -953,7 +959,7 @@
 .artc-live__emo button { height: 40px; border: 0; border-radius: 10px; background: none; font-size: 24px; line-height: 1; cursor: pointer; padding: 0; }
 .artc-live__emo button:hover { background: #F1EFEA; }
 .artc-live__send { flex: none; width: 44px; height: 44px; border: 0; border-radius: 50%; background: #E0736A; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.artc-live__send:hover { background: #D4574F; }
+.artc-live__send:hover { background: #BF4C47; }
 .artc-live__closed { flex: none; margin: 0; padding: 12px 16px; border-top: 1px solid rgba(0, 0, 0, .07); color: #6F6F6B; font-size: 14px; text-align: center; }
 .artc-live :focus-visible { outline: 2px solid #2A2A2A; outline-offset: 2px; }
 /* телефон, открыта клавиатура: места мало — строку жалобы прячем, шапку ужимаем */
@@ -975,7 +981,7 @@
 .artc-live-toast__btns { flex: 1 1 100%; display: flex; gap: 8px; }
 .artc-live-toast__btns button { flex: 1; height: 38px; border-radius: 19px; font: inherit; font-size: 14px; cursor: pointer; }
 .artc-live-toast__yes { border: 0; background: #E0736A; color: #fff; font-weight: 600; }
-.artc-live-toast__yes:hover { background: #D4574F; }
+.artc-live-toast__yes:hover { background: #BF4C47; }
 .artc-live-toast__no { border: 1px solid #DAD6CE; background: #fff; color: #2A2A2A; }
 .artc-live-toast--msg { cursor: pointer; flex-wrap: nowrap; }
 .artc-live-toast--note { background: rgba(42, 42, 42, .92); color: #fff; justify-content: center; text-align: center; }

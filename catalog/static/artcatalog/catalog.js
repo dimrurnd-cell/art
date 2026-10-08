@@ -157,13 +157,17 @@
   function trapFocus(modal) {
     function handler(e) {
       if (e.key !== 'Tab') return;
-      var focusables = modal.querySelectorAll(
-        'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      // только то, что видно: скрытая после отправки форма и т. п. — не в счёт
+      var all = modal.querySelectorAll(
+        'button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
       );
-      if (!focusables.length) return;
-      var first = focusables[0], last = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault(); }
-      else if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault(); }
+      var list = [];
+      for (var i = 0; i < all.length; i++) if (all[i].getClientRects().length) list.push(all[i]);
+      if (!list.length) { e.preventDefault(); return; }
+      var first = list[0], last = list[list.length - 1], a = document.activeElement;
+      // фокус на самом окне (открыли мышью): Shift+Tab уходил на страницу под окном
+      if (e.shiftKey && (a === first || a === modal)) { last.focus(); e.preventDefault(); }
+      else if (!e.shiftKey && a === last) { first.focus(); e.preventDefault(); }
     }
     modal.addEventListener('keydown', handler);
   }
@@ -267,6 +271,12 @@
   function sortKey(name) {
     var full = String(name || '');
     var quoted = full.match(/[«"']([^»"']{2,})[»"']/);
+    if (quoted) {
+      // «Студия японской живописи … «Tanoshii sekai»»: латинское название в
+      // кавычках давало в указателе латинскую «T» рядом с русской «Т»
+      var rest = full.replace(quoted[0], ' ').replace(/[«»"]/g, '').trim();
+      if (/^[A-Za-z]/.test(quoted[1]) && /^[А-ЯЁа-яё]/.test(rest)) return rest;
+    }
     return (quoted ? quoted[1] : full).replace(/[«»"]/g, '').trim();
   }
 
@@ -331,6 +341,33 @@
       if (!q) return true;
       return (a.name + ' ' + (a.city || '')).toLowerCase().indexOf(q) !== -1;
     });
+  };
+
+  /* Поиск идёт внутри раздела. Совпадения в других разделах — для подсказки
+     «ещё N — в разделе …»: раздел с наибольшим числом совпадений или null */
+  Widget.prototype.otherMatches = function (query) {
+    var q = (query || '').trim().toLowerCase();
+    if (!q) return null;
+    var self = this, best = null;
+    this.sections.forEach(function (sec, j) {
+      if (j === self.section) return;
+      var n = sec.list.filter(function (i) {
+        var a = self.artists[i];
+        return (a.name + ' ' + (a.city || '')).toLowerCase().indexOf(q) !== -1;
+      }).length;
+      if (n && (!best || n > best.n)) best = { sec: j, n: n, title: sec.title };
+    });
+    return best;
+  };
+
+  /* Тот же поиск — в другом разделе (кнопка подсказки) */
+  Widget.prototype.searchIn = function (j) {
+    var q = this.query;
+    this.switchSection(j, true);                 // 3D-зал, если он открыт, не двигаем
+    var input = this.wrap.querySelector('.artc-search__input');
+    if (input) { input.value = q; this.wrap.querySelector('.artc-search__clear').hidden = !q; }
+    this.query = q;
+    this.buildCarousel();
   };
 
   /* Буквы, которые вообще есть у художников раздела */
@@ -434,13 +471,14 @@
           '</div>' +
           '<div class="artc-abc" role="group" aria-label="Указатель по первой букве"></div>' +
           '<p class="artc-filter__count" aria-live="polite"></p>' +
+          '<button type="button" class="artc-filter__more" hidden></button>' +
         '</div>' +
         '<p class="artc-empty" hidden>Никого не нашлось. Проверьте написание или сбросьте фильтр.</p>' +
         '<div class="artc-carousel" role="region" aria-roledescription="карусель" aria-label="Художники выставки" tabindex="0">' +
           '<button type="button" class="artc-arrow artc-arrow--prev" aria-label="Предыдущий художник">' + ARROW_L + '</button>' +
           '<div class="artc-carousel__viewport"><div class="artc-carousel__track"></div></div>' +
           '<button type="button" class="artc-arrow artc-arrow--next" aria-label="Следующий художник">' + ARROW_R + '</button>' +
-          '<div class="artc-dots" role="tablist" aria-label="Перейти к художнику"></div>' +
+          '<div class="artc-dots" role="group" aria-label="Страницы каталога"></div>' +
         '</div>' +
       '</div>';
     r.appendChild(wrap);
@@ -479,15 +517,22 @@
     // поиск и указатель по буквам
     var search = wrap.querySelector('.artc-search__input');
     var clear = wrap.querySelector('.artc-search__clear');
+    var searchT = null;
     search.addEventListener('input', function () {
-      self.query = this.value;
-      clear.hidden = !this.value;
-      self.buildCarousel();
+      var v = this.value;
+      clear.hidden = !v;
+      // каталог (до 115 карточек) перестраиваем, когда набор замер, а не на каждую букву
+      clearTimeout(searchT);
+      searchT = setTimeout(function () { self.query = v; self.buildCarousel(); }, 150);
     });
     clear.addEventListener('click', function () {
+      clearTimeout(searchT);
       search.value = ''; self.query = ''; clear.hidden = true;
       self.buildCarousel();
       search.focus();
+    });
+    wrap.querySelector('.artc-filter__more').addEventListener('click', function () {
+      self.searchIn(+this.getAttribute('data-sec'));
     });
     wrap.querySelector('.artc-filter .artc-abc').addEventListener('click', function (e) {
       var b = e.target.closest('[data-letter]');
@@ -511,10 +556,18 @@
     window.addEventListener('load', function () { self.clearFixedHeader(); });
     setTimeout(function () { self.clearFixedHeader(); }, 1500);
 
-    var resizeT = null;
+    // resize на телефоне идёт сериями (адресная строка при прокрутке):
+    // раскладку пересчитываем не чаще раза в кадр, шапку сайта — только
+    // когда сменилась ширина
+    var resizeT = null, resizeRaf = 0, lastW = window.innerWidth;
     window.addEventListener('resize', function () {
-      self.clearFixedHeader();
-      self.goTo(self.index, true);
+      if (!resizeRaf) {
+        resizeRaf = requestAnimationFrame(function () {
+          resizeRaf = 0;
+          if (window.innerWidth !== lastW) { lastW = window.innerWidth; self.clearFixedHeader(); }
+          self.goTo(self.index, true);
+        });
+      }
       clearTimeout(resizeT);
       resizeT = setTimeout(function () { self.refreshHall(); }, 260);
     });
@@ -598,6 +651,15 @@
     var count = this.wrap.querySelector('.artc-filter__count');
     var filtered = this.query || this.letter;
     count.textContent = filtered ? (picked.length + ' из ' + total) : (total + ' всего');
+    var more = this.wrap.querySelector('.artc-filter__more');
+    var other = this.otherMatches(this.query);
+    if (more) {
+      more.hidden = !other;
+      if (other) {
+        more.textContent = (picked.length ? 'ещё ' + other.n : other.n) + ' — в разделе «' + other.title + '» →';
+        more.setAttribute('data-sec', other.sec);
+      }
+    }
     this.wrap.querySelector('.artc-empty').hidden = !!picked.length;
     this.wrap.querySelector('.artc-carousel').hidden = !picked.length;
     this.index = 0;
@@ -680,7 +742,17 @@
     if (instant) { void track.offsetWidth; track.style.transition = ''; }
 
     var dots = this.wrap.querySelectorAll('.artc-dot');
-    for (var d = 0; d < dots.length; d++) dots[d].classList.toggle('is-active', d === this.index);
+    for (var d = 0; d < dots.length; d++) {
+      dots[d].classList.toggle('is-active', d === this.index);
+      if (d === this.index) dots[d].setAttribute('aria-current', 'true'); else dots[d].removeAttribute('aria-current');
+    }
+    // карточки соседних страниц не в фокусе: Tab по ним прокручивал
+    // карусель мимо точек, и она показывала не ту страницу
+    var pages = track.children;
+    for (var p = 0; p < pages.length; p++) {
+      if (p === this.index) pages[p].removeAttribute('inert');
+      else pages[p].setAttribute('inert', '');
+    }
   };
 
   Widget.prototype.bindSwipe = function (zone) {
@@ -1105,6 +1177,23 @@
     if (this.hall && this.hall.offKey) this.hall.offKey();
     this.stopTour();
 
+    // Пересборка во весь экран (кнопка «следующий раздел» в конце стены,
+    // «Перейти к работам» у куратора): старая сцена уходит из документа, и
+    // браузер выходил из полного экрана, а на iPhone оставалась висеть
+    // старая. Запоминаем режим и окна — новая сцена получит их же
+    var old = this.hall && this.hall.stage;
+    var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+    var wasFs = old && fsEl === old ? 'real' : old && this.fsFake ? 'fake' : '';
+    if (wasFs === 'fake') this.fsFallback(false);
+    // настоящий полный экран: выходим явно и разворачиваем новую сцену, когда
+    // выход завершился, — иначе запоздалый выход отменял бы новый запрос
+    var exitFs = null;
+    if (wasFs === 'real') {
+      try { exitFs = (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) { /* старый браузер */ }
+    }
+    var liveWas = !!(old && this.livePanelOpen() && old.contains(this.livePanelEl));
+    if (old && this.curPanel && !this.curPanel.hidden && old.contains(this.curPanel)) this.closeCurator();
+
     var self = this;
     var touch = isTouch();
     var sec = this.sections.length ? this.sections[this.section] : null;
@@ -1120,7 +1209,7 @@
         '<div class="artc-hw__top">' +
           '<div class="artc-hw__where"><b></b><button type="button" class="artc-hw__who"></button></div>' +
           '<div class="artc-hw__btns">' +
-            (this.canGL(this.hallMode) ? '<button type="button" class="artc-mode">' + ICON_3D + '<span>3D-галерея</span></button>' : '') +
+            (this.canGL(this.hallMode) ? '<button type="button" class="artc-mode" aria-label="3D-галерея">' + ICON_3D + '<span>3D-галерея</span></button>' : '') +
             '<button type="button" class="artc-hw__btn artc-hw__music" aria-label="Тихая музыка" aria-pressed="false">' + ICON_MUSIC + '</button>' +
             '<button type="button" class="artc-hw__btn artc-hw__find" aria-label="Найти художника">' + ICON_FIND + '</button>' +
             '<button type="button" class="artc-hw__btn artc-fs">' + ICON_FS +
@@ -1291,6 +1380,28 @@
       h.ro = new ResizeObserver(function () { if (self.hall === h) self.wallPlace(true); });
       h.ro.observe(stage);
     }
+    if (wasFs === 'fake') this.fsFallback(true);
+    else if (wasFs === 'real') {
+      var again = function () { if (self.hall === h) self.refullscreen(stage); };
+      if (exitFs && exitFs.then) exitFs.then(again, again); else setTimeout(again, 150);
+    }
+    if (liveWas) this.livePanel(true, stage);
+  };
+
+  /* Новая сцена — во весь экран в том же нажатии; браузер не дал — запасной режим */
+  Widget.prototype.refullscreen = function (stage) {
+    var self = this;
+    var req = stage.requestFullscreen || stage.webkitRequestFullscreen;
+    var fallback = function () { if (!self.fsFake && self.hall && self.hall.stage === stage) self.fsFallback(true); };
+    if (!req) { fallback(); return; }
+    try {
+      var pr = req.call(stage);
+      if (pr && pr.catch) pr.catch(fallback);
+    } catch (e) { fallback(); }
+    // браузер мог молча не развернуть — тогда запасной режим
+    setTimeout(function () {
+      if (!(document.fullscreenElement || document.webkitFullscreenElement)) fallback();
+    }, 450);
   };
 
   function plural(n, one, few, many) {
@@ -1778,8 +1889,13 @@
     var box = h.stage.querySelector('.artc-find');
     if (!box) return;
     if (on === undefined) on = box.hidden;
+    var back = !on && !box.hidden && box.contains(document.activeElement);
     box.hidden = !on;
     h.stage.classList.toggle('is-finding', on);
+    if (back) {                                  // фокус не теряется в скрытом списке
+      var fb = h.stage.querySelector('.artc-hw__find');
+      if (fb) { try { fb.focus({ preventScroll: true }); } catch (e) { fb.focus(); } }
+    }
     if (on) {
       this.stopTour();
       this.findLetter = '';
@@ -1841,7 +1957,29 @@
         (room.city ? '<span>' + esc(room.city) + '</span>' : '') + '</span></button></li>';
     });
     list.innerHTML = html;
-    box.querySelector('.artc-find__empty').hidden = !!found;
+    var empty = box.querySelector('.artc-find__empty');
+    empty.hidden = !!found;
+    if (!found) {
+      // в зале — один раздел; нашлось в другом — кнопка туда
+      var other = this.otherMatches(q);
+      empty.innerHTML = 'Никого не нашлось' + (other
+        ? '<br><button type="button" class="artc-find__other" data-sec="' + other.sec + '">Есть в разделе «' +
+          esc(other.title) + '»: ' + other.n + ' →</button>' : '');
+    }
+    if (!empty.bound) {
+      empty.bound = true;
+      empty.addEventListener('click', function (e) {
+        var b = e.target.closest('.artc-find__other');
+        if (!b) return;
+        var text = box.querySelector('.artc-find__input').value;
+        self.toggleFind(false);
+        self.switchSection(+b.getAttribute('data-sec'));
+        self.toggleFind(true);
+        var inp = self.hall.stage.querySelector('.artc-find__input');
+        inp.value = text;
+        self.fillFind(text);
+      });
+    }
 
     if (!list.bound) {
       list.bound = true;
@@ -2511,6 +2649,7 @@
   Widget.prototype.openCurator = function (host) {
     if (!host) return;
     var p = this.curPanel || (this.curPanel = this.buildCurator());
+    if (p.hidden) this.curOpener = document.activeElement;
     if (p.parentNode !== host) host.appendChild(p);
     p.hidden = false;
     host.classList.add('has-cur');
@@ -2531,7 +2670,9 @@
     var host = p.parentNode;
     if (host) {
       host.classList.remove('has-cur');
-      try { host.focus({ preventScroll: true }); } catch (e) { /* старый браузер */ }
+      // фокус — на кнопку, которой открыли окно (если она ещё на странице)
+      var back = this.curOpener && this.curOpener !== document.body && document.documentElement.contains(this.curOpener) ? this.curOpener : host;
+      try { back.focus({ preventScroll: true }); } catch (e) { /* старый браузер */ }
     }
   };
 
@@ -2965,7 +3106,10 @@
   /* ---------- окно ---------- */
 
   Widget.prototype.livePanelOpen = function () {
-    return !!(this.livePanelEl && !this.livePanelEl.hidden);
+    // окно, оторванное от страницы вместе со старой сценой, — не открыто:
+    // иначе входящие сообщения считались бы прочитанными
+    var p = this.livePanelEl;
+    return !!(p && !p.hidden && document.documentElement.contains(p));
   };
 
   Widget.prototype.liveToggle = function (host) {
@@ -3535,6 +3679,7 @@
 
     this.artistModal = el('div', 'artc-modal artc-root');
     this.artistModal.setAttribute('role', 'dialog');
+    this.artistModal.setAttribute('aria-labelledby', 'artc-artist-name');
     this.artistModal.setAttribute('aria-modal', 'true');
     this.artistModal.style.background = 'rgba(28,22,12,.6)';
 
@@ -3580,8 +3725,8 @@
         if (e.key === 'ArrowLeft') self.openWork(self.workIdx - 1);
         if (e.key === 'ArrowRight') self.openWork(self.workIdx + 1);
       } else if (self.artistModal.classList.contains('is-open') && !self.formModal.classList.contains('is-open')) {
-        if (e.key === 'ArrowLeft') self.openArtist(self.artistIdx - 1);
-        if (e.key === 'ArrowRight') self.openArtist(self.artistIdx + 1);
+        if (e.key === 'ArrowLeft') self.artistStep(-1);
+        if (e.key === 'ArrowRight') self.artistStep(1);
       }
     });
   };
@@ -3627,6 +3772,17 @@
   };
 
   /* ---------------- карточка художника ---------------- */
+
+  /* Соседний художник — внутри раздела: «Галереи» и «Арт-салон» не
+     смешиваем (и кнопки, и клавиши ← →: раньше клавиши уводили в другой
+     раздел и перестраивали зал) */
+  Widget.prototype.artistStep = function (delta) {
+    var cur = this.artists[this.artistIdx];
+    var sec = cur && (this.sections[cur.secIndex] || this.sections[0]);
+    if (!sec || !sec.list.length || cur.secPos == null) { this.openArtist(this.artistIdx + delta); return; }
+    var pos = (cur.secPos + delta + sec.list.length) % sec.list.length;
+    this.openArtist(sec.list[pos]);
+  };
 
   Widget.prototype.pickArtist = function (i) {
     var n = this.artists.length;
@@ -3677,7 +3833,7 @@
         '<div class="artc-artist">' +
           '<div class="artc-artist__head">' +
             '<div class="artc-artist__ava">' + pictureHTML(this.url(a.avatar), a.name, false) + '</div>' +
-            '<div><h3 class="artc-artist__name">' + esc(a.name) + '</h3>' +
+            '<div><h3 class="artc-artist__name" id="artc-artist-name">' + esc(a.name) + '</h3>' +
             '<span class="artc-artist__city">' + esc(a.city) + '</span></div>' +
           '</div>' +
           '<p class="artc-artist__bio is-clamped">' + esc(a.bio) + '</p>' +
@@ -3715,13 +3871,7 @@
     });
     dlg.querySelector('.artc-buy').addEventListener('click', function () { self.openForm(a, null); });
     dlg.querySelectorAll('[data-nav]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        // сосед берётся внутри раздела: «Галереи» и «Арт-салон» не смешиваем
-        var cur = self.artists[self.artistIdx];
-        var sec = self.sections[cur.secIndex] || self.sections[0];
-        var pos = (cur.secPos + (+b.getAttribute('data-nav')) + sec.list.length) % sec.list.length;
-        self.openArtist(sec.list[pos]);
-      });
+      b.addEventListener('click', function () { self.artistStep(+b.getAttribute('data-nav')); });
     });
 
     this.openModal(dlg);

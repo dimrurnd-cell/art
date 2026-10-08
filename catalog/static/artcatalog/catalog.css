@@ -25,6 +25,10 @@
   --artc-muted: #6E6350;
   --artc-coral: #E4736F;
   --artc-coral-dark: #D55A56;
+  /* коралл под белым текстом и для текста: контраст не ниже 4,5:1 (WCAG AA);
+     светлый --artc-coral остаётся для пятен, стрелок и точек */
+  --artc-coral-ink: #C24E49;
+  --artc-coral-ink-dark: #A9413D;
   --artc-teal: #3E7D95;
   --artc-teal-dark: #34677B;
   --artc-green: #2E5B4C;
@@ -347,13 +351,13 @@
 .artc-artist__foot { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .artc-buy {
   border: none; cursor: pointer;
-  background: var(--artc-coral); color: #fff;
+  background: var(--artc-coral-ink); color: #fff;
   font-size: 17px; font-weight: 600;
   padding: 14px 34px; border-radius: 999px;
   box-shadow: 0 8px 20px rgba(228,115,111,.45);
   transition: background .2s, transform .2s;
 }
-.artc-buy:hover { background: var(--artc-coral-dark); transform: translateY(-2px); }
+.artc-buy:hover { background: var(--artc-coral-ink-dark); transform: translateY(-2px); }
 .artc-buy:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
 
 .artc-artist__nav {
@@ -441,14 +445,14 @@
 }
 .artc-field input:focus { outline: none; border-color: var(--artc-teal); }
 .artc-field input.is-invalid { border-color: var(--artc-coral-dark); }
-.artc-field__err { display: none; color: var(--artc-coral-dark); font-size: 13px; margin-top: 4px; }
+.artc-field__err { display: none; color: var(--artc-coral-ink-dark); font-size: 13px; margin-top: 4px; }
 .artc-field.has-error .artc-field__err { display: block; }
 .artc-consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--artc-muted); margin: 4px 0 20px; }
 .artc-consent input { margin-top: 2px; width: 17px; height: 17px; accent-color: var(--artc-teal); flex: 0 0 17px; }
 .artc-consent a { color: var(--artc-teal-dark); }
 .artc-form .artc-buy { width: 100%; }
 .artc-form__status { margin: 14px 0 0; font-size: 14px; display: none; }
-.artc-form__status.is-error { display: block; color: var(--artc-coral-dark); }
+.artc-form__status.is-error { display: block; color: var(--artc-coral-ink-dark); }
 .artc-form__ok { text-align: center; padding: 46px 30px 54px; display: none; }
 .artc-form__ok-icon {
   width: 74px; height: 74px; margin: 0 auto 18px;
@@ -558,6 +562,9 @@
   padding: 12px 0;
 }
 .artc-search__input:focus { outline: none; }
+/* у поля type=search свой крестик в Chrome/Android и Safari — рядом с нашим
+   их было два */
+.artc-search__input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; display: none; }
 .artc-search:focus-within { border-color: var(--artc-teal); background: #fff; }
 .artc-search__clear {
   flex: 0 0 32px; width: 32px; height: 32px;
@@ -566,7 +573,7 @@
   color: var(--artc-muted);
   font-size: 13px;
 }
-.artc-search__clear:hover { background: var(--artc-coral); color: #fff; }
+.artc-search__clear:hover { background: var(--artc-coral-ink); color: #fff; }
 
 .artc-abc {
   display: flex; flex-wrap: wrap; gap: 4px; justify-content: center;
@@ -587,6 +594,13 @@
 .artc-abc button.is-active { background: var(--artc-teal); color: #fff; }
 .artc-abc button:focus-visible { outline: 3px solid var(--artc-teal); outline-offset: 2px; }
 .artc-filter__count { margin: 0; font-size: 13px; color: var(--artc-muted); }
+.artc-filter__more {
+  margin: 0; padding: 4px 2px; border: none; background: none; cursor: pointer;
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--artc-coral-ink-dark);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.artc-filter__more:hover { color: var(--artc-ink, #1B1B1B); }
+.artc-filter__more:focus-visible { outline: 2px solid var(--artc-teal); outline-offset: 2px; border-radius: 4px; }
 .artc-empty {
   text-align: center; color: var(--artc-muted);
   padding: 30px 16px 40px; margin: 0;
