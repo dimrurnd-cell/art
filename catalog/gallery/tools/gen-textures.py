@@ -11,6 +11,9 @@
     python3 catalog/gallery/tools/gen-textures.py
 Результат: catalog/static/artcatalog/gallery-assets/{hi,lo}/<материал>_{color,normal,orm}.webp
     hi — для компьютера (2048 px у пола и стен), lo — для телефона (вдвое меньше).
+    Рельеф стен и потолка и в hi — 1024 px: «апельсиновая корка» в 2048 px
+    весила 2,3–2,9 МБ на файл (мелкий шум почти не сжимается), а с обычного
+    расстояния разницы не видно.
 Детерминированно: одинаковый результат при каждом запуске.
 """
 import os
@@ -70,7 +73,7 @@ def cavity(h, radius=6):
     return np.clip(1.0 + d / (d.std() * 4 + 1e-9), 0.55, 1.0)
 
 
-def save(name, color, normal, rough, metal=0.0, ao=None, lo_scale=0.5):
+def save(name, color, normal, rough, metal=0.0, ao=None, lo_scale=0.5, normal_scale=1.0):
     n = normal.shape[0]
     ao = np.ones((n, n)) if ao is None else ao
     orm = np.stack([ao, rough, np.full((n, n), metal) if np.isscalar(metal) else metal], -1)
@@ -81,10 +84,11 @@ def save(name, color, normal, rough, metal=0.0, ao=None, lo_scale=0.5):
     }
     if color is not None:
         imgs['color'] = Image.fromarray((color.clip(0, 1) * 255).astype(np.uint8), 'RGB')
-    for tier, k in (('hi', 1.0), ('lo', lo_scale)):
+    for tier, k0 in (('hi', 1.0), ('lo', lo_scale)):
         d = os.path.join(OUT, tier)
         os.makedirs(d, exist_ok=True)
         for kind, im in imgs.items():
+            k = min(k0, normal_scale) if kind == 'normal' else k0
             if k != 1.0:
                 im = im.resize((int(n * k), int(n * k)), Image.LANCZOS)
             q = 92 if kind == 'normal' else 88
@@ -135,7 +139,7 @@ def plaster(name, rgb, strength, rough_base):
     gray = norm01(wave * 0.6 + spectral(n, 2.6, hi=60) * 0.4)
     color = tint(gray, rgb, 0.012)
     rough = rough_base + norm01(peel) * 0.06
-    save(name, color, normal_map(h, strength), rough, 0.0, cavity(peel, 3) * 0.2 + 0.8)
+    save(name, color, normal_map(h, strength), rough, 0.0, cavity(peel, 3) * 0.2 + 0.8, normal_scale=0.5)
 
 
 def oak():

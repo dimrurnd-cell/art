@@ -76,10 +76,36 @@ export class TextureManager {
 
   /* ---------------- атлас ---------------- */
 
+  /* Скачивание атласа начинается сразу при создании зала — параллельно со
+     сборкой помещения, а не после неё. Бережный режим (телефоны Android):
+     страницы вдвое меньше — вчетверо меньше памяти; если на сервере есть
+     готовые уменьшенные (json.half), качаем их: втрое-вчетверо меньше
+     трафика, чем полная страница, уменьшаемая уже на телефоне */
+  prefetchAtlas() {
+    if (this.pre) return this.pre;
+    // атлас — без таймаута: он не занимает очередь картин, а на медленной
+    // сети страница в мегабайт идёт дольше 20 с
+    const json = this.fetchT(this.bridge.url('atlas.json'), (r) => { if (!r.ok) throw new Error('atlas.json: ' + r.status); return r.json(); }, 0);
+    const pages = json.then((j) => {
+      const half = this.lean && j.size ? Math.round(j.size / 2) : 0;
+      const small = half && Array.isArray(j.half) && j.half.length === j.pages.length ? j.half : null;
+      return j.pages.map((p, i) => {
+        const pr = small
+          ? this.fetchImage(this.bridge.url(small[i]), 0, 0).catch(() => this.fetchImage(this.bridge.url(p), half, 0))
+          : this.fetchImage(this.bridge.url(p), half, 0);
+        pr.catch(() => {});        // ошибку разберёт loadAtlas — без «необработанного отказа»
+        return pr;
+      });
+    });
+    json.catch(() => {}); pages.catch(() => {});
+    return (this.pre = { json, pages });
+  }
+
   loadAtlas(paintings, onProgress) {
     const done = (n, total) => { if (onProgress) onProgress(n, total); };
-    return this.fetchT(this.bridge.url('atlas.json'), (r) => { if (!r.ok) throw new Error('atlas.json: ' + r.status); return r.json(); })
-      .then((json) => {
+    const pre = this.prefetchAtlas();
+    return pre.json
+      .then((json) => pre.pages.then((list) => {
         if (this.closed) return;
         // paintings — живой список собранных залов: он растёт по мере сборки
         this.plan = paintings;
@@ -87,9 +113,7 @@ export class TextureManager {
         for (const it of paintings) it.cell = json.items[it.work.thumb] || null;
         let n = 0;
         done(0, json.pages.length);
-        // бережный режим: страницы атласа вдвое меньше — вчетверо меньше памяти
-        const half = this.lean && json.size ? Math.round(json.size / 2) : 0;
-        return Promise.all(json.pages.map((p, i) => this.fetchImage(this.bridge.url(p), half).then((img) => {
+        return Promise.all(list.map((pr, i) => pr.then((img) => {
           if (this.closed) { if (img.close) img.close(); return; }
           const t = this.makeTexture(img);
           this.atlas.pages[i] = t;
@@ -98,6 +122,7 @@ export class TextureManager {
           }
           done(++n, json.pages.length);
         }).catch(() => {
+          const p = json.pages[i];
           // страница не пришла: её работы грузят свои 400 px, как без атласа.
           // Иначе дальние работы висели бы пустыми, а бюджет памяти не
           // соблюдался бы: спуститься «до атласа» им некуда
@@ -108,7 +133,7 @@ export class TextureManager {
           }
           done(++n, json.pages.length);
         })));
-      })
+      }))
       .catch(() => { this.atlas = null; done(1, 1); });   // атласа нет — работаем без него
   }
 
@@ -150,7 +175,7 @@ export class TextureManager {
   fetchT(src, read, ms = 20000) {
     if (typeof AbortController !== 'function') return fetch(src, { mode: 'cors', credentials: 'omit' }).then(read);
     const c = new AbortController();
-    const timer = setTimeout(() => c.abort(), ms);
+    const timer = ms ? setTimeout(() => c.abort(), ms) : 0;
     this.fetches.add(c);
     const end = () => { clearTimeout(timer); this.fetches.delete(c); };
     return fetch(src, { mode: 'cors', credentials: 'omit', signal: c.signal })
@@ -174,14 +199,14 @@ export class TextureManager {
     }
   }
 
-  fetchImage(src, width) {
+  fetchImage(src, width, ms) {
     if (this.closed) return Promise.reject(new Error('closed'));
     if (this.bitmaps) {
-      return this.fetchT(src, (r) => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+      return this.fetchT(src, (r) => { if (!r.ok) throw new Error(r.status); return r.blob(); }, ms)
         .then((b) => createImageBitmap(b, Object.assign({ premultiplyAlpha: 'none', colorSpaceConversion: 'none' },
           width ? { resizeWidth: width, resizeQuality: 'high' } : {})))
         .catch((e) => {
-          if (!this.closed && /\.webp(\?|$)/.test(src)) return this.fetchImage(src.replace(/\.webp(\?|$)/, '.jpg$1'), width);
+          if (!this.closed && /\.webp(\?|$)/.test(src)) return this.fetchImage(src.replace(/\.webp(\?|$)/, '.jpg$1'), width, ms);
           throw e;
         });
     }

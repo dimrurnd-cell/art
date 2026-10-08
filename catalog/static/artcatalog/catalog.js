@@ -564,9 +564,11 @@
       var card = el('div', 'artc-card');
       card.innerHTML =
         '<button type="button" class="artc-card__inner" data-artist="' + gi + '">' +
-          '<span class="artc-card__cover">' + pictureHTML(self.url(a.works[0].thumb), 'Работа: ' + (a.works[0].title || a.name), i >= per) + '</span>' +
+          // все ленивые: на старте каталог скрыт (видна стена зала), и без
+          // этого его обложки качались бы вместе с первыми картинами зала
+          '<span class="artc-card__cover">' + pictureHTML(self.url(a.works[0].thumb), 'Работа: ' + (a.works[0].title || a.name), true) + '</span>' +
           '<span class="artc-card__meta">' +
-            '<span class="artc-card__ava">' + pictureHTML(self.url(a.avatar), a.name, i >= per) + '</span>' +
+            '<span class="artc-card__ava">' + pictureHTML(self.url(a.avatar), a.name, true) + '</span>' +
             '<span class="artc-card__text"><span class="artc-card__name">' + esc(a.name) + '</span>' +
             '<span class="artc-card__city">' + esc(a.city) + '</span></span>' +
           '</span>' +
@@ -1358,33 +1360,72 @@
 
   /* Ближние отрезки — видны и с картинками; дальние скрыты и выгружены */
   Widget.prototype.wallLoad = function (si) {
-    var segs = this.hall.segs;
+    var self = this, h = this.hall, segs = h.segs;
+    var on = function (im) {
+      im.setAttribute('data-on', '1');
+      im.onerror = function () {
+        var jpg = this.getAttribute('data-src');
+        if (jpg && this.src.indexOf(jpg) === -1) this.src = jpg;
+      };
+      im.src = im.getAttribute('data-webp');
+    };
+    // Старт: сначала три ближайшие картины по ходу стены (она уходит
+    // вправо), остальные и анимация куратора — когда пришла первая из них
+    // (или через 2 с). Иначе 8–10 картин по 800 px и куратор (≈800 КБ)
+    // делили бы канал, и первая картина появлялась бы последней
+    var wave = !h.primed;
+    var prime = function () {
+      if (h.primed) return;
+      h.primed = true;
+      clearTimeout(h.primeT);
+      if (self.hall === h) self.wallLoad(h.segI);
+    };
     for (var i = 0; i < segs.length; i++) {
       var d = Math.abs(i - si), e = segs[i].el;
       var show = d <= W_SHOW;
       if ((e.style.display === 'none') === show) e.style.display = show ? '' : 'none';
       if (segs[i].guide) {
         segs[i].guide.el.style.display = show ? '' : 'none';
-        if (show) this.guideAnim(segs[i].guide);
+        if (show && !wave) this.guideAnim(segs[i].guide);
       }
+      if (wave) continue;
       var imgs = e.getElementsByTagName('img');
       for (var k = 0; k < imgs.length; k++) {
-        var im = imgs[k], webp = im.getAttribute('data-webp');
-        if (!webp) continue;
-        if (d <= W_NEAR && im.getAttribute('data-on') !== '1') {
-          im.setAttribute('data-on', '1');
-          im.onerror = function () {
-            var jpg = this.getAttribute('data-src');
-            if (jpg && this.src.indexOf(jpg) === -1) this.src = jpg;
-          };
-          im.src = webp;
-        } else if (d > W_KEEP && im.getAttribute('data-on') === '1') {
+        var im = imgs[k];
+        if (!im.getAttribute('data-webp')) continue;
+        // 't' — пока показано превью первой волны: теперь — крупная картинка
+        if (d <= W_NEAR && im.getAttribute('data-on') !== '1') on(im);
+        else if (d > W_KEEP && im.getAttribute('data-on') === '1') {
           im.onerror = null;
           im.removeAttribute('data-on');
           im.src = BLANK;
         }
       }
     }
+    if (!wave || h.waveOn) return;             // первая волна уже идёт
+    h.waveOn = true;
+    var picked = 0;
+    for (var j = si; j < segs.length && j <= si + W_NEAR && picked < 3; j++) {
+      var list = segs[j].el.getElementsByTagName('img');
+      for (var m = 0; m < list.length && picked < 3; m++) {
+        var pim = list[m];
+        if (!pim.getAttribute('data-webp') || pim.getAttribute('data-on') === '1') continue;
+        picked++;
+        pim.setAttribute('fetchpriority', 'high');
+        // load от прежней заглушки (BLANK) не считается
+        pim.addEventListener('load', function () { if (this.src.indexOf('data:') !== 0) prime(); });
+        // сначала превью 400 px (втрое легче; его же берёт каталог), крупная
+        // картинка — со второй волной: браузер держит превью, пока она идёт
+        var big = pim.getAttribute('data-webp'), thumb = big.replace(/-800\.webp(\?|$)/, '-400.webp$1');
+        if (thumb !== big) {
+          pim.setAttribute('data-on', 't');
+          pim.onerror = function () { on(this); };
+          pim.src = thumb;
+        } else on(pim);
+      }
+    }
+    if (!picked) prime();                     // рядом картин нет — грузим как обычно
+    else if (!h.primeT) h.primeT = setTimeout(prime, 2000);
   };
 
   /* Движение куратора: анимированный WebP с прозрачностью — обычная

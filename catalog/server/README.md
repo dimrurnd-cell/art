@@ -20,7 +20,8 @@
 /home/develop/donexpo/static/artcatalog/
 ├── catalog.js
 ├── gallery.js         ← 3D-галерея, грузится, когда зритель долистал до неё
-├── gallery-assets/    ← фактуры помещения (hi — компьютер, lo — телефон), ~11 МБ
+├── gallery-assets/    ← фактуры помещения (hi — компьютер, lo — телефон), ~7 МБ;
+│                         ltc.bin — таблицы площадного света (грузятся только в SD/HD)
 ├── music/             ← тихая музыка зала: 7 пьес MP3 (~22 МБ) и CREDITS.txt
 ├── curator/           ← куратор: faq.json, kb.md, фото (figure.webp, face.webp), движение (idle.mp4/.webm/.webp)
 ├── avatars/           ← онлайн-режим: 16 аватаров f0…m7 (.glb, портреты .webp), anims.glb, CREDITS.txt, ~6 МБ
@@ -31,7 +32,8 @@
 ├── fonts/parangon.woff2
 └── img/
     ├── logo.webp, logo.png
-    ├── atlas/       atlas-0.webp, atlas-1.webp … — мелкие копии всех работ
+    ├── atlas/       atlas-0-….webp … — мелкие копии всех работ; …-half.webp —
+    │                они же вдвое меньше, для телефонов Android
     ├── volvich/     avatar.*, work1-400.*, work1-800.*, work1-1600.* …
     ├── dzhakhaeva/  …
     ├── zhegulova/   …
@@ -45,7 +47,8 @@
 `tools/build-atlas.html` из репозитория, укажите адрес
 `https://donexpocentre.ru/static/artcatalog/`, нажмите «Собрать атлас» и
 залейте скачанные файлы: `atlas.json` — в корень папки каталога,
-`atlas-N-xxxxxxxx.webp` — в `img/atlas/` (старые страницы атласа можно удалить).
+`atlas-N-xxxxxxxx.webp` и `atlas-N-xxxxxxxx-half.webp` — в `img/atlas/`
+(старые страницы атласа можно удалить).
 Повторять при каждом изменении состава работ.
 Без атласа галерея работает, но дальние работы до подгрузки видны пустыми.
 
@@ -95,13 +98,13 @@ ls -l catalog.js fonts/parangon.woff2 img/logo.webp
 
 | Файл | Байт |
 |---|---|
-| `catalog.js` | 213 420 |
-| `catalog.css` | 24 214 |
+| `catalog.js` | 215 973 |
+| `catalog.css` | 24 807 |
 | `hall.css` | 59 057 |
 | `artists.json` | 324 671 |
 | `artists.js` | 256 705 |
-| `catalog-standalone.css` | 110 639 |
-| `gallery.js` | 1 131 351 |
+| `catalog-standalone.css` | 111 232 |
+| `gallery.js` | 884 643 |
 | `fonts/parangon.woff2` | 20 328 |
 | `img/logo.webp` | 31 726 |
 | `curator/figure.webp` | 42 828 |

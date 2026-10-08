@@ -15,6 +15,13 @@
   font-display: swap;
 }
 
+/* Место под каталог, пока скрипт его не построил: без этого вся страница
+   ниже блока прыгала вниз на 800–1200 px, когда каталог появлялся (сдвиг
+   макета). Чуть меньше настоящей высоты — чтобы не оставалось пустоты */
+#artrostov-catalog:empty { min-height: 950px; }
+@media (max-width: 600px) { #artrostov-catalog:empty { min-height: 720px; } }
+@media (min-width: 1600px) { #artrostov-catalog:empty { min-height: 1080px; } }
+
 .artc-root {
   --artc-bg: #EFE3C3;
   --artc-card: #FBF5E4;

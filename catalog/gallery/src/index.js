@@ -199,9 +199,15 @@ class Gallery {
       console.warn('[artgallery] шейдер не собрался:', log);
     };
 
+    // картинки работ: атлас превью начинаем качать сразу, пока строится зал
+    this.tex = new TextureManager(renderer, bridge, this.light, this.lean);
+    this.tex.prefetchAtlas();
+
     this.plan = buildLayout(bridge.artists, bridge.sections);
     const tb = performance.now();
     this.world = new World(renderer, this.plan, bridge);
+    // таблицы площадного света — параллельно со сборкой зала («Эконому» не нужны)
+    const ltc = this.weak ? null : this.world.needLTC();
     this.props = new Props(this.world);
     this.world.props = this.props;
     this.marks = new FloorMarks(this.world.scene);
@@ -240,7 +246,6 @@ class Gallery {
     this.camera = new THREE.PerspectiveCamera(62, 1, 0.05, 140);
     this.camera.rotation.order = 'YXZ';
     this.nav = new Nav(this.plan);
-    this.tex = new TextureManager(renderer, bridge, this.light, this.lean);
     // мебель и оборудование: отражения, растения, экран, скульптура, свет по датчику, звуки
     const pr = this.props;
     pr.reflectMats().forEach((m) => this.probe.patch(m));
@@ -285,6 +290,10 @@ class Gallery {
     const pbr = this.world.pbr;
     const texTotal = Object.keys(pbr.cache).length;
     let atlasN = 0, atlasT = 1, atlasDone = false;
+    // площадный свет включается до прогрева шейдеров — иначе после показа
+    // зала все материалы пересобрались бы заново
+    let ltcDone = !ltc;
+    if (ltc) ltc.then(() => { ltcDone = true; progress(); }, () => { ltcDone = true; progress(); });
     const progress = () => {
       if (this.dead) return;                   // зал закрыли, пока грузилось
       const texDone = texTotal - pbr.pending;
@@ -292,7 +301,7 @@ class Gallery {
       bar.firstChild.style.width = (frac * 100) + '%';
       // последние 8 % — прогрев шейдеров (warm): загрузчик не стоит на 100 %
       if (bridge.onProgress) bridge.onProgress(frac * 0.92);
-      if (atlasDone && pbr.pending <= 0) {
+      if (atlasDone && pbr.pending <= 0 && ltcDone) {
         clearTimeout(this.revealT);
         clearTimeout(this.showT);
         this.showT = setTimeout(reveal, 120);    // дать кадру отрисоваться, потом снять завесу
@@ -1450,11 +1459,14 @@ class Gallery {
       };
       const job = all()
         .then(() => { lights.forEach((l) => { l.visible = false; }); return all(); })
-        .then(() => { lights.forEach((l, i) => { l.visible = on[i]; }); });
+        .then(() => { lights.forEach((l, i) => { l.visible = on[i]; }); this.world.applyLights(); });
       return Promise.race([job, new Promise((r) => setTimeout(r, 6000))]).catch(() => {}).then(() => {
         if (this.dead) return;                   // зал закрыли во время прогрева
         restore();
         lights.forEach((l, i) => { l.visible = on[i]; });
+        // таблицы площадного света могли прийти во время прогрева: свет — по
+        // текущему уровню, а не по снимку до прогрева
+        this.world.applyLights();
         this.atmo.setEnabled(atmoOn);
         this.quality.render();                   // проходы постобработки HD — тоже заранее
         this.updateVisibility();

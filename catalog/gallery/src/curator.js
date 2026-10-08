@@ -140,7 +140,9 @@ export class Curator {
     v.playsInline = true;
     v.setAttribute('playsinline', '');
     v.setAttribute('muted', '');
-    v.preload = 'auto';
+    // ролик (≈400 КБ) — когда понадобится: при первом play() в холле. Иначе он
+    // качался бы вместе с атласом и фактурами и задерживал показ зала
+    v.preload = 'metadata';
     const tex = new THREE.VideoTexture(v);
     tex.colorSpace = THREE.SRGBColorSpace;
     const mat = stackedAlpha(new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.08, toneMapped: false }));

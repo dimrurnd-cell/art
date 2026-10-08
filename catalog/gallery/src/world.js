@@ -19,7 +19,7 @@ import { project, cut } from './visibility.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { PBR } from './pbr.js';
-import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
+import { loadLTC } from './ltc.js';
 import {
   ART_Y, COR_W, COR_H, ARCH_W, ARCH_H, WALL_T, SPINE_T, SPINE_H, DOOR_W, DOOR_H, aisleX,
 } from './layout.js';
@@ -400,8 +400,9 @@ export class World {
     this.plane(W, D, this.ceilMat(W, D), 0, H, 0, 0, Math.PI / 2);
 
     // световые панели заподлицо с потолком; два ряда — настоящие площадные
-    // источники: мягкий свет без резких теней, как от светового короба
-    RectAreaLightUniformsLib.init();
+    // источники: мягкий свет без резких теней, как от светового короба.
+    // Их таблицы (ltc.bin) приходят отдельно: до них площадный свет скрыт,
+    // холл светят обычные лампы (см. setDetail)
     for (let ix = -1; ix <= 1; ix++) {
       for (let iz = -1; iz <= 1; iz += 2) {
         this.plane(W / 4.2, 1.1, M.light, ix * W / 3.3, H - 0.01, iz * D / 4.5, 0, Math.PI / 2);
@@ -411,13 +412,14 @@ export class World {
       const ra = new THREE.RectAreaLight(0xfff6ea, 3.2, W * 0.85, 1.4);
       ra.position.set(0, H - 0.02, iz * D / 4.5);
       ra.lookAt(0, 0, iz * D / 4.5);
+      ra.visible = !!this.ltcReady;
       this.add(ra);
       this.areaLights.push(ra);
       // замена для «Эконома»: простые материалы площадный свет не видят —
       // обычная лампа на месте светильника, дальность — в пределах холла
       const pl = new THREE.PointLight(0xfff6ea, ECO_LAMP, Math.max(W, D) * 0.9, 1);
       pl.position.set(0, H - 0.6, iz * D / 4.5);
-      pl.visible = false;
+      pl.visible = !this.ltcReady;
       this.add(pl);
       this.ecoLights.push(pl);
     });
@@ -885,12 +887,41 @@ export class World {
     // «Эконом»: без площадных светильников холла (самый дорогой свет) — вместо
     // них ярче общий свет; без рельефа (карт нормалей) на стенах, полу, рамах
     const eco = level === 'eco';
-    this.areaLights.forEach((l) => { l.visible = !eco; });
-    this.ecoLights.forEach((l) => { l.visible = eco; });
+    this.level = level;
+    // площадный свет — только когда пришли его таблицы; пока их нет (или они
+    // не загрузились) холл светят обычные лампы на местах светильников
+    if (!eco) this.needLTC();
+    this.applyLights();
     if (this.hemiBase == null) this.hemiBase = this.hemi.intensity;
     this.hemi.intensity = this.hemiBase * (eco ? ECO_HEMI : 1);
     this.eco = eco;
     if (eco) this.ecoSweep(); else this.ecoRestore();
+  }
+
+  /* Какой свет в холле: площадный (SD, HD — когда пришли таблицы) или
+     обычные лампы на местах светильников */
+  applyLights() {
+    const area = this.level !== 'eco' && !!this.ltcReady;
+    this.areaLights.forEach((l) => { l.visible = area; });
+    this.ecoLights.forEach((l) => { l.visible = !area; });
+  }
+
+  /* Таблицы площадного света (gallery-assets/ltc.bin): промис; пришли —
+     светильники холла включаются в текущем уровне качества */
+  needLTC() {
+    if (this.ltcReady) return Promise.resolve(true);
+    if (!this.ltcJob) {
+      this.ltcJob = loadLTC(this.bridge.url('gallery-assets/ltc.bin')).then(() => {
+        this.ltcReady = true;
+        if (this.level) this.setDetail(this.level);
+        return true;
+      });
+      this.ltcJob.catch((e) => {
+        this.ltcJob = null;                  // при следующей смене уровня — ещё попытка
+        if (window.console) console.warn('[artgallery] площадный свет недоступен:', e && e.message);
+      });
+    }
+    return this.ltcJob;
   }
 
   /* «Эконом»: физические материалы (MeshStandard: блики, рельеф, отражения) →

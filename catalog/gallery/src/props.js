@@ -550,6 +550,10 @@ export class Props {
     this.screenLight = new THREE.RectAreaLight(0xffffff, 1.4, sw, sh);
     this.screenLight.position.set(0, y, z + 0.05);
     this.screenLight.lookAt(0, y, z + 5);
+    // площадный — как светильники холла: виден, когда пришли таблицы (ltc.bin)
+    // и уровень не «Эконом»; переключает World.setDetail
+    this.screenLight.visible = !!W.ltcReady && W.level !== 'eco';
+    W.areaLights.push(this.screenLight);
     W.add(this.screenLight);
     W.target = prev;
 

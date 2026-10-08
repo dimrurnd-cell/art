@@ -137,11 +137,27 @@ async function buildAtlas(base, log) {
     var tag = fnv(new Uint8Array(await blob.arrayBuffer()));
     files.push({ name: 'img/atlas/atlas-' + n + '-' + tag + '.' + ext, blob: blob, canvas: pages[n] });
   }
+  // те же страницы вдвое меньше — для телефонов Android (бережный режим):
+  // иначе они качают полную страницу и уменьшают её у себя
+  var halves = [];
+  for (var m = 0; m < pages.length; m++) {
+    var hc = document.createElement('canvas');
+    hc.width = hc.height = SIZE / 2;
+    var hx = hc.getContext('2d');
+    hx.imageSmoothingQuality = 'high';
+    hx.drawImage(pages[m], 0, 0, SIZE / 2, SIZE / 2);
+    var hb = await blobOf(hc);
+    var hext = hb.type === 'image/webp' ? 'webp' : 'jpg';
+    var htag = fnv(new Uint8Array(await hb.arrayBuffer()));
+    halves.push({ name: 'img/atlas/atlas-' + m + '-' + htag + '-half.' + hext, blob: hb, canvas: hc });
+  }
   var json = {
     v: 1, size: SIZE, cell: CELL,
     pages: files.map(function (f) { return f.name; }),
+    half: halves.map(function (f) { return f.name; }),
     items: items,
   };
+  files = files.concat(halves);
   if (missing.length) log('Без превью (файла нет): ' + missing.length + '\n  ' + missing.slice(0, 12).join('\n  ') + (missing.length > 12 ? '\n  …' : ''));
   log('Готово: ' + Object.keys(items).length + ' работ в ' + files.length + ' стр.');
   return { json: json, files: files, missing: missing };
