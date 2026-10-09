@@ -97,40 +97,43 @@ sudo nano /etc/nginx/conf.d/ssl.conf
 Главное в нём — строки `Upgrade` и `Connection "upgrade"`: без них
 онлайн-режим не подключится. Затем:
 
-Второй блок в файле — `location /api/artcatalog/live/admin` — закрывает
-страницу модератора вторым паролем (см. ниже). Вставьте оба блока, затем
-создайте файл второго пароля.
-
-### Второй пароль на странице модератора
-
-Браузер спросит логин и пароль ещё до пароля модератора: страницу не
-перебрать с чужих адресов. Пароль вводится с клавиатуры дважды (на экране
-не виден) и не остаётся в истории команд:
-
 ```bash
-printf 'moder:%s\n' "$(openssl passwd -apr1)" | sudo tee /etc/nginx/artcatalog-admin.htpasswd >/dev/null
-grep -m1 '^user' /etc/nginx/nginx.conf
+sudo nginx -t && sudo systemctl reload nginx
+curl -s https://donexpocentre.ru/api/artcatalog/live/ping
 ```
 
-Вторая команда показывает, от какого пользователя работает nginx (обычно
-`nginx`). Ему нужно право читать файл паролей:
+### По желанию: второй замок на страницу модератора
+
+Страницу модератора защищают пароль модератора и лимит попыток. Если хотите
+ещё один замок — логин и пароль, которые браузер спросит до пароля
+модератора, — в `nginx-live.conf` есть закомментированный блок
+`location /api/artcatalog/live/admin`. Вставьте его в `ssl.conf` после блока
+онлайн-режима без знаков `#` в начале строк и создайте файл паролей.
+Команды — по одной, строку за строкой:
+
+```bash
+sudo -v
+read -rsp 'Второй пароль: ' P; echo
+H=$(printf '%s\n' "$P" | openssl passwd -apr1 -stdin); unset P
+echo "$H" | grep -q '^\$apr1\$' && printf 'moder:%s\n' "$H" | sudo tee /etc/nginx/artcatalog-admin.htpasswd >/dev/null; unset H
+sudo grep -c '^moder:\$apr1\$' /etc/nginx/artcatalog-admin.htpasswd
+```
+
+`sudo -v` заранее спрашивает пароль `develop`, чтобы дальше `sudo` не
+перехватывал ввод. Второй пароль вводится один раз (на экране не виден):
+только латинские буквы и цифры — с русскими вход в окне браузера
+срабатывает не везде. Последняя команда должна вывести `1`. Затем дайте nginx право читать файл
+(вместо `nginx` — имя из строки `user` в `/etc/nginx/nginx.conf`, если там
+другое) и проверьте:
 
 ```bash
 sudo chown root:nginx /etc/nginx/artcatalog-admin.htpasswd
 sudo chmod 640 /etc/nginx/artcatalog-admin.htpasswd
-```
-
-(вместо `nginx` — имя из строки `user`, если там другое). Логин — `moder`,
-пароль — новый, не такой, как пароль модератора. Сменить его — та же первая
-команда.
-
-```bash
 sudo nginx -t && sudo systemctl reload nginx
-curl -s https://donexpocentre.ru/api/artcatalog/live/ping
 curl -s -o /dev/null -w '%{http_code}\n' https://donexpocentre.ru/api/artcatalog/live/admin
 ```
 
-`ping` отвечает как раньше, страница модератора без второго пароля — `401`.
+Страница модератора без второго пароля — `401`, логин — `moder`.
 
 ## Шаг 7. Tilda — включить онлайн-режим на странице
 
@@ -167,12 +170,14 @@ curl -s -o /dev/null -w '%{http_code}\n' https://donexpocentre.ru/api/artcatalog
 
 1. Откройте в браузере (на компьютере удобнее):
    **https://donexpocentre.ru/api/artcatalog/live/admin**
-2. Браузер спросит логин и пароль — это второй пароль (логин `moder`,
-   шаг 6). Затем на странице введите пароль модератора — тот, что вписан
-   после `LIVE_ADMIN_PASSWORD=` в `/etc/artcatalog-live.env` (шаг 3). Браузер помнит вход 12 часов;
-   «Выйти» — справа вверху.
-3. Забыли пароль — задайте новый: `sudo nano /etc/artcatalog-live.env`,
-   исправьте строку, сохраните, затем `sudo systemctl restart artcatalog-live`.
+2. Введите пароль модератора — тот, что вписан после `LIVE_ADMIN_PASSWORD=`
+   в `/etc/artcatalog-live.env` (шаг 3). Если включён второй замок (шаг 6),
+   браузер сначала спросит логин `moder` и второй пароль. Браузер помнит
+   вход 12 часов; «Выйти» — справа вверху.
+3. Забыли пароль — посмотрите его на сервере (никому не пересылайте):
+   `sudo grep '^LIVE_ADMIN_PASSWORD=' /etc/artcatalog-live.env`. Задать
+   новый — `sudo nano /etc/artcatalog-live.env`, исправьте строку (не короче
+   12 символов), сохраните, затем `sudo systemctl restart artcatalog-live`.
 
 Не пересылайте пароль и не входите с чужих компьютеров. Пять неверных
 попыток подряд — вход с этого адреса закрывается на 15 минут.
