@@ -2277,7 +2277,8 @@
       return r.json().then(function (d) { return { status: r.status, d: d || {} }; });
     }).then(function (res) {
       clearTimeout(timer);
-      if (res.d.answer) cb(res.d.answer, res.d.voice ? url + res.d.voice : null);
+      // s — подпись службы: в историю для нейросети она берёт только свои ответы
+      if (res.d.answer) cb(res.d.answer, res.d.voice ? url + res.d.voice : null, res.d.s);
       else if (res.status === 429 && res.d.error) cb(res.d.error);
       else local();
     }).catch(function () { clearTimeout(timer); local(); });
@@ -2632,13 +2633,13 @@
     p.classList.add('is-busy');
     var t0 = Date.now();
     this.curatorStop();
-    this.curatorAsk(q, function (a, voice) {
+    this.curatorAsk(q, function (a, voice, sig) {
       // многоточие — хотя бы полсекунды, иначе ответ «выпрыгивает»
       setTimeout(function () {
         if (dots.parentNode) dots.parentNode.removeChild(dots);
         self.curBusy = false;
         p.classList.remove('is-busy');
-        self.curLog.push({ q: q, a: a });
+        self.curLog.push(sig ? { q: q, a: a, s: sig } : { q: q, a: a });
         self.curatorMsg('cur', a, false, self.curatorArtist(q));
         self.curatorSpeak(a, voice);
       }, Math.max(0, 600 - (Date.now() - t0)));

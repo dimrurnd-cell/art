@@ -9,9 +9,15 @@
 он живёт здесь, на сервере со статикой каталога. nginx передаёт сюда адрес
 https://<сервер>/api/artcatalog/curator/…, страница на Tilda спрашивает его.
 
-    POST /api/artcatalog/curator/ask/   {"q": "вопрос", "history": [{"q":..,"a":..}], "mode": "3d"|"simple"}
-         → {"answer": "...", "source": "faq"|"ai"|"fallback"}
+    POST /api/artcatalog/curator/ask/   {"q": "вопрос", "history": [{"q":..,"a":..,"s":..}], "mode": "3d"|"simple"}
+         → {"answer": "...", "source": "faq"|"ai"|"fallback", "voice": "...", "s": "подпись"}
     GET  /api/artcatalog/curator/ping   → {"ok": true, "ai": true|false, ...} — проверка
+         (с самого сервера, curl 127.0.0.1:8765/ping, — ещё расход за сутки и последняя ошибка)
+
+История разговора — только пары, подписанные службой (поле «s» из её ответа):
+подложную историю нейросети не подсунуть. Ответ нейросети со ссылкой,
+телефоном, почтой или ценой, которых нет в сведениях о выставке, не
+показывается — вместо него готовый ответ.
 
 Порядок ответа: готовый ответ (curator/faq.json), если вопрос явно про него;
 иначе GigaChat со сведениями о выставке (curator/kb.md) и данными художников
@@ -40,6 +46,7 @@ https://<сервер>/api/artcatalog/curator/…, страница на Tilda �
     YANDEX_TTS_VOICE=vera, YANDEX_TTS_ROLE=casual, YANDEX_TTS_MODEL=livetts
     YANDEX_TTS_DIR      где хранить готовые mp3 (по умолчанию ~/.cache/artcatalog-voice)
     YANDEX_TTS_DAILY=1500   синтезов в сутки (повторы из файлов не считаются)
+    YANDEX_TTS_KEEP_DAYS=30 mp3, которые столько дней никто не слушал, удаляются
 
 Проверка ключа и сертификата без nginx и браузера (ключ читается из файла,
 а не из командной строки — в списке процессов его не видно):
@@ -146,12 +153,13 @@ API = E("GIGACHAT_URL", "https://api.giga.chat/v1").rstrip("/")
 AUTH = E("GIGACHAT_AUTH_URL", "https://ngw.devices.sberbank.ru:9443/api/v2/oauth")
 CA = E("GIGACHAT_CA", "")
 STATIC = E("CURATOR_STATIC", "/home/develop/donexpo/static/artcatalog")
-ORIGINS = [o.strip().rstrip("/") for o in E("CURATOR_ORIGINS", ",".join([
+SITES = [
     "https://monthly-delicious-mirror.tilda.ws",
     "https://xn----7sbh1cajbjfe.xn--p1ai",          # арт-ростов.рф
     "https://www.xn----7sbh1cajbjfe.xn--p1ai",
     "https://donexpocentre.ru",
-])).split(",") if o.strip()]
+]
+ORIGINS = [o.strip().rstrip("/") for o in E("CURATOR_ORIGINS", ",".join(SITES)).split(",") if o.strip()]
 NAME = E("CURATOR_NAME", "Татьяна")
 HOST = E("CURATOR_HOST", "127.0.0.1")
 PORT = int(E("CURATOR_PORT", "8765"))
@@ -166,8 +174,12 @@ TTS_MODEL = E("YANDEX_TTS_MODEL", "livetts")
 TTS_URL = E("YANDEX_TTS_URL", "https://tts.api.cloud.yandex.net/tts/v3/utteranceSynthesis")
 TTS_DIR = os.path.expanduser(E("YANDEX_TTS_DIR", "~/.cache/artcatalog-voice"))
 TTS_DAILY = int(E("YANDEX_TTS_DAILY", "1500"))
+TTS_KEEP_DAYS = int(E("YANDEX_TTS_KEEP_DAYS", "30"))
 # подпись ссылок на озвучку: озвучить можно только то, что ответила служба
 TTS_SECRET = hashlib.sha256(("artcatalog-voice:" + TTS_KEY).encode("utf-8")).digest()
+# подпись истории разговора: в историю для нейросети — только ответы самой службы
+HIST_SECRET = hashlib.sha256(("artcatalog-history:" + KEY).encode("utf-8")).digest()
+eq = getattr(hmac, "compare_digest", lambda x, y: x == y)
 
 Q_MAX = 300          # вопрос длиннее не принимаем
 ANSWER_MAX = 600     # ответ длиннее обрезаем
@@ -207,7 +219,72 @@ def load():
             kb=_read(os.path.join(cur, "kb.md"), lambda s: s, ""),
             artists=_read(os.path.join(STATIC, "artists.json"), json.loads, {"artists": [], "sections": []}),
         )
+        _data["known"] = known(_data)
         return _data
+
+
+# ---------------- проверка ответа нейросети ----------------
+
+LINK_RE = re.compile(r"(?:https?://|www\.)[^\s,;«»()]+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+"
+                     r"|\b[\w-]+(?:\.[\w-]+)*\.(?:ru|рф|su|com|net|org|io|me|info|online|site|pro|art|shop|store|biz)\b"
+                     r"(?:/[^\s,;«»()]*)?",
+                     re.I | re.U)
+PHONE_RE = re.compile(r"\+?\d[\d\s()\-]{8,}\d", re.U)
+PRICE_RE = re.compile(r"\d[\d\s.,]*\s*(?:(?:тыс|млн)\.?\s*)?(?:₽|руб|р\.|\$|€|долл|евро)", re.I | re.U)
+
+
+def digits(s):
+    return re.sub(r"\D", "", s)
+
+
+def links(text):
+    # без схемы, «www.» и «/» в конце: https://сайт.рф/ и сайт.рф — один адрес
+    return set(re.sub(r"^(?:https?://)?(?:www\.)?", "", m.group(0).lower().rstrip(".,!?:")).rstrip("/")
+               for m in LINK_RE.finditer(text))
+
+
+def phones(text):
+    # телефон — 10 и больше цифр; сравниваем по последним 10 (+7 и 8 в начале — одно и то же)
+    return set(digits(m.group(0))[-10:] for m in PHONE_RE.finditer(text) if len(digits(m.group(0))) >= 10)
+
+
+def prices(text):
+    return set(digits(m.group(0)) for m in PRICE_RE.finditer(text))
+
+
+def known(d):
+    """Ссылки, телефоны и цены из сведений о выставке, готовых ответов и данных
+    художников — только их нейросеть может называть"""
+    parts = [d["kb"], FALLBACK, d["faq"].get("fallback") or "", d["faq"].get("greeting") or ""]
+    for it in d["faq"].get("items", []):
+        parts += [it.get("a") or "", it.get("a_simple") or ""]
+    for a in d["artists"].get("artists", []):
+        parts += [a.get("bio") or "", " ".join(txt(x) for x in (a.get("links") or []) if isinstance(x, TEXT))]
+        parts += [txt(x.get("url") or "") for x in (a.get("links") or []) if isinstance(x, dict)]
+    # и сайты, где стоит каталог (арт-ростов.рф — и в русской записи)
+    for o in ORIGINS + SITES:
+        host = urlparse(o).netloc or o
+        parts.append(host)
+        try:
+            parts.append(host.encode("ascii").decode("idna"))
+        except Exception:
+            pass
+    text = "\n".join(parts)
+    return {"text": text.lower(), "links": links(text), "phones": phones(text), "prices": prices(text)}
+
+
+def unsafe(answer):
+    """Что в ответе нейросети не из сведений о выставке: ссылка, телефон, цена.
+    Такой ответ не показываем — нейросеть могла выдумать или её «уговорили»"""
+    k = load()["known"]
+    for l in links(answer):
+        if l not in k["links"] and l not in k["text"]:
+            return "ссылка"
+    if phones(answer) - k["phones"]:
+        return "телефон"
+    if prices(answer) - k["prices"]:
+        return "цена"
+    return None
 
 
 # ---------------- готовые ответы (как в catalog.js) ----------------
@@ -323,12 +400,19 @@ def artists_context(q):
 
 # ---------------- GigaChat ----------------
 
+_ctx = {}
+
+
 def ssl_ctx():
     # системные корневые сертификаты плюс сертификат НУЦ Минцифры: серверы
-    # GigaChat подписаны им, а другие могут быть подписаны обычными центрами
-    ctx = ssl.create_default_context()
-    if CA:
-        ctx.load_verify_locations(cafile=CA)
+    # GigaChat подписаны им, а другие могут быть подписаны обычными центрами.
+    # Создаётся один раз: чтение сертификатов на каждый запрос — лишняя работа
+    ctx = _ctx.get("c")
+    if ctx is None:
+        ctx = ssl.create_default_context()
+        if CA:
+            ctx.load_verify_locations(cafile=CA)
+        _ctx["c"] = ctx
     return ctx
 
 
@@ -389,10 +473,25 @@ def today():
     return "%d %s %d года" % (t.tm_mday, MONTHS[t.tm_mon - 1], t.tm_year)
 
 
+# вопрос про участников: тогда в промпт — весь список художников (≈5,5 тыс. знаков);
+# иначе только их число — промпт втрое короче, ответ дешевле и быстрее
+ABOUT_ARTISTS = ("худож", "автор", "участ", "работ", "картин", "мастер", "студи", "галере", "скульпт",
+                 "живопис", "график", "фотограф", "выставля", "экспон", "фамил", "откуда", "город")
+
+
+def about_artists(q, history):
+    t = " " + norm(" ".join([q] + [h["q"] for h in history])) + " "
+    return " кто " in t or any(p in t for p in ABOUT_ARTISTS) or artist_named(q)
+
+
 def ask_ai(q, history, mode):
     d = load()
     found, names = artists_context(q)
-    context = "Сегодня %s. %s\n\nСВЕДЕНИЯ О ВЫСТАВКЕ:\n%s\n\nХУДОЖНИКИ НА ВЫСТАВКЕ: %s" % (today(), MODES[mode], d["kb"], names)
+    if found or about_artists(q, history):
+        who = "ХУДОЖНИКИ НА ВЫСТАВКЕ: %s" % names
+    else:
+        who = "На выставке %d участников; кто они — в каталоге на странице." % len(d["artists"].get("artists", []))
+    context = "Сегодня %s. %s\n\nСВЕДЕНИЯ О ВЫСТАВКЕ:\n%s\n\n%s" % (today(), MODES[mode], d["kb"], who)
     if found:
         context += "\n\nПОДРОБНО О ХУДОЖНИКАХ ИЗ ВОПРОСА:\n" + found
     messages = [{"role": "system", "content": SYSTEM + "\n\n" + context}]
@@ -413,6 +512,39 @@ def ask_ai(q, history, mode):
     text = data["choices"][0]["message"]["content"].strip()
     text = re.sub(r"[*_#`>]+", "", text)               # без markdown
     return text[:ANSWER_MAX]
+
+
+def clean_q(q):
+    return re.sub(r"\s+", " ", txt(q or "")).strip()[:Q_MAX]
+
+
+def sign(q, a):
+    """Подпись пары «вопрос — ответ» (вопрос — как его видела служба)"""
+    msg = (q + "\n" + a).encode("utf-8")
+    return txt(hmac.new(HIST_SECRET, msg, hashlib.sha256).hexdigest()[:32])
+
+
+def signed_history(raw):
+    """Из присланной истории — только подписанные службой пары, последние две.
+    Без подписи (старая страница, ответ из запасных на самой странице, подделка)
+    — пропускаем: иначе посетитель мог бы «напомнить» нейросети чужие реплики"""
+    out = []
+    for h in raw if isinstance(raw, list) else []:
+        if not isinstance(h, dict):
+            continue
+        q, a, s = h.get("q"), h.get("a"), h.get("s")
+        if not (isinstance(q, TEXT) and isinstance(a, TEXT) and isinstance(s, TEXT)):
+            continue
+        q = clean_q(q)
+        if q and a.strip() and eq(txt(s), sign(q, a)):
+            out.append({"q": q, "a": a})
+    return out[-2:]
+
+
+def mask(text):
+    """Для журнала: телефоны и почта посетителя — не храним"""
+    text = re.sub(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", "[почта]", text, flags=re.U)
+    return PHONE_RE.sub(lambda m: "[телефон]" if len(digits(m.group(0))) >= 10 else m.group(0), text)
 
 
 # ---------------- голос: Яндекс SpeechKit ----------------
@@ -464,6 +596,11 @@ def voice_file(vid, text):
     """Путь к mp3: из кеша на диске, иначе синтез (с лимитом в сутки)"""
     path = os.path.join(TTS_DIR, vid + ".mp3")
     if os.path.exists(path):
+        try:
+            if time.time() - os.path.getmtime(path) > 86400:
+                os.utime(path, None)          # слушают — не удалять при очистке
+        except OSError:
+            pass
         return path
     if not store.tts_budget():
         raise RuntimeError("исчерпан суточный лимит озвучки (YANDEX_TTS_DAILY)")
@@ -476,6 +613,35 @@ def voice_file(vid, text):
             f.write(audio)
         os.rename(tmp, path)
     return path
+
+
+def clean_voice():
+    """mp3, которые TTS_KEEP_DAYS дней никто не слушал, и брошенные .tmp — удаляем"""
+    if not os.path.isdir(TTS_DIR):
+        return 0
+    now, n = time.time(), 0
+    for f in os.listdir(TTS_DIR):
+        path = os.path.join(TTS_DIR, f)
+        try:
+            age = now - os.path.getmtime(path)
+            if (f.endswith(".mp3") and age > TTS_KEEP_DAYS * 86400) or (f.endswith(".tmp") and age > 3600):
+                os.remove(path)
+                n += 1
+        except OSError:
+            pass
+    if n:
+        log("озвучка: удалено старых файлов —", n)
+    return n
+
+
+def cleaner():
+    while True:
+        time.sleep(600)
+        try:
+            clean_voice()
+        except Exception as e:
+            log("очистка озвучки:", txt(e))
+        time.sleep(86400 - 600)
 
 
 # ---------------- ограничения и кеш (в памяти процесса) ----------------
@@ -509,7 +675,12 @@ class Store:
             d, n = self.day
             n = n + 1 if d == today else 1
             self.day = (today, n)
-            return n <= DAILY
+        # ранний сигнал: половина, 80 % и весь суточный лимит — в журнал
+        for share in (0.5, 0.8, 1.0):
+            if n == max(1, int(DAILY * share)):
+                log("нейросеть: за сутки %d из %d вопросов (%d %%)%s" % (
+                    n, DAILY, share * 100, " — дальше до полуночи только готовые ответы" if share == 1.0 else ""))
+        return n <= DAILY
 
     def tts_budget(self):
         today = time.strftime("%Y%m%d")
@@ -539,21 +710,25 @@ def answer(q, history, mode):
     item, sure = faq_match(q)
     if item and sure:
         return "faq", faq_answer(item, mode)
-    key = mode + ":" + hashlib.sha1(norm(q).encode("utf-8")).hexdigest()
+    # дата — в ключе: ответ зависит от сегодняшнего дня («выставка уже идёт»)
+    key = mode + ":" + time.strftime("%Y%m%d") + ":" + hashlib.sha1(norm(q).encode("utf-8")).hexdigest()
     got = store.cached(key) if not history else None
     if got:
         return "ai", got
     if KEY and time.time() > store.down_until and store.ai_budget():
         try:
             got = ask_ai(q, history, mode)
-            # в общий кеш — только ответы без истории: историю присылает сам
-            # посетитель, и подложной историей можно было бы «научить» куратора
-            # отвечать что угодно — всем, кто спросит то же самое
-            if not history:
-                store.remember(key, got)
             store.last_error = ""
             store.fails = 0
-            return "ai", got
+            bad = unsafe(got)
+            if bad:
+                log("ответ нейросети не показан (%s не из сведений о выставке): %s" % (bad, mask(got)[:200]))
+            else:
+                # в общий кеш — только ответы без истории: так чужой разговор
+                # не влияет на ответы другим посетителям
+                if not history:
+                    store.remember(key, got)
+                return "ai", got
         except Exception as e:
             store.last_error = "%s: %s" % (type(e).__name__, txt(e))
             code = getattr(e, "code", None)
@@ -608,9 +783,15 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.rstrip("/").endswith("/ping"):
             d = load()
-            self.send(200, {"ok": True, "ai": bool(KEY), "voice": bool(TTS_KEY), "faq": len(d["faq"].get("items", [])),
-                            "artists": len(d["artists"].get("artists", [])), "kb": len(d["kb"]),
-                            "last_error": store.last_error})
+            info = {"ok": True, "ai": bool(KEY), "voice": bool(TTS_KEY), "faq": len(d["faq"].get("items", [])),
+                    "artists": len(d["artists"].get("artists", [])), "kb": len(d["kb"])}
+            # расход и последняя ошибка — только с самого сервера (curl 127.0.0.1:8765/ping):
+            # снаружи запрос приходит через nginx, с X-Real-IP
+            if not self.headers.get("X-Real-IP") and self.client_address[0] in ("127.0.0.1", "::1"):
+                info.update(last_error=store.last_error, ai_today=store.day[1] if store.day[0] == time.strftime("%Y%m%d") else 0,
+                            ai_daily=DAILY, tts_today=store.tts_day[1] if store.tts_day[0] == time.strftime("%Y%m%d") else 0,
+                            tts_daily=TTS_DAILY)
+            self.send(200, info)
         elif "/voice/" in self.path:
             self.voice()
         else:
@@ -649,21 +830,19 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, UnicodeDecodeError):
             self.send(400, {"error": "Некорректный запрос."})
             return
-        q = re.sub(r"\s+", " ", txt(data.get("q") or "")).strip()[:Q_MAX]
+        q = clean_q(data.get("q"))
         if len(q) < 2:
             self.send(400, {"error": "Задайте вопрос."})
             return
-        history = data.get("history") if isinstance(data.get("history"), list) else []
-        history = [h for h in history if isinstance(h, dict) and isinstance(h.get("q"), TEXT) and isinstance(h.get("a"), TEXT)
-                   and h["q"].strip() and h["a"].strip()][-2:]
+        history = signed_history(data.get("history"))
         mode = "simple" if data.get("mode") == "simple" else "3d"
         ip = self.ip()
         if not store.allow(ip):
             self.send(429, {"error": "Давайте немного передохнём — спросите чуть позже."})
             return
         source, text = answer(q, history, mode)
-        log("вопрос [%s, %s]: %s" % (source, mode, q[:200]))
-        self.send(200, {"answer": text, "source": source, "voice": voice_link(text)})
+        log("вопрос [%s, %s%s]: %s" % (source, mode, ", с историей" if history else "", mask(q)[:200]))
+        self.send(200, {"answer": text, "source": source, "voice": voice_link(text), "s": sign(q, text)})
 
 
 class Server(ThreadingMixIn, HTTPServer):
@@ -740,6 +919,9 @@ def main():
         ok = check_voice() and ok
         sys.exit(0 if ok else 1)
     load()
+    t = threading.Thread(target=cleaner)
+    t.daemon = True
+    t.start()
     srv = Server((str(HOST), PORT), Handler)
     log("куратор слушает %s:%d; нейросеть %s; голос %s; сайты: %s" % (HOST, PORT, "включена" if KEY else "ВЫКЛЮЧЕНА (нет GIGACHAT_KEY)",
         ("Яндекс, " + TTS_VOICE) if TTS_KEY else "устройства", ", ".join(ORIGINS)))
