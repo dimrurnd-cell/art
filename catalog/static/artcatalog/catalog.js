@@ -2796,8 +2796,9 @@
       L.up = false;
       self.liveShow();
       if (L.want && !L.banned && !document.hidden) {
-        // переподключение с нарастающей паузой: 1, 2, 4, 8, 15 с
-        var wait = Math.min(15000, 1000 * Math.pow(2, L.retry++));
+        // переподключение с нарастающей паузой: 1, 2, 4, 8, 15 с — с разбросом ±50 %,
+        // чтобы после перезапуска службы посетители не стучались все в одну секунду
+        var wait = Math.min(15000, 1000 * Math.pow(2, L.retry++)) * (0.5 + Math.random());
         clearTimeout(L.retryT);
         L.retryT = setTimeout(function () { if (L.want && !L.ws) self.liveConnect(); }, wait);
       }

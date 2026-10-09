@@ -23,10 +23,11 @@ sudo curl -fsSLO $B/live_server.py
 sudo curl -fsSLO $B/live.env.example
 sudo curl -fsSLO $B/artcatalog-live.service
 sudo curl -fsSLO $B/nginx-live.conf
+sudo curl -fsSLO $B/live-backup.sh
 ls -l
 ```
 
-Должно быть четыре файла. Если GitHub с сервера не открывается — залейте
+Должно быть пять файлов. Если GitHub с сервера не открывается — залейте
 файлы из папки `catalog/server/live/` через WinSCP в `/opt/artcatalog-live/`.
 
 ## Шаг 2. Папка для переписки
@@ -36,7 +37,11 @@ ls -l
 
 ```bash
 sudo -u develop mkdir -p /home/develop/.local/share/artcatalog-live
+sudo chmod 700 /home/develop/.local/share/artcatalog-live
 ```
+
+Переписка и адреса — только владельцу службы: сама служба ставит базе права
+600, а в unit-файле `UMask=0077`.
 
 ## Шаг 3. Настройки и пароль модератора
 
@@ -92,10 +97,40 @@ sudo nano /etc/nginx/conf.d/ssl.conf
 Главное в нём — строки `Upgrade` и `Connection "upgrade"`: без них
 онлайн-режим не подключится. Затем:
 
+Второй блок в файле — `location /api/artcatalog/live/admin` — закрывает
+страницу модератора вторым паролем (см. ниже). Вставьте оба блока, затем
+создайте файл второго пароля.
+
+### Второй пароль на странице модератора
+
+Браузер спросит логин и пароль ещё до пароля модератора: страницу не
+перебрать с чужих адресов. Пароль вводится с клавиатуры дважды (на экране
+не виден) и не остаётся в истории команд:
+
+```bash
+printf 'moder:%s\n' "$(openssl passwd -apr1)" | sudo tee /etc/nginx/artcatalog-admin.htpasswd >/dev/null
+grep -m1 '^user' /etc/nginx/nginx.conf
+```
+
+Вторая команда показывает, от какого пользователя работает nginx (обычно
+`nginx`). Ему нужно право читать файл паролей:
+
+```bash
+sudo chown root:nginx /etc/nginx/artcatalog-admin.htpasswd
+sudo chmod 640 /etc/nginx/artcatalog-admin.htpasswd
+```
+
+(вместо `nginx` — имя из строки `user`, если там другое). Логин — `moder`,
+пароль — новый, не такой, как пароль модератора. Сменить его — та же первая
+команда.
+
 ```bash
 sudo nginx -t && sudo systemctl reload nginx
 curl -s https://donexpocentre.ru/api/artcatalog/live/ping
+curl -s -o /dev/null -w '%{http_code}\n' https://donexpocentre.ru/api/artcatalog/live/admin
 ```
+
+`ping` отвечает как раньше, страница модератора без второго пароля — `401`.
 
 ## Шаг 7. Tilda — включить онлайн-режим на странице
 
@@ -132,8 +167,9 @@ curl -s https://donexpocentre.ru/api/artcatalog/live/ping
 
 1. Откройте в браузере (на компьютере удобнее):
    **https://donexpocentre.ru/api/artcatalog/live/admin**
-2. Введите пароль модератора — тот, что вписан после `LIVE_ADMIN_PASSWORD=`
-   в `/etc/artcatalog-live.env` (шаг 3). Браузер помнит вход 12 часов;
+2. Браузер спросит логин и пароль — это второй пароль (логин `moder`,
+   шаг 6). Затем на странице введите пароль модератора — тот, что вписан
+   после `LIVE_ADMIN_PASSWORD=` в `/etc/artcatalog-live.env` (шаг 3). Браузер помнит вход 12 часов;
    «Выйти» — справа вверху.
 3. Забыли пароль — задайте новый: `sudo nano /etc/artcatalog-live.env`,
    исправьте строку, сохраните, затем `sudo systemctl restart artcatalog-live`.
@@ -158,7 +194,9 @@ curl -s https://donexpocentre.ru/api/artcatalog/live/ping
     и по IP-адресу.
 - **Посетители** — все, кто входил: имя, id, первый и последний визит,
   **дата согласия** на обработку данных, IP-адрес; «Переписка» — все его
-  разговоры; «Заблокировать».
+  разговоры; «Заблокировать». IP-адрес и браузер хранятся только у тех, кто
+  дал согласие; у остальных адрес виден, пока они онлайн (и блокировка по
+  адресу тоже работает, пока они онлайн).
 - **Блокировки** — кто заблокирован, причина, до какого числа; «Снять».
 - **Выгрузить всё в CSV** — вся переписка одним файлом, открывается в
   Excel (для архива или ответа на официальный запрос — см. `LEGAL.md`).
@@ -182,8 +220,10 @@ curl -s https://donexpocentre.ru/api/artcatalog/live/ping
 
 ## Дальше
 
-- **Журнал** — кто вошёл, приглашения, жалобы, действия модератора:
-  `journalctl -u artcatalog-live -f` (выход — `Ctrl+C`).
+- **Журнал** — входы, приглашения, жалобы, действия модератора:
+  `journalctl -u artcatalog-live -f` (выход — `Ctrl+C`). Посетители в нём —
+  только по коду (`a1b2c3d4`), без имён и адресов: журнал хранится дольше
+  сроков из политики. Имя по коду — во вкладке «Посетители».
 - **Новая версия службы** — заменить `/opt/artcatalog-live/live_server.py`
   (как в шаге 1) и `sudo systemctl restart artcatalog-live`. Переписка
   остаётся: она в базе, а не в службе.
@@ -193,8 +233,29 @@ curl -s https://donexpocentre.ru/api/artcatalog/live/ping
   статике (`/static/artcatalog/avatars/`), служба их не касается.
 - **Сменить пароль модератора** — поправить `/etc/artcatalog-live.env`,
   затем `sudo systemctl restart artcatalog-live`.
-- **Резервная копия переписки** — файл
-  `/home/develop/.local/share/artcatalog-live/live.db`; копировать можно
-  на ходу.
+- **Резервная копия переписки** — раз в сутки, автоматически:
+
+  ```bash
+  which sqlite3
+  sudo cp /opt/artcatalog-live/live-backup.sh /etc/cron.daily/artcatalog-live-backup
+  sudo chmod 755 /etc/cron.daily/artcatalog-live-backup
+  sudo /etc/cron.daily/artcatalog-live-backup && sudo ls -l /home/develop/artcatalog-live-backup
+  ```
+
+  Копии — в `/home/develop/artcatalog-live-backup/live-ГГГГ-ММ-ДД.db`,
+  хранятся 7 дней (дольше не держим: в них данные, удалённые по сроку
+  хранения). Просто скопировать `live.db` нельзя — база в режиме WAL,
+  свежие сообщения лежат в `live.db-wal`, и копия выйдет неполной.
+  Восстановить из копии:
+
+  ```bash
+  sudo systemctl stop artcatalog-live
+  D=/home/develop/.local/share/artcatalog-live
+  sudo -u develop cp $D/live.db $D/live.db.before-restore
+  sudo rm -f $D/live.db-wal $D/live.db-shm
+  sudo -u develop cp /home/develop/artcatalog-live-backup/live-ГГГГ-ММ-ДД.db $D/live.db
+  sudo chmod 600 $D/live.db
+  sudo systemctl start artcatalog-live
+  ```
 - **Выключить** — убрать `data-live` в Tilda и
   `sudo systemctl disable --now artcatalog-live`.

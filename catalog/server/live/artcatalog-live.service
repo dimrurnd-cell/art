@@ -16,6 +16,17 @@ RestartSec=3
 Environment=PYTHONUNBUFFERED=1
 NoNewPrivileges=true
 PrivateTmp=true
+# Защита — только то, что понимает systemd 219 (CentOS 7).
+# Новые файлы (база, её журнал) — только владельцу службы:
+UMask=0077
+# /usr, /boot, /etc — только чтение; из устройств — лишь /dev/null, /dev/urandom и т. п.:
+ProtectSystem=full
+PrivateDevices=true
+CapabilityBoundingSet=
+# Статика сайта — только чтение: служба работает от её владельца, но менять файлы
+# сайта не может. «-» — не мешать запуску, если папки нет. Своя база
+# (~/.local/share/artcatalog-live) остаётся доступной для записи.
+ReadOnlyDirectories=-/home/develop/donexpo
 
 [Install]
 WantedBy=multi-user.target

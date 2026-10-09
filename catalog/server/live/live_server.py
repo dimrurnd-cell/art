@@ -46,6 +46,8 @@ https://<сервер>/api/artcatalog/live/… (WebSocket — /ws).
     LIVE_MSG_RATE=10     сообщений в минуту от посетителя
     LIVE_INVITE_RATE=5   приглашений в минуту
     LIVE_NEW_PER_IP=20   новых посетителей с одного адреса в час
+    LIVE_MAX_CONN=400    соединений всего
+    LIVE_NEAR=50         радиус, м: движения ближе — 15 раз/с, дальше — раз в секунду
 
 Проверка без nginx и браузера:
     python3 live_server.py --check --env /etc/artcatalog-live.env
@@ -56,6 +58,7 @@ import csv
 import hashlib
 import hmac
 import io
+import ipaddress
 import json
 import math
 import os
@@ -123,6 +126,8 @@ PER_IP = int(E("LIVE_PER_IP", "8"))
 MSG_RATE = int(E("LIVE_MSG_RATE", "10"))
 INVITE_RATE = int(E("LIVE_INVITE_RATE", "5"))
 NEW_PER_IP = int(E("LIVE_NEW_PER_IP", "20"))   # новых посетителей с адреса в час
+MAX_CONN = int(E("LIVE_MAX_CONN", "400"))      # соединений всего
+NEAR = float(E("LIVE_NEAR", "50"))             # м; фигуры видны до 40 м (FAR в peers.js)
 # Сроки хранения — как у организатора распространения информации (149-ФЗ, ст. 10.1,
 # в ред. с 01.01.2026): текст сообщений — 6 месяцев, сведения о пользователях и о
 # фактах переписки (кто, с кем, когда) — 3 года. Дольше не храним (152-ФЗ).
@@ -146,6 +151,23 @@ def now():
 
 def log(*parts):
     print(time.strftime("%Y-%m-%d %H:%M:%S"), *parts, flush=True)
+
+
+def ipkey(ip):
+    """Ключ лимитов по адресу. У абонента IPv6 целая сеть /64 — считаем её одним адресом"""
+    try:
+        a = ipaddress.ip_address(ip)
+    except ValueError:
+        return ip
+    if a.version == 6:
+        if a.ipv4_mapped:
+            return str(a.ipv4_mapped)
+        return str(ipaddress.ip_network(ip + "/64", strict=False))
+    return ip
+
+
+def enc(obj):
+    return json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
 
 # ---------------------------------------------------------------- фильтр
@@ -241,15 +263,33 @@ CREATE TABLE IF NOT EXISTS bans (
   visitor INTEGER, ip TEXT, reason TEXT,
   created REAL NOT NULL, until REAL, lifted INTEGER NOT NULL DEFAULT 0
 );
+-- без частичных индексов: на CentOS 7 SQLite 3.7.17
+CREATE INDEX IF NOT EXISTS visitors_seen ON visitors(last_seen);
+CREATE INDEX IF NOT EXISTS visitors_ip ON visitors(ip);
+CREATE INDEX IF NOT EXISTS conv_b ON conversations(b, state);
+CREATE INDEX IF NOT EXISTS conv_updated ON conversations(updated);
+CREATE INDEX IF NOT EXISTS msg_author ON messages(author);
+CREATE INDEX IF NOT EXISTS msg_del_ts ON messages(deleted, ts);
+CREATE INDEX IF NOT EXISTS reads_conv ON reads(conv);
+CREATE INDEX IF NOT EXISTS blocks_whom ON blocks(whom);
+CREATE INDEX IF NOT EXISTS bans_visitor ON bans(visitor);
+CREATE INDEX IF NOT EXISTS bans_ip ON bans(ip);
+CREATE INDEX IF NOT EXISTS reports_done ON reports(done);
 """
 
 
 class DB:
-    def __init__(self, path):
+    def __init__(self, path, worker=False):
+        if worker:
+            # своё соединение для отдельного потока: очистка, чтения модератора
+            self.c = sqlite3.connect(path, isolation_level=None, timeout=5)
+            self.c.row_factory = sqlite3.Row
+            self.c.execute("PRAGMA synchronous=NORMAL")
+            return
         d = os.path.dirname(path)
         if d and not os.path.isdir(d):
             os.makedirs(d, mode=0o700)
-        self.c = sqlite3.connect(path, isolation_level=None)
+        self.c = sqlite3.connect(path, isolation_level=None, timeout=5)
         self.c.row_factory = sqlite3.Row
         self.c.execute("PRAGMA journal_mode=WAL")
         self.c.execute("PRAGMA synchronous=NORMAL")
@@ -257,6 +297,25 @@ class DB:
         # база прежней версии: колонки согласия ещё нет
         if "consent" not in [r[1] for r in self.c.execute("PRAGMA table_info(visitors)")]:
             self.c.execute("ALTER TABLE visitors ADD COLUMN consent REAL")
+        # переписка и адреса — только владельцу службы (прежние версии создавали базу с правами 644)
+        for f in (path, path + "-wal", path + "-shm"):
+            try:
+                if os.path.exists(f) and os.stat(f).st_mode & 0o077:
+                    os.chmod(f, 0o600)
+            except OSError:
+                pass
+
+    def startup(self):
+        """После перезапуска: таймеров приглашений больше нет — ждущие ответа истекают
+        (иначе повторно пригласить того же человека было бы нельзя); адрес и браузер
+        храним только с согласием — у прочих стираем"""
+        n = self.c.execute("UPDATE conversations SET state='expired', updated=? WHERE state='pending'", (now(),)).rowcount
+        if n:
+            log("после перезапуска истекли приглашения без ответа: %d" % n)
+        n = self.c.execute("UPDATE visitors SET ip=NULL, ua=NULL WHERE consent IS NULL "
+                           "AND (ip IS NOT NULL OR ua IS NOT NULL)").rowcount
+        if n:
+            log("адрес и браузер стёрты у посетителей без согласия: %d" % n)
 
     def q(self, sql, *args):
         return self.c.execute(sql, args).fetchall()
@@ -275,6 +334,7 @@ class DB:
         return self.one("SELECT * FROM visitors WHERE id=?", vid)
 
     def upsert_visitor(self, token_hash, name, sex, outfit, ip, ua):
+        """ip и ua — None, пока нет согласия на обработку персональных данных"""
         t = now()
         v = self.visitor_by_token(token_hash)
         if v:
@@ -292,35 +352,82 @@ class DB:
     def set_consent(self, vid):
         self.run("UPDATE visitors SET consent=? WHERE id=? AND consent IS NULL", now(), vid)
 
-    def purge(self):
+    def purge(self, chunk=500):
         """Срок хранения вышел: текст сообщений старше KEEP_MSG_DAYS стираем (сам факт —
         кто, кому, когда — остаётся), всё старше KEEP_VISITOR_DAYS удаляем целиком.
-        Действующие блокировки остаются."""
+        Действующие блокировки остаются.
+        Работает в отдельном потоке со своим соединением, порциями: каждая порция —
+        короткая транзакция, служба ждёт записи в базу не дольше одной порции.
+        Обычно за час набирается немного — несколько порций; большая первая очистка
+        идёт минуты, но службу не держит."""
         t = now()
         mt, vt = t - KEEP_MSG_DAYS * 86400, t - KEEP_VISITOR_DAYS * 86400
-        n_txt = self.c.execute("UPDATE messages SET text='', raw='', deleted=2 WHERE ts<? AND deleted<>2", (mt,)).rowcount
-        n_msg = self.c.execute("DELETE FROM messages WHERE ts<?", (vt,)).rowcount
-        n_conv = self.c.execute("DELETE FROM conversations WHERE updated<? AND state<>'pending' "
-                                "AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.conv=conversations.id)", (vt,)).rowcount
-        self.c.execute("DELETE FROM reads WHERE conv NOT IN (SELECT id FROM conversations)")
-        self.c.execute("DELETE FROM reports WHERE ts<?", (vt,))
-        self.c.execute("DELETE FROM bans WHERE (lifted=1 OR (until IS NOT NULL AND until<?)) AND created<?", (t, vt))
-        # посетитель, не заходивший дольше срока: удаляем, если на нём нет действующей блокировки
-        old = [r[0] for r in self.c.execute(
-            "SELECT id FROM visitors WHERE last_seen<? AND id NOT IN "
-            "(SELECT visitor FROM bans WHERE visitor IS NOT NULL AND lifted=0 AND (until IS NULL OR until>?))", (vt, t))]
-        for vid in old:
-            self.c.execute("DELETE FROM messages WHERE author=?", (vid,))
-            self.c.execute("DELETE FROM conversations WHERE a=? OR b=?", (vid, vid))
-            self.c.execute("DELETE FROM blocks WHERE who=? OR whom=?", (vid, vid))
-            self.c.execute("DELETE FROM reads WHERE visitor=?", (vid,))
-            self.c.execute("DELETE FROM reports WHERE reporter=? OR target=?", (vid, vid))
-            self.c.execute("UPDATE bans SET visitor=NULL WHERE visitor=?", (vid,))
-            self.c.execute("DELETE FROM visitors WHERE id=?", (vid,))
-        if n_txt or n_msg or n_conv or old:
+
+        def tx(fn):
+            self.c.execute("BEGIN IMMEDIATE")
+            try:
+                r = fn()
+                self.c.execute("COMMIT")
+            except Exception:
+                self.c.execute("ROLLBACK")
+                raise
+            # пауза между порциями: иначе служба, ждущая записи, не успевала бы вклиниться
+            time.sleep(0.1)
+            return r
+
+        def batch(sql, *args):
+            n = 0
+            while True:
+                k = tx(lambda: self.c.execute(sql % chunk, args).rowcount)
+                n += k
+                if k < chunk:
+                    return n
+
+        # deleted IN (…) — чтобы шёл индекс (deleted, ts): порция не перебирает уже стёртые
+        n_txt = batch("UPDATE messages SET text='', raw='', deleted=2 WHERE id IN "
+                      "(SELECT id FROM messages WHERE deleted IN (0,1) AND ts<? LIMIT %d)", mt)
+        n_msg = batch("DELETE FROM messages WHERE id IN (SELECT id FROM messages WHERE deleted IN (0,1,2) AND ts<? LIMIT %d)", vt)
+        n_conv = batch("DELETE FROM conversations WHERE id IN (SELECT id FROM conversations c WHERE updated<? "
+                       "AND state<>'pending' AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.conv=c.id) LIMIT %d)", vt)
+        batch("DELETE FROM reads WHERE rowid IN (SELECT rowid FROM reads WHERE conv NOT IN "
+              "(SELECT id FROM conversations) LIMIT %d)")
+        batch("DELETE FROM reports WHERE id IN (SELECT id FROM reports WHERE ts<? LIMIT %d)", vt)
+        batch("DELETE FROM bans WHERE id IN (SELECT id FROM bans WHERE (lifted=1 OR (until IS NOT NULL AND until<?)) "
+              "AND created<? LIMIT %d)", t, vt)
+
+        # посетитель, не заходивший дольше срока, в разговорах которого тоже дольше срока
+        # ничего не было: удаляем вместе с этими разговорами (без «сирот» — реплик
+        # собеседника в удалённом разговоре), если на нём нет действующей блокировки
+        def old_visitors():
+            ids = [r[0] for r in self.c.execute(
+                "SELECT id FROM visitors v WHERE last_seen<? AND id NOT IN "
+                "(SELECT visitor FROM bans WHERE visitor IS NOT NULL AND lifted=0 AND (until IS NULL OR until>?)) "
+                "AND NOT EXISTS(SELECT 1 FROM conversations c WHERE (c.a=v.id OR c.b=v.id) AND c.updated>=?) "
+                "LIMIT 25", (vt, t, vt))]
+            if ids:
+                q = ",".join("?" * len(ids))
+                convs = "SELECT id FROM conversations WHERE a IN (%s) OR b IN (%s)" % (q, q)
+                for sql, args in (
+                        ("DELETE FROM messages WHERE author IN (%s) OR conv IN (%s)" % (q, convs), ids * 3),
+                        ("DELETE FROM reads WHERE visitor IN (%s) OR conv IN (%s)" % (q, convs), ids * 3),
+                        ("DELETE FROM conversations WHERE a IN (%s) OR b IN (%s)" % (q, q), ids * 2),
+                        ("DELETE FROM blocks WHERE who IN (%s) OR whom IN (%s)" % (q, q), ids * 2),
+                        ("DELETE FROM reports WHERE reporter IN (%s) OR target IN (%s)" % (q, q), ids * 2),
+                        ("UPDATE bans SET visitor=NULL WHERE visitor IN (%s)" % q, ids),
+                        ("DELETE FROM visitors WHERE id IN (%s)" % q, ids)):
+                    self.c.execute(sql, args)
+            return len(ids)
+
+        n_vis = 0
+        while True:
+            k = tx(old_visitors)
+            n_vis += k
+            if k < 25:
+                break
+        if n_txt or n_msg or n_conv or n_vis:
             log("очистка по сроку хранения: текст стёрт у %d сообщ., удалено сообщ. %d, разговоров %d, посетителей %d"
-                % (n_txt, n_msg, n_conv, len(old)))
-        return n_txt, n_msg, n_conv, len(old)
+                % (n_txt, n_msg, n_conv, n_vis))
+        return n_txt, n_msg, n_conv, n_vis
 
     def seen(self, vid):
         self.run("UPDATE visitors SET last_seen=? WHERE id=?", now(), vid)
@@ -447,6 +554,7 @@ WHERE = ("3d", "simple", "catalog", "")
 class Client:
     def __init__(self, reader, writer, ip, ua):
         self.r, self.w, self.ip, self.ua = reader, writer, ip, ua
+        self.ipk = ipkey(ip)          # для лимитов: IPv6 — по сети /64
         self.v = None                 # строка visitors после hello
         self.full = False
         self.dead = False
@@ -463,6 +571,11 @@ class Client:
         self.mode_rate = Rate(10, 10)
 
     def send(self, obj):
+        if not self.dead:
+            self.send_raw(frame(1, enc(obj)))
+
+    def send_raw(self, data):
+        """Готовый кадр: рассылка кодирует сообщение один раз на всех"""
         if self.dead:
             return
         try:
@@ -471,7 +584,7 @@ class Client:
             if self.w.transport.is_closing() or self.w.transport.get_write_buffer_size() > 512 * 1024:   # не читает — отключаем
                 self.kill()
                 return
-            self.w.write(frame(1, json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8")))
+            self.w.write(data)
         except Exception:
             self.kill()
 
@@ -491,6 +604,7 @@ class Hub:
         self.by_vid = {}              # id посетителя → множество соединений
         self.place = {}               # id → [where, sec, room, x, z, yaw]
         self.dirty = set()            # чьи позиции изменились с прошлой рассылки
+        self.later = set()            # … с прошлой рассылки дальним (раз в секунду)
         self.timers = {}              # разговор → таймер истечения приглашения
         self.rates = {}               # (посетитель или адрес, вид) → Rate
 
@@ -517,13 +631,24 @@ class Hub:
         return [next(iter(cs)).v for cs in self.by_vid.values() if cs]
 
     def to(self, vid, obj):
-        for c in list(self.by_vid.get(vid, ())):
-            c.send(obj)
+        cs = self.by_vid.get(vid)
+        if cs:
+            data = frame(1, enc(obj))
+            for c in list(cs):
+                c.send_raw(data)
 
     def others(self, vid, obj, full_only=False):
+        data = None
         for c in list(self.clients):
             if c.v and c.v["id"] != vid and (c.full or not full_only):
-                c.send(obj)
+                if data is None:
+                    data = frame(1, enc(obj))
+                c.send_raw(data)
+
+    def ip_of(self, vid):
+        """Адрес посетителя, пока он онлайн (без согласия в базе его нет)"""
+        cs = self.by_vid.get(vid)
+        return next(iter(cs)).ip if cs else None
 
     def vid_by_pid(self, pid):
         row = self.db.one("SELECT id FROM visitors WHERE pid=?", str(pid))
@@ -539,7 +664,7 @@ class Hub:
                 "convs": self.convs_of(vid)})
         if first:
             self.others(vid, dict({"t": "join"}, **self.pub(c.v)))
-            log("вошёл", c.v["pid"], c.v["name"], c.ip)
+            log("вошёл", c.v["pid"])               # без имени и адреса: журнал хранится дольше политики
         # приглашения, которые ещё ждут ответа, — заново (на случай переподключения)
         for cv in self.db.q("SELECT * FROM conversations WHERE b=? AND state='pending'", vid):
             if now() - cv["created"] < INVITE_TTL:
@@ -558,9 +683,10 @@ class Hub:
                 del self.by_vid[vid]
                 self.place.pop(vid, None)
                 self.dirty.discard(vid)
+                self.later.discard(vid)
                 self.db.seen(vid)
                 self.others(vid, {"t": "leave", "id": c.v["pid"]})
-                log("вышел", c.v["pid"], c.v["name"])
+                log("вышел", c.v["pid"])
 
     def refresh_visitor(self, vid):
         """Имя или образ поменялись (повторный hello из другой вкладки) — всем соединениям"""
@@ -592,14 +718,25 @@ class Hub:
         return [self.msg_pub(m, m["pid"]) for m in reversed(rows)]
 
     def convs_of(self, vid):
+        """Свои разговоры при входе: собеседник, непрочитанные и блокировка — одним
+        запросом (было по 5 запросов на разговор), история — по запросу на разговор"""
         out = []
-        for cv in self.db.q("SELECT * FROM conversations WHERE (a=? OR b=?) AND state IN ('accepted','pending','closed') "
-                            "ORDER BY updated DESC LIMIT 30", vid, vid):
-            if cv["state"] == "pending" and cv["b"] == vid:
+        for r in self.db.q(
+                "SELECT c.id cid, c.a, c.b, c.state, v.id vid, v.pid, v.name, v.sex, v.outfit, "
+                "(SELECT COUNT(*) FROM messages m WHERE m.conv=c.id AND m.author<>? AND m.deleted=0 AND m.id>"
+                "COALESCE((SELECT r.last FROM reads r WHERE r.visitor=? AND r.conv=c.id), 0)) unread, "
+                "EXISTS(SELECT 1 FROM blocks k WHERE k.who=? AND k.whom=v.id) blocked "
+                "FROM conversations c JOIN visitors v ON v.id=(CASE WHEN c.a=? THEN c.b ELSE c.a END) "
+                "WHERE (c.a=? OR c.b=?) AND c.state IN ('accepted','pending','closed') "
+                "ORDER BY c.updated DESC LIMIT 30", vid, vid, vid, vid, vid, vid):
+            if r["state"] == "pending" and r["b"] == vid:
                 continue                      # входящее приглашение придёт отдельно
-            d = self.conv_pub(cv, vid)
-            if cv["state"] != "pending":
-                d["msgs"] = self.history(cv["id"])
+            ov = {"id": r["vid"], "pid": r["pid"], "name": r["name"], "sex": r["sex"], "outfit": r["outfit"]}
+            d = {"conv": r["cid"], "state": r["state"], "mine": r["a"] == vid,
+                 "with": self.pub(ov), "online": r["vid"] in self.by_vid, "unread": r["unread"],
+                 "blocked": bool(r["blocked"])}
+            if r["state"] != "pending":
+                d["msgs"] = self.history(r["cid"])
             out.append(d)
         return out
 
@@ -629,30 +766,51 @@ class Hub:
         while True:
             await asyncio.sleep(TICK)
             n += 1
-            if n % 900 == 0:                  # раз в минуту
-                self.prune_rates()
-            if not self.dirty:
+            try:
+                if n % 900 == 0:              # раз в минуту
+                    self.prune_rates()
+                self.tick(n % 15 == 0)
+            except Exception as e:            # рассылка не должна умирать от одной ошибки
+                log("ошибка рассылки", repr(e))
+
+    def tick(self, slow):
+        """Движения в 3D. Тем, кто рядом (до NEAR м), — 15 раз/с; раз в секунду —
+        последние позиции всех, кто сдвинулся, и дальним тоже: так дальняя фигура
+        стоит там, где человек сейчас, а не где его видели в последний раз.
+        Трафик растёт не как квадрат числа посетителей, а по числу соседей"""
+        self.later |= self.dirty
+        if not self.dirty and not (slow and self.later):
+            return
+
+        def rows(vids):
+            out = []
+            for vid in vids:
+                p, cs = self.place.get(vid), self.by_vid.get(vid)
+                if p and cs and p[0] == "3d":
+                    out.append((vid, p[3], p[4], json.dumps([next(iter(cs)).v["pid"], p[1], p[2], p[3], p[4], p[5]],
+                                                            separators=(",", ":"))))
+            return out
+
+        moved = rows(self.later if slow else self.dirty)
+        self.dirty.clear()
+        if slow:
+            self.later.clear()
+        if not moved:
+            return
+        head = '{"t":"moves","ts":%d,"m":[' % int(now() * 1000)
+        r2 = NEAR * NEAR
+        for c in list(self.clients):
+            if not c.full or not c.v or c.dead:
                 continue
-            moves = []
-            for vid in self.dirty:
-                p = self.place.get(vid)
-                cs = self.by_vid.get(vid)
-                if p and cs:
-                    moves.append([next(iter(cs)).v["pid"], p[1], p[2], p[3], p[4], p[5]])
-            self.dirty.clear()
-            if not moves:
-                continue
-            data = frame(1, json.dumps({"t": "moves", "ts": int(now() * 1000), "m": moves},
-                                       separators=(",", ":")).encode("utf-8"))
-            for c in list(self.clients):
-                if c.full and c.v and not c.dead:
-                    try:
-                        if c.w.transport.is_closing() or c.w.transport.get_write_buffer_size() > 512 * 1024:
-                            c.kill()
-                        else:
-                            c.w.write(data)
-                    except Exception:
-                        c.kill()
+            me = c.v["id"]
+            p = self.place.get(me)
+            if slow or not p or p[0] != "3d":     # ещё не прислал, где стоит, — всё
+                pick = [r for vid, x, z, r in moved if vid != me]
+            else:
+                pick = [r for vid, x, z, r in moved
+                        if vid != me and (x - p[3]) ** 2 + (z - p[4]) ** 2 <= r2]
+            if pick:
+                c.send_raw(frame(1, (head + ",".join(pick) + "]}").encode("utf-8")))
 
     # --- сообщения от посетителя
     def handle(self, c, d):
@@ -729,7 +887,7 @@ class Hub:
                 self.db.run("DELETE FROM blocks WHERE who=? AND whom=?", vid, other)
         elif t == "report":
             other = self.vid_by_pid(d.get("id"))
-            if other and self.rate(vid, "report", 5, 3600) and self.rate(c.ip, "report", 20, 3600):
+            if other and self.rate(vid, "report", 5, 3600) and self.rate(c.ipk, "report", 20, 3600):
                 cid = inum(d.get("conv"), 1, 2 ** 62)
                 self.db.run("INSERT INTO reports(reporter, target, conv, text, ts) VALUES(?,?,?,?,?)",
                             vid, other, cid, str(d.get("text", ""))[:MSG_MAX], now())
@@ -758,12 +916,15 @@ class Hub:
             return
         # каждый новый токен — новая строка в базе на 3 года: с одного адреса
         # не больше NEW_PER_IP новых посетителей в час
-        if not known and not self.rate(c.ip, "new", NEW_PER_IP, 3600):
+        if not known and not self.rate(c.ipk, "new", NEW_PER_IP, 3600):
             c.send({"t": "error", "code": "rate", "text": "Слишком много входов с вашего адреса — попробуйте позже"})
             c.kill()
             return
         was = c.v
-        v = self.db.upsert_visitor(th, name, sex, outfit, c.ip, c.ua)
+        # адрес и браузер — в базу только с согласием на обработку персональных данных;
+        # без него адрес есть лишь в памяти, пока посетитель онлайн (для блокировки)
+        agree = bool(d.get("consent")) if "consent" in d else bool(known and known["consent"])
+        v = self.db.upsert_visitor(th, name, sex, outfit, c.ip if agree else None, c.ua if agree else None)
         if "consent" in d:                          # старый catalog.js поля не присылает — не трогаем
             if d.get("consent") and not v["consent"]:
                 self.db.set_consent(v["id"])         # время согласия — по часам службы
@@ -802,6 +963,11 @@ class Hub:
             c.send({"t": "error", "code": "unavailable", "text": "Посетитель сейчас не может разговаривать"})
             return
         cv = self.db.conv_between(vid, other)
+        if cv and cv["state"] == "pending" and now() - cv["created"] > INVITE_TTL + 1:
+            # срок ответа вышел, а таймера нет (служба перезапускалась) — не держим вечно
+            self.cancel_timer(cv["id"])
+            self.expire(cv["id"])
+            cv = self.db.conv_between(vid, other)
         if cv:
             if cv["state"] == "accepted":
                 c.send({"t": "conv", "conv": dict(self.conv_pub(cv, vid), msgs=self.history(cv["id"]))})
@@ -878,7 +1044,7 @@ class Hub:
 
 REASONS = {200: "OK", 204: "No Content", 302: "Found", 400: "Bad Request", 401: "Unauthorized",
            403: "Forbidden", 404: "Not Found", 405: "Method Not Allowed", 413: "Payload Too Large",
-           429: "Too Many Requests"}
+           429: "Too Many Requests", 503: "Service Unavailable"}
 
 
 def http(writer, code, body=b"", ctype="text/plain; charset=utf-8", headers=()):
@@ -929,6 +1095,10 @@ class Server:
         ip = hdr.get("x-real-ip", peer) if peer in ("127.0.0.1", "::1") else peer
         u = urlparse(target)
         path = u.path
+        # префикс адреса за nginx (…/live/) — для пути cookie модератора
+        base = path[:path.index("/live/") + 6] if "/live/" in path else "/"
+        if not re.fullmatch(r"[A-Za-z0-9/_.-]+", base):
+            base = "/"
         path = path.split("/live/", 1)[1] if "/live/" in path else path.lstrip("/")
         qs = parse_qs(u.query)
         upgraded = False
@@ -944,7 +1114,7 @@ class Server:
                 return
             if n:
                 body = await asyncio.wait_for(reader.readexactly(n), 15)
-            await self.route(writer, method, path, qs, hdr, body, ip)
+            await self.route(writer, method, path, qs, hdr, body, ip, base)
             try:
                 await writer.drain()
             except Exception:
@@ -965,7 +1135,12 @@ class Server:
             http(writer, 403, "origin")
             writer.close()
             return
-        if self.per_ip.get(ip, 0) >= PER_IP:
+        if len(self.hub.clients) >= MAX_CONN:
+            http(writer, 503, "busy")
+            writer.close()
+            return
+        k = ipkey(ip)
+        if self.per_ip.get(k, 0) >= PER_IP:
             http(writer, 429, "too many")
             writer.close()
             return
@@ -973,7 +1148,7 @@ class Server:
         writer.write(("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
                       "Sec-WebSocket-Accept: %s\r\n\r\n" % ws_accept(key)).encode("ascii"))
         c = Client(reader, writer, ip, hdr.get("user-agent", "")[:200])
-        self.per_ip[ip] = self.per_ip.get(ip, 0) + 1
+        self.per_ip[k] = self.per_ip.get(k, 0) + 1
         self.hub.clients.add(c)
         pinger = asyncio.ensure_future(self.pinger(c))
         try:
@@ -1000,9 +1175,9 @@ class Server:
         finally:
             pinger.cancel()
             self.hub.detach(c)
-            self.per_ip[ip] = self.per_ip.get(ip, 1) - 1
-            if self.per_ip[ip] <= 0:
-                self.per_ip.pop(ip, None)
+            self.per_ip[k] = self.per_ip.get(k, 1) - 1
+            if self.per_ip[k] <= 0:
+                self.per_ip.pop(k, None)
             try:
                 if not writer.transport.is_closing():
                     writer.write(frame(8))
@@ -1023,13 +1198,23 @@ class Server:
 
     # --- страница модератора и её API
     def admin_ok(self, hdr):
-        m = re.search(r"(?:^|;\s*)live_admin=([A-Za-z0-9_-]+)", hdr.get("cookie", ""))
-        if not m:
-            return False
-        exp = self.sessions.get(m.group(1))
-        return bool(exp and exp > now())
+        # cookie могут быть две: прежняя (Path=/) и новая — годится любая действующая
+        t = now()
+        return any(self.sessions.get(sid, 0) > t
+                   for sid in re.findall(r"(?:^|;\s*)live_admin=([A-Za-z0-9_-]+)", hdr.get("cookie", "")))
 
-    async def route(self, w, method, path, qs, hdr, body, ip):
+    async def ro(self, fn):
+        """Чтение базы для модератора — в отдельном потоке и своём соединении:
+        поиск по переписке, выгрузка и подсчёты не останавливают онлайн-режим"""
+        def work():
+            db = DB(DB_PATH, worker=True)
+            try:
+                return fn(db)
+            finally:
+                db.c.close()
+        return await asyncio.get_event_loop().run_in_executor(None, work)
+
+    async def route(self, w, method, path, qs, hdr, body, ip, base="/"):
         hub, db = self.hub, self.db
         if path in ("ping", ""):
             http(w, 200, jbody({"ok": True, "online": len(hub.by_vid)}), "application/json; charset=utf-8")
@@ -1040,8 +1225,10 @@ class Server:
                   "connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'"])
             return
         if path == "admin/login" and method == "POST":
-            f = [t for t in self.fails.get(ip, []) if now() - t < 900]
-            self.fails[ip] = f
+            t = now()
+            self.fails = {k: [x for x in v if t - x < 900] for k, v in self.fails.items() if any(t - x < 900 for x in v)}
+            self.sessions = {k: e for k, e in self.sessions.items() if e > t}
+            f = self.fails.setdefault(ip, [])
             if len(f) >= 5:
                 http(w, 429, jbody({"error": "Слишком много попыток — подождите 15 минут"}), "application/json; charset=utf-8")
                 return
@@ -1049,17 +1236,18 @@ class Server:
                 pw = json.loads(body.decode("utf-8")).get("password", "")
             except ValueError:
                 pw = ""
-            if not ADMIN_PASSWORD or not hmac.compare_digest(pw.encode("utf-8"), ADMIN_PASSWORD.encode("utf-8")):
-                f.append(now())
+            if not ADMIN_PASSWORD or not hmac.compare_digest(str(pw).encode("utf-8"), ADMIN_PASSWORD.encode("utf-8")):
+                f.append(t)
                 log("модератор: неверный пароль", ip)
                 http(w, 401, jbody({"error": "Неверный пароль" if ADMIN_PASSWORD else "Пароль модератора не задан на сервере"}),
                      "application/json; charset=utf-8")
                 return
             sid = secrets.token_urlsafe(24)
-            self.sessions[sid] = now() + 12 * 3600
+            self.sessions[sid] = t + 12 * 3600
             log("модератор вошёл", ip)
+            # cookie — только для страницы модератора, а не для всего сайта
             http(w, 200, jbody({"ok": True}), "application/json; charset=utf-8",
-                 ["Set-Cookie: live_admin=%s; Path=/; Max-Age=43200; HttpOnly; Secure; SameSite=Strict" % sid])
+                 ["Set-Cookie: live_admin=%s; Path=%sadmin; Max-Age=43200; HttpOnly; Secure; SameSite=Strict" % (sid, base)])
             return
         if not path.startswith("admin/api/"):
             http(w, 404, "not found")
@@ -1079,29 +1267,36 @@ class Server:
                 data = json.loads(body.decode("utf-8") or "{}")
             except ValueError:
                 data = {}
+            if not isinstance(data, dict):
+                data = {}
 
-        def vrow(v):
-            ban = db.banned(v["id"], None)
+        # кто онлайн и где — из памяти, здесь; база — в отдельном потоке (self.ro)
+        live = {vid: next(iter(cs)).ip for vid, cs in hub.by_vid.items() if cs}
+
+        def vrow(d, v):
+            ban = d.banned(v["id"], None)
             return {"id": v["id"], "pid": v["pid"], "name": v["name"], "sex": v["sex"], "outfit": v["outfit"],
-                    "first": int(v["first_seen"]), "last": int(v["last_seen"]), "ip": v["ip"],
+                    "first": int(v["first_seen"]), "last": int(v["last_seen"]), "ip": v["ip"] or live.get(v["id"]),
                     "consent": int(v["consent"]) if v["consent"] else None,
-                    "online": v["id"] in hub.by_vid, "banned": ban["id"] if ban else None}
+                    "online": v["id"] in live, "banned": ban["id"] if ban else None}
 
         out = None
         if api == "state":
-            out = {"online": [dict(vrow(v), where=hub.place.get(v["id"], [""])[0],
-                                   sec=hub.place.get(v["id"], ["", -1])[1], room=hub.place.get(v["id"], ["", -1, -1])[2])
-                              for v in hub.online()],
-                   "reports": [dict(r) for r in db.q(
-                       "SELECT r.*, a.name reporter_name, b.name target_name FROM reports r "
-                       "JOIN visitors a ON a.id=r.reporter JOIN visitors b ON b.id=r.target "
-                       "WHERE r.done=0 ORDER BY r.id DESC LIMIT 100")],
-                   "bans": [dict(b, name=(db.visitor(b["visitor"])["name"] if b["visitor"] else None))
-                            for b in db.q("SELECT * FROM bans WHERE lifted=0 ORDER BY id DESC LIMIT 200")],
-                   "stats": {"visitors": db.one("SELECT COUNT(*) n FROM visitors")["n"],
-                             "convs": db.one("SELECT COUNT(*) n FROM conversations WHERE state IN ('accepted','closed')")["n"],
-                             "msgs": db.one("SELECT COUNT(*) n FROM messages")["n"],
-                             "keep": [KEEP_MSG_DAYS, KEEP_VISITOR_DAYS]}}
+            on = [(v, hub.place.get(v["id"]) or ["", -1, -1]) for v in hub.online()]
+
+            def state(d):
+                return {"online": [dict(vrow(d, v), where=p[0], sec=p[1], room=p[2]) for v, p in on],
+                        "reports": [dict(r) for r in d.q(
+                            "SELECT r.*, a.name reporter_name, b.name target_name FROM reports r "
+                            "JOIN visitors a ON a.id=r.reporter JOIN visitors b ON b.id=r.target "
+                            "WHERE r.done=0 ORDER BY r.id DESC LIMIT 100")],
+                        "bans": [dict(b, name=(d.visitor(b["visitor"])["name"] if b["visitor"] else None))
+                                 for b in d.q("SELECT * FROM bans WHERE lifted=0 ORDER BY id DESC LIMIT 200")],
+                        "stats": {"visitors": d.one("SELECT COUNT(*) n FROM visitors")["n"],
+                                  "convs": d.one("SELECT COUNT(*) n FROM conversations WHERE state IN ('accepted','closed')")["n"],
+                                  "msgs": d.one("SELECT COUNT(*) n FROM messages")["n"],
+                                  "keep": [KEEP_MSG_DAYS, KEEP_VISITOR_DAYS]}}
+            out = await self.ro(state)
         elif api == "convs":
             q, d0, d1 = arg("q").strip(), arg("from"), arg("to")
             sql = ("SELECT c.*, a.name an, a.pid ap, b.name bn, b.pid bp, "
@@ -1122,21 +1317,26 @@ class Server:
                     except ValueError:
                         pass
             sql += " ORDER BY c.updated DESC LIMIT 300"
-            out = {"convs": [dict(r) for r in db.q(sql, *args)]}
+            out = await self.ro(lambda d: {"convs": [dict(r) for r in d.q(sql, *args)]})
         elif api == "conv":
             cid = int(arg("id", "0") or 0)
-            cv = db.conv(cid)
-            if not cv:
+
+            def conv(d):
+                cv = d.conv(cid)
+                if not cv:
+                    return None
+                return {"conv": dict(cv), "a": vrow(d, d.visitor(cv["a"])), "b": vrow(d, d.visitor(cv["b"])),
+                        "msgs": [dict(m) for m in d.q("SELECT m.*, v.name FROM messages m JOIN visitors v ON v.id=m.author "
+                                                      "WHERE conv=? ORDER BY m.id", cid)]}
+            out = await self.ro(conv)
+            if out is None:
                 http(w, 404, jbody({"error": "нет"}), "application/json; charset=utf-8")
                 return
-            out = {"conv": dict(cv), "a": vrow(db.visitor(cv["a"])), "b": vrow(db.visitor(cv["b"])),
-                   "msgs": [dict(m) for m in db.q("SELECT m.*, v.name FROM messages m JOIN visitors v ON v.id=m.author "
-                                                  "WHERE conv=? ORDER BY m.id", cid)]}
         elif api == "visitors":
             q = arg("q").strip()
-            rows = db.q("SELECT * FROM visitors WHERE name LIKE ? OR pid=? OR ip=? ORDER BY last_seen DESC LIMIT 200",
-                        "%" + q + "%", q, q) if q else db.q("SELECT * FROM visitors ORDER BY last_seen DESC LIMIT 200")
-            out = {"visitors": [vrow(v) for v in rows]}
+            out = await self.ro(lambda d: {"visitors": [vrow(d, v) for v in (
+                d.q("SELECT * FROM visitors WHERE name LIKE ? OR pid=? OR ip=? ORDER BY last_seen DESC LIMIT 200",
+                    "%" + q + "%", q, q) if q else d.q("SELECT * FROM visitors ORDER BY last_seen DESC LIMIT 200"))]})
         elif api == "delete" and method == "POST":
             m = db.one("SELECT * FROM messages WHERE id=?", int(data.get("id") or 0))
             if m:
@@ -1153,10 +1353,12 @@ class Server:
                 days = data.get("days")
                 until = now() + float(days) * 86400 if days else None
                 reason = str(data.get("reason", ""))[:300]
+                # без согласия адреса в базе нет — берём адрес текущего соединения
+                bip = (v["ip"] or hub.ip_of(v["id"])) if data.get("ip") else None
                 db.run("INSERT INTO bans(visitor, ip, reason, created, until) VALUES(?,?,?,?,?)",
-                       v["id"], v["ip"] if data.get("ip") else None, reason, now(), until)
-                hub.kick(vid=v["id"], ip=v["ip"] if data.get("ip") else None)
-                log("модератор: блокировка", v["pid"], v["name"], "и адрес" if data.get("ip") else "")
+                       v["id"], bip, reason, now(), until)
+                hub.kick(vid=v["id"], ip=bip)
+                log("модератор: блокировка", v["pid"], "и адрес" if bip else "")
             out = {"ok": True}
         elif api == "unban" and method == "POST":
             db.run("UPDATE bans SET lifted=1 WHERE id=?", int(data.get("id") or 0))
@@ -1165,23 +1367,30 @@ class Server:
             db.run("UPDATE reports SET done=1 WHERE id=?", int(data.get("id") or 0))
             out = {"ok": True}
         elif api == "logout" and method == "POST":
-            m = re.search(r"live_admin=([A-Za-z0-9_-]+)", hdr.get("cookie", ""))
-            if m:
-                self.sessions.pop(m.group(1), None)
-            out = {"ok": True}
+            for sid in re.findall(r"live_admin=([A-Za-z0-9_-]+)", hdr.get("cookie", "")):
+                self.sessions.pop(sid, None)
+            http(w, 200, jbody({"ok": True}), "application/json; charset=utf-8",
+                 ["Set-Cookie: live_admin=; Path=%sadmin; Max-Age=0; HttpOnly; Secure; SameSite=Strict" % base])
+            return
         elif api == "export.csv":
             cid = arg("conv")
-            buf = io.StringIO()
-            wr = csv.writer(buf, delimiter=";")
-            wr.writerow(["разговор", "время", "автор", "id автора", "сообщение (как написано)", "удалено"])
-            rows = db.q("SELECT m.*, v.name, v.pid FROM messages m JOIN visitors v ON v.id=m.author " +
-                        ("WHERE conv=? " if cid else "") + "ORDER BY m.id", *([int(cid)] if cid else []))
-            for m in rows:
-                wr.writerow([m["conv"], time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(m["ts"])),
-                             cell(m["name"]), m["pid"], cell(m["raw"]), {1: "удалено модератором", 2: "текст стёрт по сроку хранения"}.get(m["deleted"], "")])
-            name = "artrostov-chat%s.csv" % ("-%d" % int(cid) if cid else "")
+            cid = int(cid) if cid else None
+
+            def export(d):
+                buf = io.StringIO()
+                wr = csv.writer(buf, delimiter=";")
+                wr.writerow(["разговор", "время", "автор", "id автора", "сообщение (как написано)", "удалено"])
+                rows = d.c.execute("SELECT m.*, v.name, v.pid FROM messages m JOIN visitors v ON v.id=m.author " +
+                                   ("WHERE conv=? " if cid else "") + "ORDER BY m.id", (cid,) if cid else ())
+                for m in rows:
+                    wr.writerow([m["conv"], time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(m["ts"])),
+                                 cell(m["name"]), m["pid"], cell(m["raw"]),
+                                 {1: "удалено модератором", 2: "текст стёрт по сроку хранения"}.get(m["deleted"], "")])
+                return buf.getvalue()
+            text = await self.ro(export)
+            name = "artrostov-chat%s.csv" % ("-%d" % cid if cid else "")
             # BOM — чтобы Excel сразу открыл русские буквы правильно
-            http(w, 200, "﻿" + buf.getvalue(), "text/csv; charset=utf-8",
+            http(w, 200, "﻿" + text, "text/csv; charset=utf-8",
                  ['Content-Disposition: attachment; filename="%s"' % name])
             return
         if out is None:
@@ -1338,11 +1547,20 @@ def check():
     return ok
 
 
-async def purger(db):
-    """Раз в час — удаление данных с истёкшим сроком хранения"""
+def purge_once():
+    db = DB(DB_PATH, worker=True)
+    try:
+        return db.purge()
+    finally:
+        db.c.close()
+
+
+async def purger():
+    """Раз в час — удаление данных с истёкшим сроком хранения, в отдельном потоке"""
+    loop = asyncio.get_event_loop()
     while True:
         try:
-            db.purge()
+            await loop.run_in_executor(None, purge_once)
         except Exception as e:
             log("очистка: ошибка", repr(e))
         await asyncio.sleep(3600)
@@ -1352,11 +1570,12 @@ def main():
     if "--check" in sys.argv:
         sys.exit(0 if check() else 1)
     db = DB(DB_PATH)
+    db.startup()
     srv = Server(db)
     loop = asyncio.get_event_loop()
     server = loop.run_until_complete(asyncio.start_server(srv.handle, HOST, PORT, limit=32768))
     asyncio.ensure_future(srv.hub.ticker())
-    asyncio.ensure_future(purger(db))
+    asyncio.ensure_future(purger())
     log("онлайн-режим: %s:%d, база %s, модератор %s" % (HOST, PORT, DB_PATH, "да" if ADMIN_PASSWORD else "нет (пароль не задан)"))
     try:
         loop.run_forever()
